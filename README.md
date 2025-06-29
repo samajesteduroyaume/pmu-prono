@@ -128,4 +128,4 @@ Le système utilise un logger centralisé avec :
 - **Format** : SQLite
 - **Emplacement** : `data/pmu.db`
 - **Sauvegarde** : `data/backup/`
-- **Table** : `courses` avec tous les champs des courses 
+- **Table** : `courses` avec tous les champs des courses # pmu-api

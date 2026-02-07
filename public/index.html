@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pronostics PMU avec IA v15 - Machine Learning + Heuristiques">
+    <meta name="theme-color" content="#d4af37">
+    <title>Elite Punter | PMU AI Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Navigation Latérale -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <span>ELITE PUNTER</span>
+            </div>
+
+            <nav>
+                <a href="#" onclick="showPage('dashboard')" class="active" id="nav-dashboard">
+                    <span class="icon">📊</span> Dashboard
+                </a>
+                <a href="#" onclick="showPage('courses')" id="nav-courses">
+                    <span class="icon">🏇</span> Calendrier
+                </a>
+                <a href="#" onclick="showPage('stats')" id="nav-stats">
+                    <span class="icon">📈</span> Performances
+                </a>
+            </nav>
+
+            <div class="status-box">
+                <div class="dot"></div>
+                <span>IA ARCHITECT V12 ACTIVE</span>
+            </div>
+        </aside>
+
+        <!-- Zone de Contenu -->
+        <main class="content">
+            <!-- DASHBOARD VIEW -->
+            <div id="view-dashboard" class="view active">
+                <header>
+                    <h1>Dashboard Analytique</h1>
+                    <div class="date-display" id="current-date">--/--/----</div>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="glass-card stat-card">
+                        <div class="stat-label">Courses Analysées</div>
+                        <div class="stat-value" id="stat-total-courses">0</div>
+                        <div class="stat-trend">Total Base</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-label">Win Rate (Top 1 IA)</div>
+                        <div class="stat-value" id="stat-win-rate" style="color:var(--success)">0%</div>
+                        <div class="stat-trend">Favoris Validés</div>
+                    </div>
+                    <div class="glass-card stat-card" style="border-color:var(--accent)">
+                        <div class="stat-label">ROI Suggéré</div>
+                        <div class="stat-value" id="stat-roi">0%</div>
+                        <div class="stat-trend" id="stat-profit">0.00 €</div>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="glass-card chart-card">
+                        <h3>Distribution Succès</h3>
+                        <canvas id="chartDisciplines"></canvas>
+                    </div>
+                    <div class="glass-card chart-card">
+                        <h3>Evolution du Capital (Rentabilité)</h3>
+                        <canvas id="chartActivity"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COURSES VIEW -->
+            <div id="view-courses" class="view">
+                <header>
+                    <h1>Flux de Paris en Direct</h1>
+                </header>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="search-wrapper">
+                            <input type="text" id="search-input" placeholder="Rechercher un hippodrome..."
+                                onkeyup="filterTable()" class="pro-input">
+                        </div>
+                        <div class="filters" style="display:flex; gap:10px; align-items:center;">
+                            <input type="date" id="filter-date" onchange="filterTable()" class="pro-input"
+                                style="width:180px">
+                            <select id="filter-discipline" onchange="filterTable()" class="pro-input"
+                                style="width:160px">
+                                <option value="">Toutes Disciplines</option>
+                                <option value="ATTELE">Attelé</option>
+                                <option value="PLAT">Plat</option>
+                                <option value="MONTE">Monté</option>
+                            </select>
+                        </div>
+                    </div>
+                    <table id="courses-table">
+                        <thead>
+                            <tr>
+                                <th>Timing</th>
+                                <th>Réunion / Course</th>
+                                <th>Hippodrome</th>
+                                <th>Discipline</th>
+                                <th>Distance</th>
+                                <th>Statut</th>
+                                <th>Météo</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Peupler via JS -->
+                        </tbody>
+                    </table>
+                    <div id="pagination-controls"
+                        style="display:flex; justify-content:center; gap:15px; padding:20px; align-items:center;">
+                        <!-- Contrôles générés dynamiquement -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATS VIEW -->
+            <div id="view-stats" class="view">
+                <header>
+                    <h1>Indicateurs de Performance</h1>
+                </header>
+                <div class="glass-card">
+                    <h3>Analyse des Pronostics IA</h3>
+                    <p>Statistiques détaillées en cours de synchronisation...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL DETAILS -->
+    <div id="modal-details" class="modal">
+        <div class="modal-content glass-card">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div id="modal-header-pro">
+                <h2 id="modal-title" style="font-size: 2rem; margin-bottom: 20px; color: var(--accent);">--</h2>
+            </div>
+            <div id="modal-body">
+                <!-- Peupler via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Enregistrement du Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('[PWA] Service Worker enregistré', reg))
+                .catch(err => console.error('[PWA] Erreur SW:', err));
+        }
+    </script>
+</body>
+
+</html>

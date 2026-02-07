@@ -1,88 +1,101 @@
-import { chromium } from 'playwright';
 import { format } from 'date-fns';
 
-let browser = null;
-let page = null;
-
-const DEFAULT_CONFIG = {
-    headless: true,
-    timeout: 30000,
-    maxRetries: 3,
-    delayBetweenRequests: 1000
+const DEFAULT_HEADERS = {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Referer': 'https://www.pmu.fr/turf/',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
 /**
- * Initialise le navigateur Playwright et la page.
- * @param {object} config - Options Playwright (headless, timeout...)
+ * Initialise (Stub pour compatibilité avec le reste du code)
  */
-export async function initBrowser(config = {}) {
-    const conf = { ...DEFAULT_CONFIG, ...config };
-    browser = await chromium.launch({ headless: conf.headless, timeout: 60000 });
-    const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        viewport: { width: 1366, height: 768 },
-        locale: 'fr-FR',
-        timezoneId: 'Europe/Paris'
-    });
-    await context.addInitScript(() => {
-        delete navigator.__proto__.webdriver;
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4] });
-        Object.defineProperty(navigator, 'languages', { get: () => ['fr-FR', 'fr', 'en-US', 'en'] });
-    });
-    page = await context.newPage();
-    await page.goto('https://www.pmu.fr', { waitUntil: 'networkidle', timeout: conf.timeout });
-    await page.waitForTimeout(2000);
+export async function initBrowser() {
+    return Promise.resolve();
 }
 
 /**
- * Ferme le navigateur Playwright.
+ * Ferme (Stub pour compatibilité)
  */
 export async function closeBrowser() {
-    if (page) await page.close();
-    if (browser) await browser.close();
-    page = null;
-    browser = null;
+    return Promise.resolve();
 }
 
 /**
- * Récupère les données de courses pour un jour donné (objet Date ou string ISO).
- * @param {Date|string} day - Date du jour à récupérer
- * @param {object} config - Options (maxRetries, timeout...)
- * @returns {Promise<object|null>} - Données JSON ou null en cas d'échec
+ * Exécute une requête API directe
+ */
+export async function fetchApi(url, config = {}) {
+    try {
+        const response = await fetch(url, {
+            headers: DEFAULT_HEADERS,
+            ...config
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error(`[API FETCH ERROR] ${url}:`, error.message);
+        return null;
+    }
+}
+
+/**
+ * Récupère les détails (participants) d'une course spécifique
+ */
+export async function fetchCourseParticipants(dateStr, r, c) {
+    const url = `https://online.turfinfo.api.pmu.fr/rest/client/61/programme/${dateStr}/R${r}/C${c}/participants?specialisation=INTERNET`;
+    return await fetchApi(url);
+}
+
+/**
+ * Récupère les rapports d'une course spécifique
+ */
+export async function fetchCourseRapports(dateStr, r, c) {
+    const url = `https://online.turfinfo.api.pmu.fr/rest/client/61/programme/${dateStr}/R${r}/C${c}/rapports?specialisation=INTERNET`;
+    return await fetchApi(url);
+}
+
+/**
+ * Récupère les données complètes pour un jour
  */
 export async function fetchDay(day, config = {}) {
-    if (!page) throw new Error('Browser not initialized. Call initBrowser() first.');
-    const conf = { ...DEFAULT_CONFIG, ...config };
     const formattedDate = format(new Date(day), 'ddMMyyyy');
-    const apiUrl = `https://online.turfinfo.api.pmu.fr/rest/client/61/programme/${formattedDate}?meteo=true&specialisation=INTERNET`;
 
-    for (let attempt = 1; attempt <= conf.maxRetries; attempt++) {
-        try {
-            const response = await page.evaluate(async (url) => {
-                const res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        'Referer': 'https://www.pmu.fr/'
-                    },
-                    credentials: 'include'
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return await res.json();
-            }, apiUrl);
-            return response;
-        } catch (error) {
-            if (attempt < conf.maxRetries) {
-                await page.waitForTimeout(attempt * 2000);
-                if (attempt % 2 === 0) {
-                    await page.goto('https://www.pmu.fr', { waitUntil: 'networkidle' });
-                    await page.waitForTimeout(1000);
-                }
-            } else {
-                return null;
-            }
-        }
+    // 1. Programme global
+    const programmeUrl = `https://online.turfinfo.api.pmu.fr/rest/client/61/programme/${formattedDate}?meteo=true&specialisation=INTERNET`;
+    const programmeData = await fetchApi(programmeUrl);
+
+    if (!programmeData || !programmeData.programme || !programmeData.programme.reunions) {
+        return programmeData;
     }
-    return null;
-} 
+
+    const reunions = programmeData.programme.reunions;
+
+    for (const reunion of reunions) {
+        if (!reunion.courses) continue;
+
+        await Promise.all(reunion.courses.map(async (course) => {
+            // Participants
+            const details = await fetchCourseParticipants(formattedDate, reunion.numOfficiel, course.numOrdre);
+            if (details && details.participants) {
+                course.participants = details.participants;
+            }
+
+            // Rapports (uniquement si la course est finie)
+            if (course.statut === 'ARRIVEE_DEFINITIVE_COMPLETE' || course.statut === 'ARRIVEE') {
+                const rapports = await fetchCourseRapports(formattedDate, reunion.numOfficiel, course.numOrdre);
+                if (rapports) {
+                    course.rapportsDefinitifs = rapports;
+                }
+            }
+        }));
+    }
+
+    return programmeData;
+}

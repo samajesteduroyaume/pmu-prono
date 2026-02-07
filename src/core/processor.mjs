@@ -1,68 +1,87 @@
+import { calculerPrediction } from './intelligence.mjs';
+
 /**
  * Transforme les données brutes de l'API PMU en format compatible avec la base de données
- * @param {Array<object>} rawRaces - Courses brutes de l'API
- * @param {Date} dayDate - Date du jour traité
- * @returns {Array<object>} - Courses transformées
  */
-export function processRaces(rawRaces, dayDate) {
+export function processRaces(rawRaces, dayDate, reunionData = {}) {
     return rawRaces.map(race => {
-        // Calculer la date à partir de heureDepart ou utiliser la date du jour
         const raceDate = race.heureDepart ? new Date(race.heureDepart) : dayDate;
-        
+        const meteo = reunionData.meteo || {};
+
+        // Extraction Participants
+        const participants = (race.participants || []).map(p => {
+            const participantObj = {
+                nom: p.nom || '?',
+                numero: p.numPmu || 0,
+                sexe: p.sexe || '?',
+                age: p.age || 0,
+                musique: p.musique || '',
+                gains: p.gainsParticipant ? (p.gainsParticipant.gainsCarriere / 100) : 0,
+                driver: p.driver || p.jockey || '?',
+                entraineur: p.entraineur || '?',
+                proprietaire: p.proprietaire || '?',
+                ferrage: p.deferre || 'STANDARD',
+                oeilleres: p.oeilleres || 'SANS_OEILLERES', // NOUVEAU
+                nb_courses: p.nombreCourses || 0, // NOUVEAU
+                nb_victoires: p.nombreVictoires || 0, // NOUVEAU
+                nb_places: p.nombrePlaces || 0, // NOUVEAU
+                cote_ref: p.dernierRapportDirect?.rapport || 0,
+                statut: p.statut || 'PARTANT',
+                classement: p.ordreArrivee || null
+            };
+
+            participantObj.prediction_score = calculerPrediction(participantObj, {
+                corde: race.corde,
+                prixCourse: race.montantPrix || 0
+            });
+
+            return participantObj;
+        });
+
+        const paris = (race.paris || []).map(p => p.codePari).join(',');
+
+        // AJOUT ORDRE ARRIVÉE GLOBAL
+        let ordreArrivee = null;
+        if (race.ordreArrivee && Array.isArray(race.ordreArrivee)) {
+            ordreArrivee = race.ordreArrivee.map(o => o.join('-')).join(',');
+        }
+
         return {
             date: raceDate.toISOString().split('T')[0],
-            dateLisible: raceDate.toLocaleDateString('fr-FR', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            }),
-            heure: race.heureDepart ? new Date(race.heureDepart).toLocaleTimeString('fr-FR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            }) : 'Inconnue',
+            heure: raceDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            reunionNum: race.numReunion,
+            courseNum: race.numOrdre,
             hippodrome: race.hippodrome?.libelleLong || 'Inconnu',
-            codeHippodrome: race.hippodrome?.code || '?',
-            nom: race.libelle || 'Sans nom',
+            corde: race.corde || '?',
             discipline: race.discipline || 'Inconnue',
-            distance: race.distance ? `${race.distance}m` : '?',
+            distance: race.distance ? `${race.distance}` : '0',
+            categorie: race.categorieParticularite || '',
+            conditions: race.conditions || '',
             statut: race.statut || 'Inconnu',
             partants: race.nombreDeclaresPartants || 0,
             prix: race.montantPrix || 0,
-            reunionNum: race.numReunion || '?',
-            courseNum: race.numOrdre || '?',
-            // Champs supplémentaires utiles
-            specialite: race.specialite || '',
-            categorieParticularite: race.categorieParticularite || '',
-            conditionAge: race.conditionAge || '',
-            conditionSexe: race.conditionSexe || '',
-            typePiste: race.typePiste || '',
-            dureeCourse: race.dureeCourse || 0,
-            // Données brutes pour référence
-            rawData: race
+            meteo: meteo,
+            type_pari: paris,
+            ordre_arrivee: ordreArrivee,
+            rapports: race.rapportsDefinitifs || null,
+            participants: participants
         };
     });
 }
 
-/**
- * Filtre et transforme les courses d'une journée
- * @param {object} rawData - Données brutes de l'API
- * @param {Date} dayDate - Date du jour
- * @param {object} filterOptions - Options de filtrage
- * @returns {Array<object>} - Courses filtrées et transformées
- */
 export function processDayRaces(rawData, dayDate, filterOptions = {}) {
-    // Extraire toutes les courses des réunions
-    const allRaces = (rawData?.programme?.reunions || []).flatMap(r => r.courses || []);
-    
-    // Transformer les courses
-    const processedRaces = processRaces(allRaces, dayDate);
-    
-    // Appliquer les filtres si spécifiés
+    let allRaces = [];
+    if (rawData?.programme?.reunions) {
+        rawData.programme.reunions.forEach(reunion => {
+            if (reunion.courses) {
+                const racesFromReunion = processRaces(reunion.courses, dayDate, reunion);
+                allRaces = allRaces.concat(racesFromReunion);
+            }
+        });
+    }
     if (filterOptions.disciplines) {
         const allowed = Array.isArray(filterOptions.disciplines) ? filterOptions.disciplines : [filterOptions.disciplines];
-        return processedRaces.filter(race => allowed.includes(race.discipline));
+        return allRaces.filter(race => allowed.includes(race.discipline));
     }
-    
-    return processedRaces;
-} 
+    return allRaces;
+}

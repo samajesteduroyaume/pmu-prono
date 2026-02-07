@@ -1,7 +1,15 @@
 {
+  "scripts": {
+    "start": "node src/server/app.mjs",
+    "sync": "node src/pipelines/sync.mjs",
+    "sync:year": "node src/pipelines/sync.mjs 365",
+    "sync:month": "node src/pipelines/sync.mjs 30"
+  },
   "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "cors": "^2.8.6",
     "date-fns": "^4.1.0",
-    "playwright": "^1.53.1",
+    "express": "^5.2.1",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   }

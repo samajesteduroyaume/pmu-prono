@@ -76,23 +76,26 @@ export async function fetchDay(day, config = {}) {
     }
 
     const reunions = programmeData.programme.reunions;
+    const allCoursesToFetch = [];
 
     for (const reunion of reunions) {
         if (!reunion.courses) continue;
+        reunion.courses.forEach(course => {
+            allCoursesToFetch.push({ reunion, course });
+        });
+    }
 
-        await Promise.all(reunion.courses.map(async (course) => {
-            // Participants
+    // Exécution parallèle par groupe de 10 pour éviter le rate-limit
+    for (let i = 0; i < allCoursesToFetch.length; i += 10) {
+        const chunk = allCoursesToFetch.slice(i, i + 10);
+        await Promise.all(chunk.map(async ({ reunion, course }) => {
             const details = await fetchCourseParticipants(formattedDate, reunion.numOfficiel, course.numOrdre);
             if (details && details.participants) {
                 course.participants = details.participants;
             }
-
-            // Rapports (uniquement si la course est finie)
             if (course.statut === 'ARRIVEE_DEFINITIVE_COMPLETE' || course.statut === 'ARRIVEE') {
                 const rapports = await fetchCourseRapports(formattedDate, reunion.numOfficiel, course.numOrdre);
-                if (rapports) {
-                    course.rapportsDefinitifs = rapports;
-                }
+                if (rapports) course.rapportsDefinitifs = rapports;
             }
         }));
     }

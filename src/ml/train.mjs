@@ -27,7 +27,7 @@ async function trainModel() {
             tf.layers.dense({
                 units: 64,
                 activation: 'relu',
-                inputShape: [5],
+                inputShape: [7],
                 kernelInitializer: 'heNormal'
             }),
             tf.layers.dropout({ rate: 0.2 }),

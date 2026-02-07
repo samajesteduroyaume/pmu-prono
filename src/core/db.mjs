@@ -55,7 +55,8 @@ async function createTables() {
                     statut TEXT, 
                     prediction_score REAL,
                     classement INTEGER, 
-                    FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+                    FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+                    UNIQUE(course_id, numero)
                 )
             `, (err) => {
                 if (err) {
@@ -83,6 +84,13 @@ async function createTables() {
                             logger.error(`Erreur table paris_historique: ${err2.message}`);
                         }
                         logger.info('Tables courses et participants (V12-Arrivées) créées/vérifiées');
+
+                        // Indexation Critique
+                        db.run('CREATE INDEX IF NOT EXISTS idx_participants_course_id ON participants(course_id)');
+                        db.run('CREATE INDEX IF NOT EXISTS idx_participants_cote_ref ON participants(cote_ref)');
+                        db.run('CREATE INDEX IF NOT EXISTS idx_participants_prediction_score ON participants(prediction_score)');
+                        db.run('CREATE INDEX IF NOT EXISTS idx_courses_date ON courses(date)');
+
                         resolve();
                     });
                 }
@@ -109,80 +117,87 @@ export async function initDB() {
 export async function insertCourses(courses) {
     if (!db) throw new Error('DB not initialized');
 
+    if (!courses || courses.length === 0) return 0;
+
     return new Promise((resolve, reject) => {
-        let insertedCount = 0;
-        let pending = courses.length;
-
-        if (pending === 0) {
-            resolve(0);
-            return;
-        }
-
-        db.serialize(() => {
-            const stmtCourse = db.prepare(`
-                INSERT OR IGNORE INTO courses (
-                    date, heure, hippodrome, discipline, distance, statut, partants, prix, 
-                    reunionNum, courseNum, corde, categorie, conditions, meteo, type_pari, ordre_arrivee, rapports
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            const stmtParticipant = db.prepare(`
-                INSERT INTO participants (
-                    course_id, nom, numero, sexe, age, musique, gains, 
-                    driver, entraineur, proprietaire, ferrage, oeilleres, nb_courses, nb_victoires, nb_places, 
-                    cote_ref, statut, prediction_score, classement
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            const checkCompletion = () => {
-                pending--;
-                if (pending === 0) {
-                    stmtCourse.finalize();
-                    stmtParticipant.finalize((err) => {
-                        if (err) {
-                            logger.error(`Erreur finalisation: ${err.message}`);
-                            reject(err);
-                        } else {
-                            if (insertedCount > 0) {
-                                logger.success(`${insertedCount} courses insérées (avec Résultats)`);
-                            }
-                            resolve(insertedCount);
-                        }
+        db.serialize(async () => {
+            try {
+                // Fonction utilitaire pour wrapper run en Promise
+                const run = (sql, params) => new Promise((res, rej) => {
+                    db.run(sql, params, function (err) {
+                        if (err) rej(err);
+                        else res(this);
                     });
-                }
-            };
+                });
 
-            for (const c of courses) {
-                stmtCourse.run(
-                    c.date, c.heure, c.hippodrome, c.discipline, c.distance, c.statut, c.partants, c.prix,
-                    c.reunionNum, c.courseNum, c.corde, c.categorie, c.conditions, JSON.stringify(c.meteo), c.type_pari,
-                    c.ordre_arrivee, JSON.stringify(c.rapports),
-                    function (err) {
-                        if (err) {
-                            logger.error(`Erreur insertion course ${c.reunionNum}C${c.courseNum}: ${err.message}`);
-                            checkCompletion();
-                            return;
+                // Fonction utilitaire pour wrapper get en Promise
+                const get = (sql, params) => new Promise((res, rej) => {
+                    db.get(sql, params, (err, row) => {
+                        if (err) rej(err);
+                        else res(row);
+                    });
+                });
+
+                await run('BEGIN TRANSACTION');
+
+                const sqlCourse = `
+                    INSERT INTO courses (
+                        date, heure, hippodrome, discipline, distance, statut, partants, prix, 
+                        reunionNum, courseNum, corde, categorie, conditions, meteo, type_pari, ordre_arrivee, rapports
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(date, reunionNum, courseNum) DO UPDATE SET
+                        statut = excluded.statut,
+                        ordre_arrivee = excluded.ordre_arrivee,
+                        rapports = excluded.rapports,
+                        meteo = excluded.meteo,
+                        type_pari = excluded.type_pari,
+                        partants = excluded.partants
+                `;
+
+                const sqlParticipant = `
+                    INSERT INTO participants (
+                        course_id, nom, numero, sexe, age, musique, gains, 
+                        driver, entraineur, proprietaire, ferrage, oeilleres, nb_courses, nb_victoires, nb_places, 
+                        cat_statut, cote_ref, statut, prediction_score, classement
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(course_id, numero) DO UPDATE SET
+                        cote_ref = excluded.cote_ref,
+                        statut = excluded.statut,
+                        classement = excluded.classement,
+                        musique = excluded.musique,
+                        gains = excluded.gains,
+                        cat_statut = excluded.cat_statut
+                `;
+
+                for (const c of courses) {
+                    await run(sqlCourse, [
+                        c.date, c.heure, c.hippodrome, c.discipline, c.distance, c.statut, c.partants, c.prix,
+                        c.reunionNum, c.courseNum, c.corde, c.categorie, c.conditions, JSON.stringify(c.meteo), c.type_pari,
+                        c.ordre_arrivee, JSON.stringify(c.rapports)
+                    ]);
+
+                    const row = await get("SELECT id FROM courses WHERE date = ? AND reunionNum = ? AND courseNum = ?",
+                        [c.date, c.reunionNum, c.courseNum]);
+
+                    if (row && c.participants) {
+                        for (const p of c.participants) {
+                            await run(sqlParticipant, [
+                                row.id, p.nom, p.numero, p.sexe, p.age, p.musique, p.gains,
+                                p.driver, p.entraineur, p.proprietaire, p.ferrage, p.oeilleres, p.nb_courses, p.nb_victoires, p.nb_places,
+                                p.cat_statut || 'STABLE', p.cote_ref, p.statut, p.prediction_score || 0, p.classement || null
+                            ]);
                         }
-
-                        if (this.changes > 0) {
-                            const courseId = this.lastID;
-                            insertedCount++;
-
-                            if (c.participants && c.participants.length > 0) {
-                                for (const p of c.participants) {
-                                    stmtParticipant.run(
-                                        courseId, p.nom, p.numero, p.sexe, p.age, p.musique, p.gains,
-                                        p.driver, p.entraineur, p.proprietaire, p.ferrage, p.oeilleres, p.nb_courses, p.nb_victoires, p.nb_places,
-                                        p.cote_ref, p.statut,
-                                        p.prediction_score || 0,
-                                        p.classement || null
-                                    );
-                                }
-                            }
-                        }
-                        checkCompletion();
                     }
-                );
+                }
+
+                await run('COMMIT');
+                logger.success(`${courses.length} courses synchronisées (v23 Stable)`);
+                resolve(courses.length);
+
+            } catch (err) {
+                logger.error(`Erreur Transaction: ${err.message}`);
+                db.run('ROLLBACK');
+                reject(err);
             }
         });
     });
@@ -193,10 +208,15 @@ export async function getAllCourses() {
 
     return new Promise((resolve, reject) => {
         const query = `
-            SELECT c.*, count(p.id) as nb_participants_stockes 
-            FROM courses c 
-            LEFT JOIN participants p ON c.id = p.course_id 
-            GROUP BY c.id
+            SELECT c.*, 
+                   (SELECT count(*) FROM participants WHERE course_id = c.id) as nb_participants_stockes,
+                   (SELECT '#' || numero || ' ' || nom FROM participants WHERE course_id = c.id AND cote_ref > 0 ORDER BY cote_ref ASC LIMIT 1) as fav_nom,
+                   (SELECT cote_ref FROM participants WHERE course_id = c.id AND cote_ref > 0 ORDER BY cote_ref ASC LIMIT 1) as fav_cote,
+                   (SELECT '#' || numero || ' ' || nom FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_nom,
+                   (SELECT prediction_score FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_score
+            FROM courses c
+            ORDER BY c.date DESC, c.heure ASC
+            LIMIT 300
         `;
         db.all(query, (err, rows) => {
             if (err) {
@@ -260,8 +280,8 @@ export async function getIAPerformanceStats() {
             SELECT 
                 date,
                 COUNT(*) as total_courses,
-                SUM(CASE WHEN classement = 1 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN classement = 1 THEN cote_ref ELSE 0 END) as total_returns
+                SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN CAST(cote_ref AS FLOAT) ELSE 0 END) as total_returns
             FROM BestBets
             GROUP BY date
             ORDER BY date ASC
@@ -340,7 +360,7 @@ export async function getAdvancedStats() {
         `, (err, top3Data) => {
             if (err) return reject(err);
 
-            const top3_rate = top3Data.total > 0 
+            const top3_rate = top3Data.total > 0
                 ? ((top3Data.top3 / top3Data.total) * 100).toFixed(1)
                 : 0;
 

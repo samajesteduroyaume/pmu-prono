@@ -4,203 +4,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Pronostics PMU avec IA v15 - Machine Learning + Heuristiques">
-    <meta name="theme-color" content="#d4af37">
-    <title>Elite Punter | PMU AI Dashboard</title>
-    <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="css/style.css">
+    <meta name="description" content="PMU PRONO v22 - Terminal de Pari Professionnel Premium">
+    <meta name="theme-color" content="#008a00">
+    <title>PMU PRONO | Terminal Professionnel</title>
+    <link rel="stylesheet" href="css/style.css?v=16.4">
 </head>
 
-<body>
+<body class="pro-terminal">
     <div class="app-container">
-        <!-- Navigation Latérale -->
-        <aside class="sidebar">
-            <div class="logo">
-                <div class="logo-icon"></div>
-                <span>ELITE PUNTER</span>
+        <!-- SIDE MONITOR (Minimalist) -->
+        <aside class="side-monitor">
+            <div class="terminal-brand">
+                <div class="gold-pulse" style="background:var(--pmu-green); box-shadow: 0 0 10px var(--pmu-green-glow)">
+                </div>
+                <span class="glitch-text" style="color:var(--pmu-green)">PMU PRONO</span>
+                <small>v22.0 Professional</small>
             </div>
 
-            <nav>
+            <nav class="terminal-nav">
                 <a href="#" onclick="showPage('dashboard')" class="active" id="nav-dashboard">
-                    <span class="icon">📊</span> Dashboard
+                    <span class="nav-key">F1</span> DASHBOARD
                 </a>
                 <a href="#" onclick="showPage('courses')" id="nav-courses">
-                    <span class="icon">🏇</span> Calendrier
-                </a>
-                <a href="#" onclick="showPage('stats')" id="nav-stats">
-                    <span class="icon">📈</span> Performances
+                    <span class="nav-key">F2</span> PRONO
                 </a>
             </nav>
 
-            <div class="status-box">
-                <div class="dot"></div>
-                <span>IA ARCHITECT V12 ACTIVE</span>
+            <div class="bankroll-summary">
+                <div class="bankroll-label">NET PROFIT (L30D)</div>
+                <div class="bankroll-value positive" id="stat-profit-sidebar">+0.00 €</div>
+            </div>
+
+            <div class="system-status">
+                <div class="status-indicator online"></div>
+                <span>IA ENGINE: ARCHITECT v22</span>
             </div>
         </aside>
 
-        <!-- Zone de Contenu -->
-        <main class="content">
-            <!-- DASHBOARD VIEW -->
+        <!-- PRIMARY SCREEN -->
+        <main class="primary-screen">
+            <!-- VIEW: DASHBOARD (Overview) -->
             <div id="view-dashboard" class="view active">
-                <header>
-                    <h1>Dashboard Analytique</h1>
-                    <div class="date-display" id="current-date">--/--/----</div>
-                </header>
+                <section class="screen-header">
+                    <div class="header-main">
+                        <h1>MONITEUR DE PERFORMANCE</h1>
+                        <p class="header-sub" id="current-date">SÉANCE EN COURS...</p>
+                    </div>
+                </section>
 
-                <div class="stats-grid">
-                    <div class="glass-card stat-card">
-                        <div class="stat-label">Courses Analysées</div>
-                        <div class="stat-value" id="stat-total-courses">0</div>
-                        <div class="stat-trend">Total Base</div>
+                <div class="kpi-monitor">
+                    <div class="kpi-card gold-border">
+                        <div class="kpi-tag">ROI</div>
+                        <div class="kpi-value" id="stat-roi">0%</div>
                     </div>
-                    <div class="glass-card stat-card">
-                        <div class="stat-label">Win Rate (Top 1 IA)</div>
-                        <div class="stat-value" id="stat-win-rate" style="color:var(--success)">0%</div>
-                        <div class="stat-trend">Favoris Validés</div>
+                    <div class="kpi-card">
+                        <div class="kpi-tag">WIN RATE</div>
+                        <div class="kpi-value" id="stat-win-rate">0%</div>
                     </div>
-                    <div class="glass-card stat-card" style="border-color:var(--accent)">
-                        <div class="stat-label">ROI Suggéré</div>
-                        <div class="stat-value" id="stat-roi">0%</div>
-                        <div class="stat-trend" id="stat-profit">0.00 €</div>
-                    </div>
-                    <div class="glass-card stat-card">
-                        <div class="stat-label">Top 3 Rate</div>
-                        <div class="stat-value" id="stat-top3" style="color:#00f2ad">0%</div>
-                        <div class="stat-trend">Podium IA</div>
-                    </div>
-                    <div class="glass-card stat-card">
-                        <div class="stat-label">Confiance Moyenne</div>
-                        <div class="stat-value" id="stat-confidence" style="color:#d4af37">0</div>
-                        <div class="stat-trend">Score IA Gagnants</div>
-                    </div>
-                    <div class="glass-card stat-card" style="border-color:#ff4d6d">
-                        <div class="stat-label">Meilleur Rapport</div>
-                        <div class="stat-value" id="stat-best-cote" style="color:#ff4d6d">-</div>
-                        <div class="stat-trend" id="stat-best-details">-</div>
+                    <div class="kpi-card">
+                        <div class="kpi-tag">COURSES</div>
+                        <div class="kpi-value" id="stat-total-courses">0</div>
                     </div>
                 </div>
 
-                <!-- Section Insights IA -->
-                <div class="glass-card" style="margin-top:20px; padding:25px">
-                    <h3 style="margin-bottom:20px; color:var(--accent)">🧠 Insights IA</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card"
-                            style="background:rgba(0,242,173,0.1); border:1px solid rgba(0,242,173,0.3)">
-                            <div class="stat-label">Meilleur Hippodrome</div>
-                            <div class="stat-value" id="insight-hippodrome" style="font-size:1.2rem">-</div>
-                            <div class="stat-trend" id="insight-hippodrome-rate">-</div>
-                        </div>
-                        <div class="stat-card"
-                            style="background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3)">
-                            <div class="stat-label">Meilleur Driver/Jockey</div>
-                            <div class="stat-value" id="insight-driver" style="font-size:1.2rem">-</div>
-                            <div class="stat-trend" id="insight-driver-rate">-</div>
-                        </div>
-                        <div class="stat-card"
-                            style="background:rgba(100,116,255,0.1); border:1px solid rgba(100,116,255,0.3)">
-                            <div class="stat-label">Discipline Forte</div>
-                            <div class="stat-value" id="insight-discipline" style="font-size:1.2rem">-</div>
-                            <div class="stat-trend" id="insight-discipline-rate">-</div>
-                        </div>
+                <div class="opportunity-alert glass-card">
+                    <div class="alert-header">
+                        <span class="pulse-icon">🔥</span> DERNIÈRES OPPORTUNITÉS DETECTÉES (VALUE > 10%)
                     </div>
-                </div>
-
-                <div class="charts-container">
-                    <div class="glass-card chart-card">
-                        <h3>Distribution Succès</h3>
-                        <canvas id="chartDisciplines"></canvas>
-                    </div>
-                    <div class="glass-card chart-card">
-                        <h3>Evolution du Capital (Rentabilité)</h3>
-                        <canvas id="chartActivity"></canvas>
+                    <div id="latest-opportunities" class="opportunity-list">
+                        <!-- Peupler via JS -->
+                        <div class="loading-inline">Scanning pour des opportunités de value...</div>
                     </div>
                 </div>
             </div>
 
-            <!-- COURSES VIEW -->
+            <!-- VIEW: SCANNER (Market Scanner) -->
             <div id="view-courses" class="view">
-                <header>
-                    <h1>Flux de Paris en Direct</h1>
-                </header>
-
-                <div class="table-container">
-                    <div class="table-header">
-                        <div class="search-wrapper">
-                            <input type="text" id="search-input" placeholder="Rechercher un hippodrome..."
-                                onkeyup="filterTable()" class="pro-input">
+                <section class="screen-header">
+                    <div class="header-main" style="display:flex; align-items:flex-start; gap:20px">
+                        <div>
+                            <h1>ESPACE PRONO</h1>
+                            <p class="header-sub">SÉLECTION ÉLITE PMU EN TEMPS RÉEL</p>
                         </div>
-                        <div class="filters" style="display:flex; gap:10px; align-items:center;">
-                            <input type="date" id="filter-date" onchange="filterTable()" class="pro-input"
-                                style="width:180px">
-                            <select id="filter-discipline" onchange="filterTable()" class="pro-input"
-                                style="width:160px">
-                                <option value="">Toutes Disciplines</option>
-                                <option value="ATTELE">Attelé</option>
-                                <option value="PLAT">Plat</option>
-                                <option value="MONTE">Monté</option>
-                            </select>
+                        <div class="live-badge" id="live-indicator" style="margin-top:10px">
+                            <span class="live-dot"></span> LIVE AUTO-SYNC
                         </div>
                     </div>
-                    <table id="courses-table">
+                    <div class="market-filters">
+                        <input type="date" id="filter-date" onchange="filterTable()" class="terminal-input">
+                        <select id="filter-discipline" onchange="filterTable()" class="terminal-input">
+                            <option value="">MARKET: ALL</option>
+                            <option value="ATTELE">TROT ATTELE</option>
+                            <option value="PLAT">GALOP PLAT</option>
+                            <option value="MONTE">TROT MONTE</option>
+                        </select>
+                        <button onclick="syncMarket()" class="terminal-btn-gold" id="btn-sync"
+                            title="Sync date choisie">
+                            <span id="sync-icon">🔄</span> SYNC DATE
+                        </button>
+                        <button onclick="syncHistory(7)" class="terminal-btn-gold"
+                            style="background:var(--border-dim); color:var(--gold)" id="btn-sync-7">
+                            🔄 RATTRAPAGE 7J
+                        </button>
+                    </div>
+                </section>
+
+                <div class="market-controls glass-card" style="margin-bottom:20px; border-color:var(--gold-dim)">
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap">
+                        <span style="color:var(--gold); font-weight:800; font-size:0.75rem; letter-spacing:1px">SYNC
+                            MASTER :</span>
+                        <button onclick="syncHistory(1)" class="terminal-btn-tiny">1J</button>
+                        <button onclick="syncHistory(2)" class="terminal-btn-tiny">2J</button>
+                        <button onclick="syncHistory(3)" class="terminal-btn-tiny">3J</button>
+                        <button onclick="syncHistory(5)" class="terminal-btn-tiny">5J</button>
+                        <button onclick="syncHistory(7)" class="terminal-btn-tiny">7J</button>
+                        <button onclick="syncHistory(10)" class="terminal-btn-tiny">10J</button>
+                        <button onclick="syncHistory(15)" class="terminal-btn-tiny">15J</button>
+                        <button onclick="syncHistory(30)" class="terminal-btn-tiny" style="border-color:var(--gold)">1
+                            MOIS</button>
+                        <button onclick="syncHistory(180)" class="terminal-btn-tiny"
+                            style="border-color:var(--gold); color:var(--gold)">6 MOIS</button>
+                        <button onclick="syncHistory(365)" class="terminal-btn-tiny"
+                            style="background:var(--gold); color:black; font-weight:800">1 AN</button>
+                    </div>
+                </div>
+
+                <div id="sync-status" class="terminal-alert" style="display:none; margin-bottom:20px"></div>
+
+                <div class="scanner-container">
+                    <table class="market-table" id="courses-table">
                         <thead>
                             <tr>
-                                <th>Timing</th>
-                                <th>Réunion / Course</th>
-                                <th>Hippodrome</th>
-                                <th>Discipline</th>
-                                <th>Distance</th>
-                                <th>Statut</th>
-                                <th>Météo</th>
-                                <th>Actions</th>
+                                <th width="70">HEURE</th>
+                                <th width="70">ID</th>
+                                <th>HIPPODROME</th>
+                                <th>SÉLECTION IA (TOP 1)</th>
+                                <th width="60">CONF.</th>
+                                <th>FAVORI PMU</th>
+                                <th width="60">COTE</th>
+                                <th width="60">DIST.</th>
+                                <th width="60">MET.</th>
+                                <th width="80">ARRIVÉE</th>
+                                <th width="80">ACTION</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Peupler via JS -->
+                            <!-- JS Inject -->
                         </tbody>
                     </table>
-                    <div id="pagination-controls"
-                        style="display:flex; justify-content:center; gap:15px; padding:20px; align-items:center;">
-                        <!-- Contrôles générés dynamiquement -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- STATS VIEW -->
-            <div id="view-stats" class="view">
-                <header>
-                    <h1>Indicateurs de Performance</h1>
-                </header>
-                <div class="glass-card">
-                    <h3>Analyse des Pronostics IA</h3>
-                    <p>Statistiques détaillées en cours de synchronisation...</p>
+                    <div id="pagination-controls" class="terminal-pagination"></div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- MODAL DETAILS -->
-    <div id="modal-details" class="modal">
-        <div class="modal-content glass-card">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <div id="modal-header-pro">
-                <h2 id="modal-title" style="font-size: 2rem; margin-bottom: 20px; color: var(--accent);">--</h2>
-            </div>
+    <!-- MODAL: BETTING ANALYSIS -->
+    <div id="modal-details" class="terminal-modal">
+        <div class="modal-content glass-card gold-border">
+            <span class="close-modal" onclick="closeModal()">[ESC] CLOSE</span>
             <div id="modal-body">
-                <!-- Peupler via JS -->
+                <!-- Pro Betting Details -->
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/app.js"></script>
-    <script>
-        // Enregistrement du Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('[PWA] Service Worker enregistré', reg))
-                .catch(err => console.error('[PWA] Erreur SW:', err));
-        }
-    </script>
+    <script src="js/app.js?v=16.2"></script>
 </body>
 
 </html>

@@ -12,42 +12,20 @@ function normalizeValue(value, min, max) {
     return (value - min) / (max - min);
 }
 
+import { extractBaseFeatures } from '../core/features.mjs';
+
 function extractFeatures(participant, course) {
-    // Feature 1 : Score Forme (musique)
-    const musique = participant.musique || '';
-    const perfs = musique.match(/([0-9DA]|Dist)[a-zA-Z]/g) || [];
-    let scoreForme = 0;
-    if (perfs.length > 0) {
-        const recent = perfs.slice(0, 3);
-        const wins = recent.filter(p => p.startsWith('1')).length;
-        const places = recent.filter(p => ['2', '3'].some(n => p.startsWith(n))).length;
-        scoreForme = (wins * 100 + places * 50) / recent.length;
-    }
-
-    // Feature 2 : Classe (gains/âge)
-    const age = parseInt(participant.age) || 5;
-    const gains = parseFloat(participant.gains) || 0;
-    const scoreClasse = Math.min((gains / (age * 12000)) * 100, 100);
-
-    // Feature 3 : Régularité
-    const nbCourses = participant.nb_courses || 1;
-    const scoreReg = ((participant.nb_victoires + participant.nb_places) / nbCourses) * 100;
-
-    // Feature 4 : Entourage (Driver/Jockey)
-    const topDrivers = ['BAZIRE', 'NIVARD', 'RAFFIN', 'ABRIVARD', 'ROCHARD', 'BARZALONA', 'SOUMILLON', 'GUYON'];
-    const driver = (participant.driver || '').toUpperCase();
-    const scoreEntourage = topDrivers.some(d => driver.includes(d)) ? 100 : 30;
-
-    // Feature 5 : Cote (confiance marché)
-    const cote = parseFloat(participant.cote_ref) || 10;
-    const scoreConfiance = cote < 3 ? 100 : (cote < 6 ? 80 : (cote < 12 ? 50 : 20));
-
+    const f = extractBaseFeatures(participant, course);
     return {
-        forme: scoreForme / 100,
-        classe: scoreClasse / 100,
-        regularite: scoreReg / 100,
-        entourage: scoreEntourage / 100,
-        confiance: scoreConfiance / 100
+        features: [
+            f.forme,
+            f.classe,
+            f.config,
+            f.entourage,
+            f.regularite,
+            f.confiance,
+            f.isTrot
+        ]
     };
 }
 
@@ -72,7 +50,18 @@ export async function prepareDataset() {
             logger.info(`Analyse de ${rows.length} participants avec résultats...`);
 
             const dataset = rows.map(row => {
-                const features = extractFeatures(row, { discipline: row.discipline, prix: row.prix });
+                const f = extractBaseFeatures(row, { discipline: row.discipline, prix: row.prix });
+
+                // Features vector [7]
+                const featureVector = [
+                    f.forme,
+                    f.classe,
+                    f.config,
+                    f.entourage,
+                    f.regularite,
+                    f.confiance,
+                    f.isTrot
+                ];
 
                 // Label : 1 si gagnant (1er), 0 sinon
                 const arrivee = row.ordre_arrivee || '';
@@ -80,13 +69,7 @@ export async function prepareDataset() {
                 const isWinner = positions[0] === row.numero ? 1 : 0;
 
                 return {
-                    features: [
-                        features.forme,
-                        features.classe,
-                        features.regularite,
-                        features.entourage,
-                        features.confiance
-                    ],
+                    features: featureVector,
                     label: isWinner
                 };
             });

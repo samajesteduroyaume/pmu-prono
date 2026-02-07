@@ -1,15 +1,16 @@
-import { calculerPrediction } from './intelligence.mjs';
+import { calculerPredictionHybride } from './hybrid.mjs';
+import { determinerChangementCategorie } from './intelligence.mjs';
 
 /**
  * Transforme les données brutes de l'API PMU en format compatible avec la base de données
  */
-export function processRaces(rawRaces, dayDate, reunionData = {}) {
-    return rawRaces.map(race => {
+export async function processRaces(rawRaces, dayDate, reunionData = {}) {
+    return Promise.all(rawRaces.map(async race => {
         const raceDate = race.heureDepart ? new Date(race.heureDepart) : dayDate;
         const meteo = reunionData.meteo || {};
 
         // Extraction Participants
-        const participants = (race.participants || []).map(p => {
+        const participants = await Promise.all((race.participants || []).map(async p => {
             const participantObj = {
                 nom: p.nom || '?',
                 numero: p.numPmu || 0,
@@ -21,22 +22,29 @@ export function processRaces(rawRaces, dayDate, reunionData = {}) {
                 entraineur: p.entraineur || '?',
                 proprietaire: p.proprietaire || '?',
                 ferrage: p.deferre || 'STANDARD',
-                oeilleres: p.oeilleres || 'SANS_OEILLERES', // NOUVEAU
-                nb_courses: p.nombreCourses || 0, // NOUVEAU
-                nb_victoires: p.nombreVictoires || 0, // NOUVEAU
-                nb_places: p.nombrePlaces || 0, // NOUVEAU
-                cote_ref: p.dernierRapportDirect?.rapport || 0,
+                oeilleres: p.oeilleres || 'SANS_OEILLERES',
+                nb_courses: p.nombreCourses || 0,
+                nb_victoires: p.nombreVictoires || 0,
+                nb_places: p.nombrePlaces || 0,
                 statut: p.statut || 'PARTANT',
-                classement: p.ordreArrivee || null
+                classement: p.ordreArrivee || null,
+                cote_ref: p.dernierRapportDirect?.rapport || 0
             };
 
-            participantObj.prediction_score = calculerPrediction(participantObj, {
+            // Calcul du changement de catégorie
+            participantObj.cat_statut = determinerChangementCategorie(participantObj, race.montantPrix || 0);
+
+            // HYBRIDATION ML (v26)
+            const result = await calculerPredictionHybride(participantObj, {
                 corde: race.corde,
-                prixCourse: race.montantPrix || 0
+                prixCourse: race.montantPrix || 0,
+                discipline: race.discipline
             });
 
+            participantObj.prediction_score = result.score;
+
             return participantObj;
-        });
+        }));
 
         const paris = (race.paris || []).map(p => p.codePari).join(',');
 
@@ -66,18 +74,18 @@ export function processRaces(rawRaces, dayDate, reunionData = {}) {
             rapports: race.rapportsDefinitifs || null,
             participants: participants
         };
-    });
+    }));
 }
 
-export function processDayRaces(rawData, dayDate, filterOptions = {}) {
+export async function processDayRaces(rawData, dayDate, filterOptions = {}) {
     let allRaces = [];
     if (rawData?.programme?.reunions) {
-        rawData.programme.reunions.forEach(reunion => {
+        for (const reunion of rawData.programme.reunions) {
             if (reunion.courses) {
-                const racesFromReunion = processRaces(reunion.courses, dayDate, reunion);
+                const racesFromReunion = await processRaces(reunion.courses, dayDate, reunion);
                 allRaces = allRaces.concat(racesFromReunion);
             }
-        });
+        }
     }
     if (filterOptions.disciplines) {
         const allowed = Array.isArray(filterOptions.disciplines) ? filterOptions.disciplines : [filterOptions.disciplines];

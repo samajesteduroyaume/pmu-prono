@@ -1,7 +1,7 @@
 import logger from '../utils/logger.mjs';
 
 /**
- * MOTEUR D'INTELLIGENCE ARTIFICIELLE "ARCHITECT v12"
+ * MOTEUR D'INTELLIGENCE ARTIFICIELLE "ARCHITECT v26 - UNIFIÉ"
  */
 
 const WEIGHTS_BY_DISCIPLINE = {
@@ -11,13 +11,24 @@ const WEIGHTS_BY_DISCIPLINE = {
     'DEFAULT': { FORME: 0.30, ENTOURAGE: 0.20, CONFIANCE: 0.10, CONFIGURATION: 0.10, APTITUDE: 0.10, EXPERT: 0.20 }
 };
 
-function analyerForme(musique, discipline = 'INCONNUE') {
+function analyserFormeProfonde(musique, discipline = 'INCONNUE') {
     if (!musique) return 20;
+
+    // 1. Détection de "Rentrée" (Absence prolongée)
+    // Les parenthèses indiquent l'année (ex: (24) ou (25)). 
+    // Si on voit (24) alors qu'on est en février 2026, c'est une rentrée après > 1 an.
+    let rentreeMalus = 0;
+    const years = musique.match(/\((\d+)\)/g);
+    if (years && years.length > 0) {
+        const lastYear = parseInt(years[years.length - 1].replace(/[()]/g, ''));
+        if (lastYear < 25) rentreeMalus = 30; // Malus sévère si dernière course en 2024 ou avant
+        else if (lastYear === 25) rentreeMalus = 10; // Malus léger si dernière course début 2025
+    }
 
     const cleanMusic = musique.replace(/\(\d+\)/g, '');
     const perfs = cleanMusic.match(/([0-9DA]|Dist)[a-zA-Z]/g) || [];
 
-    if (perfs.length === 0) return 30;
+    if (perfs.length === 0) return Math.max(0, 30 - rentreeMalus);
 
     let score = 0;
     let totalWeight = 0;
@@ -39,7 +50,7 @@ function analyerForme(musique, discipline = 'INCONNUE') {
             else if (place === 3) points = 65;
             else if (place === 4) points = 50;
             else if (place === 5) points = 40;
-            else if (place <= 9) points = 20;
+            else if (place <= 9) points = 15;
             else points = 5;
         } else {
             // Fautes spécialisées
@@ -52,16 +63,17 @@ function analyerForme(musique, discipline = 'INCONNUE') {
             }
         }
 
-        // Bonus si la discipline de la perf correspond à la course actuelle
+        // Bonus si la discipline de la perf correspond à la course actuelle (Spécialisation)
         const currentType = isTrot ? (discipline.includes('MONTE') ? 'm' : 'a') : (discipline.includes('PLAT') ? 'p' : (discipline.includes('HAIE') ? 'h' : 's'));
-        if (type === currentType) points *= 1.1;
+        if (type === currentType) points *= 1.15; // 15% de bonus pour la spécialité
 
         const weight = Math.pow(0.85, i);
-        score += Math.min(100, points) * weight;
+        score += Math.min(115, points) * weight;
         totalWeight += weight;
     }
 
-    return Math.round(score / totalWeight);
+    const finalFormeScore = Math.round(score / totalWeight);
+    return Math.max(5, finalFormeScore - rentreeMalus);
 }
 
 function analyserClasse(participant) {
@@ -124,46 +136,57 @@ export function calculerPrediction(participant, contexteCourse) {
 
         const weights = WEIGHTS_BY_DISCIPLINE[discKey] || WEIGHTS_BY_DISCIPLINE.DEFAULT;
 
-        const scoreForme = analyerForme(participant.musique, disc);
-        const scoreAptitude = analyserClasse(participant);
-        const scoreConfig = analyserConfig(participant, disc);
-        const scoreExpert = calculerExpertImpact(participant, contexteCourse);
+        // 1. FORME PROFONDE
+        const scoreForme = analyserFormeProfonde(participant.musique, disc);
 
-        // Entourage spécialisé
-        const topDriversTrot = ['BAZIRE', 'NIVARD', 'RAFFIN', 'ABRIVARD', 'ROCHARD', 'MOTTIER', 'TOMASELLI', 'GELORMINI'];
-        const topJockeysGalop = ['BARZALONA', 'SOUMILLON', 'GUYON', 'PASQUIER', 'DEMURO', 'PICCONE', 'LEMAITRE'];
+        // 2. CLASSE
+        const age = parseInt(participant.age) || 5;
+        const gains = parseFloat(participant.gains) || 0;
+        const scoreClasse = (age < 2) ? 50 : Math.min(Math.round((gains / (age * 12000)) * 45), 100);
 
-        const dr = (participant.driver || '').toUpperCase();
-        const en = (participant.entraineur || '').toUpperCase();
+        // 3. CONFIGURATION (Ferrage / Oeilleres)
+        let scoreConfig = 50;
+        if (discKey === 'TROT') {
+            const ferrage = (participant.ferrage || '').toUpperCase();
+            if (ferrage.includes('D4')) scoreConfig = 95;
+            else if (ferrage.includes('DA') || ferrage.includes('DP')) scoreConfig = 75;
+            else if (ferrage.includes('PL')) scoreConfig = 60;
+        } else {
+            if (participant.oeilleres && participant.oeilleres !== 'SANS_OEILLERES') scoreConfig = 70;
+        }
 
-        const isTopEntourage = (discKey === 'TROT')
-            ? topDriversTrot.some(d => dr.includes(d))
-            : topJockeysGalop.some(d => dr.includes(d));
+        // 4. ENTOURAGE
+        const topEntourage = ['BAZIRE', 'NIVARD', 'RAFFIN', 'ABRIVARD', 'ROCHARD', 'BARZALONA', 'SOUMILLON', 'GUYON', 'PASQUIER', 'DEMURO', 'MOUROT', 'MOTTIER'];
+        const entourageName = `${(participant.driver || '').toUpperCase()} ${(participant.entraineur || '').toUpperCase()}`;
+        const isTop = topEntourage.some(name => entourageName.includes(name));
+        const scoreEntourage = isTop ? 90 : 50;
 
-        const scoreEntourage = isTopEntourage ? 95 : 50;
-
-        let scoreConfiance = 50;
+        // 5. CONFIANCE (Marché)
         const cote = parseFloat(participant.cote_ref);
+        let scoreConfiance = 50;
         if (!isNaN(cote) && cote > 0) {
             if (cote < 3) scoreConfiance = 95;
-            else if (cote < 6) scoreConfiance = 80;
-            else if (cote < 12) scoreConfiance = 60;
-            else if (cote < 25) scoreConfiance = 40;
+            else if (cote < 7) scoreConfiance = 80;
+            else if (cote < 15) scoreConfiance = 60;
+            else if (cote < 30) scoreConfiance = 40;
             else scoreConfiance = 20;
         }
+
+        // 6. EXPERT IMPACT
+        const expertScore = calculerExpertImpact(participant, contexteCourse);
 
         const finalScore = (
             (scoreForme * weights.FORME) +
             (scoreEntourage * weights.ENTOURAGE) +
             (scoreConfiance * weights.CONFIANCE) +
             (scoreConfig * weights.CONFIGURATION) +
-            (scoreAptitude * weights.APTITUDE) +
-            (scoreExpert * weights.EXPERT)
+            (scoreClasse * weights.APTITUDE) +
+            (expertScore * weights.EXPERT)
         );
 
         return isNaN(finalScore) ? 50 : Math.round(finalScore);
     } catch (e) {
-        logger.error(`IA Error: ${e.message}`);
+        logger.error(`IA Architecture v26 Error: ${e.message}`);
         return 50;
     }
 }

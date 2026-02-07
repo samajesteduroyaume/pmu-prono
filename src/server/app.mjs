@@ -96,6 +96,18 @@ app.get('/api/performance', async (req, res) => {
     }
 });
 
+app.get('/api/performance/advanced', async (req, res) => {
+    try {
+        logger.info('API: Requête /api/performance/advanced');
+        const { getAdvancedStats } = await import('../core/db.mjs');
+        const stats = await getAdvancedStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error(`API Error Advanced Stats: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/api/stats', async (req, res) => {
     res.json({ message: "Stats endpoint pending" });
 });

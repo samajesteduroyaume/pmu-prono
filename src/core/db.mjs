@@ -315,3 +315,169 @@ export async function closeDB() {
         });
     }
 }
+/**
+ * Statistiques Avancées pour le Dashboard
+ */
+export async function getAdvancedStats() {
+    if (!db) throw new Error('DB not initialized');
+
+    return new Promise((resolve, reject) => {
+        // 1. Top 3 Rate
+        db.get(`
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN p.classement <= 3 THEN 1 ELSE 0 END) as top3
+            FROM participants p
+            JOIN courses c ON p.course_id = c.id
+            WHERE p.classement = 1 
+                AND c.ordre_arrivee IS NOT NULL 
+                AND c.ordre_arrivee != ''
+                AND p.prediction_score = (
+                    SELECT MAX(p2.prediction_score) 
+                    FROM participants p2 
+                    WHERE p2.course_id = p.course_id
+                )
+        `, (err, top3Data) => {
+            if (err) return reject(err);
+
+            const top3_rate = top3Data.total > 0 
+                ? ((top3Data.top3 / top3Data.total) * 100).toFixed(1)
+                : 0;
+
+            // 2. Précision par Discipline
+            db.all(`
+                SELECT 
+                    c.discipline,
+                    COUNT(*) as total,
+                    SUM(CASE 
+                        WHEN p.classement = 1 THEN 1 
+                        ELSE 0 
+                    END) as wins
+                FROM participants p
+                JOIN courses c ON p.course_id = c.id
+                WHERE c.ordre_arrivee IS NOT NULL 
+                    AND c.ordre_arrivee != ''
+                    AND p.prediction_score = (
+                        SELECT MAX(p2.prediction_score) 
+                        FROM participants p2 
+                        WHERE p2.course_id = p.course_id
+                    )
+                GROUP BY c.discipline
+            `, (err2, disciplineData) => {
+                if (err2) return reject(err2);
+
+                const by_discipline = {};
+                disciplineData.forEach(d => {
+                    by_discipline[d.discipline] = {
+                        total: d.total,
+                        wins: d.wins,
+                        win_rate: d.total > 0 ? ((d.wins / d.total) * 100).toFixed(1) : 0
+                    };
+                });
+
+                // 3. Confiance Moyenne
+                db.get(`
+                    SELECT AVG(p.prediction_score) as avg_confidence
+                    FROM participants p
+                    JOIN courses c ON p.course_id = c.id
+                    WHERE p.classement = 1
+                        AND c.ordre_arrivee IS NOT NULL
+                        AND p.prediction_score = (
+                            SELECT MAX(p2.prediction_score) 
+                            FROM participants p2 
+                            WHERE p2.course_id = p.course_id
+                        )
+                `, (err3, confData) => {
+                    if (err3) return reject(err3);
+
+                    // 4. Meilleur Rapport
+                    db.get(`
+                        SELECT 
+                            p.nom,
+                            p.cote_ref,
+                            c.date,
+                            c.hippodrome,
+                            (p.cote_ref - 1) as gain_potentiel
+                        FROM participants p
+                        JOIN courses c ON p.course_id = c.id
+                        WHERE p.classement = 1
+                            AND c.ordre_arrivee IS NOT NULL
+                            AND p.prediction_score = (
+                                SELECT MAX(p2.prediction_score) 
+                                FROM participants p2 
+                                WHERE p2.course_id = p.course_id
+                            )
+                        ORDER BY p.cote_ref DESC
+                        LIMIT 1
+                    `, (err4, bestData) => {
+                        if (err4) return reject(err4);
+
+                        // 5. Insights
+                        db.get(`
+                            SELECT 
+                                c.hippodrome,
+                                COUNT(*) as total,
+                                SUM(CASE WHEN p.classement = 1 THEN 1 ELSE 0 END) as wins
+                            FROM participants p
+                            JOIN courses c ON p.course_id = c.id
+                            WHERE c.ordre_arrivee IS NOT NULL
+                                AND p.prediction_score = (
+                                    SELECT MAX(p2.prediction_score) 
+                                    FROM participants p2 
+                                    WHERE p2.course_id = p.course_id
+                                )
+                            GROUP BY c.hippodrome
+                            HAVING total >= 10
+                            ORDER BY (CAST(wins AS FLOAT) / total) DESC
+                            LIMIT 1
+                        `, (err5, hippoData) => {
+                            if (err5) return reject(err5);
+
+                            db.get(`
+                                SELECT 
+                                    p.driver,
+                                    COUNT(*) as total,
+                                    SUM(CASE WHEN p.classement = 1 THEN 1 ELSE 0 END) as wins
+                                FROM participants p
+                                JOIN courses c ON p.course_id = c.id
+                                WHERE c.ordre_arrivee IS NOT NULL
+                                    AND p.driver IS NOT NULL
+                                    AND p.driver != ''
+                                    AND p.prediction_score = (
+                                        SELECT MAX(p2.prediction_score) 
+                                        FROM participants p2 
+                                        WHERE p2.course_id = p.course_id
+                                    )
+                                GROUP BY p.driver
+                                HAVING total >= 5
+                                ORDER BY (CAST(wins AS FLOAT) / total) DESC
+                                LIMIT 1
+                            `, (err6, driverData) => {
+                                if (err6) return reject(err6);
+
+                                resolve({
+                                    top3_rate: parseFloat(top3_rate),
+                                    by_discipline,
+                                    avg_confidence: confData?.avg_confidence ? parseFloat(confData.avg_confidence.toFixed(1)) : 0,
+                                    best_rapport: bestData || null,
+                                    insights: {
+                                        best_hippodrome: hippoData ? {
+                                            name: hippoData.hippodrome,
+                                            win_rate: ((hippoData.wins / hippoData.total) * 100).toFixed(1),
+                                            total: hippoData.total
+                                        } : null,
+                                        best_driver: driverData ? {
+                                            name: driverData.driver,
+                                            win_rate: ((driverData.wins / driverData.total) * 100).toFixed(1),
+                                            total: driverData.total
+                                        } : null
+                                    }
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+}

@@ -178,6 +178,47 @@ async function renderPerformanceDashboard() {
             }
         });
 
+        // Charger statistiques avancées
+        const resAdv = await fetch('/api/performance/advanced');
+        const advanced = await resAdv.json();
+
+        // Afficher nouveaux KPI
+        document.getElementById('stat-top3').textContent = `${advanced.top3_rate}%`;
+        document.getElementById('stat-confidence').textContent = advanced.avg_confidence.toFixed(1);
+
+        // Meilleur rapport
+        if (advanced.best_rapport) {
+            document.getElementById('stat-best-cote').textContent = `${advanced.best_rapport.cote_ref.toFixed(2)}`;
+            document.getElementById('stat-best-details').textContent = `${advanced.best_rapport.nom} - ${new Date(advanced.best_rapport.date).toLocaleDateString('fr-FR')}`;
+        }
+
+        // Insights
+        if (advanced.insights.best_hippodrome) {
+            document.getElementById('insight-hippodrome').textContent = advanced.insights.best_hippodrome.name;
+            document.getElementById('insight-hippodrome-rate').textContent = `${advanced.insights.best_hippodrome.win_rate}% (${advanced.insights.best_hippodrome.total} courses)`;
+        }
+
+        if (advanced.insights.best_driver) {
+            document.getElementById('insight-driver').textContent = advanced.insights.best_driver.name;
+            document.getElementById('insight-driver-rate').textContent = `${advanced.insights.best_driver.win_rate}% (${advanced.insights.best_driver.total} courses)`;
+        }
+
+        // Meilleure discipline
+        const disciplines = advanced.by_discipline;
+        let bestDisc = null;
+        let bestRate = 0;
+        Object.keys(disciplines).forEach(disc => {
+            const rate = parseFloat(disciplines[disc].win_rate);
+            if (rate > bestRate) {
+                bestRate = rate;
+                bestDisc = disc;
+            }
+        });
+        if (bestDisc) {
+            document.getElementById('insight-discipline').textContent = bestDisc;
+            document.getElementById('insight-discipline-rate').textContent = `${bestRate}% (${disciplines[bestDisc].total} courses)`;
+        }
+
     } catch (e) {
         console.error("Perf Render Error:", e);
     }

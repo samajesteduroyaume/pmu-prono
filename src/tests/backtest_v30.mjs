@@ -36,15 +36,19 @@ async function analyze() {
         const winners = course.ordre_arrivee.split('-').map(n => parseInt(n.trim()));
         const realWinner = winners[0];
 
-        const scored = participants.map(p => ({
-            ...p,
-            ai_score: calculerPrediction(p, {
-                discipline: course.discipline,
-                prixCourse: course.prix,
-                hippodrome: course.hippodrome,
-                nbPartants: course.partants
-            })
-        })).sort((a, b) => b.ai_score - a.ai_score);
+        const scored = [];
+        for (const p of participants) {
+            scored.push({
+                ...p,
+                ai_score: await calculerPrediction(p, {
+                    discipline: course.discipline,
+                    prixCourse: course.prix,
+                    hippodrome: course.hippodrome,
+                    nbPartants: course.partants
+                })
+            });
+        }
+        scored.sort((a, b) => b.ai_score - a.ai_score);
 
         if (scored.length === 0) continue;
 

@@ -76,7 +76,7 @@ async function predictML(participant, contexteCourse) {
  */
 export async function calculerPredictionHybride(participant, contexteCourse, activePatterns = []) {
     const f = extractBaseFeatures(participant, contexteCourse);
-    const scoreV14 = calculerPredictionV14(participant, contexteCourse, activePatterns);
+    const scoreV14 = await calculerPredictionV14(participant, contexteCourse, activePatterns);
 
     // Si modèle ML non disponible, fallback sur v14
     if (!model) {

@@ -46,11 +46,11 @@ const testCases = [
     }
 ];
 
-console.log("=== V30 PREDICTION LOGIC CHECK ===");
+console.log("=== V32 PREDICTION LOGIC CHECK ===");
 
-testCases.forEach(tc => {
+for (const tc of testCases) {
     console.log(`\nTEST: ${tc.name}`);
-    const score = calculerPrediction(tc.participant, tc.contexte);
+    const score = await calculerPrediction(tc.participant, tc.contexte);
     console.log(`SCORE FINAL: ${score} pts`);
 
     if (tc.name.includes("Favori") && score > 80) {
@@ -62,4 +62,4 @@ testCases.forEach(tc => {
     } else if (tc.name.includes("Censure")) {
         console.log("SUCCESS: Censure appliquée (Score < 75)");
     }
-});
+}

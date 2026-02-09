@@ -1,5 +1,9 @@
 import logger from '../utils/logger.mjs';
 import { calculateKellyMise } from './kelly.mjs';
+import { processAttelé } from './engines/attele_engine.mjs';
+import { processMonté } from './engines/monte_engine.mjs';
+import { processPlat } from './engines/plat_engine.mjs';
+import { processObstacle } from './engines/obstacle_engine.mjs';
 
 /**
  * MOTEUR D'INTELLIGENCE ARTIFICIELLE "ARCHITECT v26 - UNIFIÉ"
@@ -140,7 +144,7 @@ export function calculerExpertImpact(p, contexte) {
     return Math.max(0, Math.min(100, 50 + bonus));
 }
 
-export function calculerPrediction(participant, contexteCourse, activePatterns = []) {
+export async function calculerPrediction(participant, contexteCourse, activePatterns = []) {
     try {
         const disc = (contexteCourse.discipline || 'PLAT').toUpperCase();
         let discKey = 'DEFAULT';
@@ -148,156 +152,74 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
         else if (disc.includes('PLAT')) discKey = 'PLAT';
         else if (disc.includes('OBSTACLE') || disc.includes('HAIE') || disc.includes('STEEPLE')) discKey = 'OBSTACLE';
 
-        let weights = { ...(WEIGHTS_BY_DISCIPLINE[discKey] || WEIGHTS_BY_DISCIPLINE.DEFAULT) };
-
-        // V31: ADAPTATION À LA DISTANCE (EXTRÊMES)
-        const dist = parseInt(contexteCourse.distance) || 2100;
-        if (dist < 1600 || dist > 2900) {
-            // Sur distances extrêmes, l'aptitude (Classe) prime sur l'entourage
-            weights.APTITUDE += 0.05;
-            weights.ENTOURAGE -= 0.05;
-        }
-
-        // 1. FORME PROFONDE (V27)
+        // PRÉ-CALCUL DES SCORES DE BASE (COMMUNS)
         const scoreForme = analyserFormeProfonde(participant.musique, disc);
-
-        // 2. CLASSE (V27)
         const scoreClasse = analyserClasse(participant);
-
-        // 3. CONFIGURATION (Ferrage / Oeilleres)
         const scoreConfig = analyserConfig(participant, disc);
 
-        // 4. ENTOURAGE & FORME (V27 - DRIVER FORM IMPACT)
         const topEntourage = ['BAZIRE', 'NIVARD', 'RAFFIN', 'ABRIVARD', 'ROCHARD', 'BARZALONA', 'SOUMILLON', 'GUYON', 'PASQUIER', 'DEMURO', 'MOUROT', 'MOTTIER', 'GELORMINI', 'LAGADEUC'];
         const entourageName = `${(participant.driver || '').toUpperCase()} ${(participant.entraineur || '').toUpperCase()}`;
         const isTop = topEntourage.some(name => entourageName.includes(name));
         let scoreEntourage = isTop ? 95 : 55;
 
-        // Bonus Former Driver (Injecté si disponible)
         if (participant.driverStats) {
             const winRate = (participant.driverStats.victoires / participant.driverStats.total_courses) * 100;
             const placeRate = (participant.driverStats.places / participant.driverStats.total_courses) * 100;
-
             if (participant.driverStats.total_courses > 5) {
-                if (winRate > 20 || placeRate > 40) {
-                    scoreEntourage += 10; // 🔥 HOT HAND
-                } else if (winRate === 0 && participant.driverStats.total_courses > 20) {
-                    scoreEntourage -= 10; // ❄️ COLD STREAK
-                }
+                if (winRate > 20 || placeRate > 40) scoreEntourage += 10;
+                else if (winRate === 0 && participant.driverStats.total_courses > 20) scoreEntourage -= 10;
             }
         }
 
-        // V31: BONUS "TOP 4 CRACKS" DANS LES GRANDES COURSES
-        const cracks = ['RAFFIN', 'BAZIRE', 'NIVARD', 'ABRIVARD'];
-        const isCrack = cracks.some(c => (participant.driver || '').toUpperCase().includes(c));
-        const highEnjeu = (contexteCourse.prixCourse || 0) >= 40000;
-        if (isCrack && highEnjeu) {
-            scoreEntourage += 10;
-            logger.info(`[IA] V31 Crack Driver Bonus: ${participant.driver} dans course à ${contexteCourse.prixCourse}€`);
-        }
-
-        // 5. CONFIANCE (Marché & MONEY TIME)
         const cote = parseFloat(participant.cote_ref);
         let scoreConfiance = 50;
-
-        // Simulation de Variation de Cote (Money Time)
-        // Dans un système réel, on comparerait cote_matin vs cote_actuelle
-        // Ici, on simule une "chute" si la cote est basse (< 5) et que c'est un "Bon Coup"
-        let isMoneyTime = false;
-
-        // Logique fictive de détection de baisse pour la démo
-        // Si cote < 5 et (Forme > 60 ou Entourage > 80), on suppose une baisse de cote
-        if (cote > 0 && cote < 5 && (scoreForme > 60 || scoreEntourage > 80)) {
-            // On simule une ancienne cote plus haute
-            const ancienneCote = cote * (1.3 + (Math.random() * 0.5)); // +30% à +80%
-            if (ancienneCote / cote > 1.3) {
-                isMoneyTime = true;
-            }
-        }
-
         if (!isNaN(cote) && cote > 0) {
-            // V30: Barème "The Edge" - Neutralisation des favoris écrasants
-            if (cote < 3.0) scoreConfiance = 60;      // Trop "public", pas assez de value
-            else if (cote < 7.0) scoreConfiance = 90; // Zone "Pro" - Cotes de value potentielles
+            if (cote < 3.0) scoreConfiance = 60;
+            else if (cote < 7.0) scoreConfiance = 90;
             else if (cote < 15.0) scoreConfiance = 50;
             else if (cote < 30.0) scoreConfiance = 30;
             else scoreConfiance = 15;
-
-            // Bonus Money Time
-            if (isMoneyTime) {
-                scoreConfiance += 15; // Boost de confiance
-                participant.is_money_time = true; // Flag pour le frontend
-            }
         }
 
-        // 6. EXPERT IMPACT (V27 - CONTEXTE & RISQUE)
-        let expertScore = calculerExpertImpact(participant, contexteCourse);
+        const baseScores = {
+            forme: scoreForme,
+            entourage: scoreEntourage,
+            confiance: scoreConfiance,
+            config: scoreConfig,
+            aptitude: scoreClasse
+        };
 
-        // V27: PÉNALITÉ RISQUE (Vision "Sniper")
-        // Si c'est un Handicap avec beaucoup de partants (>13) = Risque élevé
-        const nbPartants = contexteCourse.nbPartants || 10;
-        const isHandicap = (contexteCourse.nom || '').toUpperCase().includes('HANDICAP');
-
-        if (isHandicap && nbPartants > 13) {
-            expertScore -= 15; // Malus "Loterie"
+        // DÉLÉGATION AU MOTEUR SPÉCIALISÉ
+        let engineResult;
+        if (disc.includes('MONTE')) {
+            engineResult = await processMonté(participant, contexteCourse, baseScores);
+        } else if (disc.includes('ATTELE') || disc.includes('TROT')) {
+            engineResult = await processAttelé(participant, contexteCourse, baseScores);
+        } else if (disc.includes('PLAT')) {
+            engineResult = await processPlat(participant, contexteCourse, baseScores);
+        } else if (disc.includes('HAIE') || disc.includes('STEEPLE') || disc.includes('CROSS') || disc.includes('OBSTACLE')) {
+            engineResult = await processObstacle(participant, contexteCourse, baseScores);
+        } else {
+            // Moteur par défaut (Fallback)
+            engineResult = {
+                engine: 'GENERIC V32',
+                finalScore: Math.round(
+                    (scoreForme * weights.FORME) +
+                    (scoreEntourage * weights.ENTOURAGE) +
+                    (scoreConfiance * weights.CONFIANCE) +
+                    (scoreConfig * weights.CONFIGURATION) +
+                    (scoreClasse * weights.APTITUDE)
+                )
+            };
         }
 
-
-        // V27: DISTANCE & TRACK BIAS (Aptitude Spéciale)
-        const hippodrome = (contexteCourse.hippodrome || '').toUpperCase();
-
-        // Bonus 1: Vincennes Meeting D4 (Configuration Optimale)
-        if (hippodrome.includes('VINCENNES')) {
-            if (participant.ferrage && participant.ferrage.includes('D4')) {
-                expertScore += 10; // Bonus Spécialiste Meeting
-                participant.is_track_specialist = true; // Flag frontend
-            } else if (!participant.ferrage || participant.ferrage === 'FERRE') {
-                // V31: Sévérité accrue à Vincennes (Malus si ferré)
-                expertScore -= 10;
-            }
-        }
-
-        // Bonus 2: Mémoire de l'IA (Si on avait l'historique complet)
-        // Simulation: Si le cheval a gagné > 100k€ et est jeune (<6 ans), on suppose une aptitude à la GP
-        if (hippodrome.includes('VINCENNES') && participant.gains > 100000 && participant.age <= 6) {
-            expertScore += 5;
-        }
-
-        // --- RETARD DE GAIN DETECTION (V27 ULTRA) ---
-        // Si les stats moyennes de la course sont fournies dans le contexte
-        if (contexteCourse.avgRatioGains > 0 && contexteCourse.avgCourses > 0) {
-            const pRatio = participant.gains / (participant.nb_courses || 1);
-            const pCourses = participant.nb_courses || 0;
-
-            if (pRatio > (contexteCourse.avgRatioGains * 1.3) && pCourses < contexteCourse.avgCourses) {
-                expertScore += 15; // BONUS MASSIF "RETARD DE GAIN"
-                participant.is_retard_gain = true; // Flag pour le frontend
-                logger.info(`[IA] RETARD GAIN DETECTÉ: ${participant.nom} (+15pts)`);
-            }
-        }
-
-        // V31: DÉTECTION "HYPER-SPECIALIST" (Flag Frontend)
-        if ((scoreForme > 80 && expertScore > 70) || (isCrack && scoreForme > 75)) {
-            participant.is_specialist = true;
-        }
-
-        const finalScore = (
-            (scoreForme * weights.FORME) +
-            (scoreEntourage * weights.ENTOURAGE) +
-            (scoreConfiance * weights.CONFIANCE) +
-            (scoreConfig * weights.CONFIGURATION) +
-            (scoreClasse * weights.APTITUDE) +
-            (expertScore * weights.EXPERT)
-        );
-
-        let predictionScore = isNaN(finalScore) ? 50 : Math.round(finalScore);
+        let predictionScore = engineResult.finalScore;
+        participant.active_engine = engineResult.engine; // Pour le frontend
 
         // V30: CENSURE TECHNIQUE (PLAFONNAGE)
-        // Un cheval ne peut pas être une "pépite" (Score > 75) s'il est en montée de catégorie 
-        // ET que son driver n'est pas dans le top entourage.
         const cat = determinerChangementCategorie(participant, contexteCourse.prixCourse || 20000);
         if (cat === 'MONTEE' && !isTop && predictionScore > 75) {
-            logger.info(`[IA] CENSURE V30: Plafonnage score (${predictionScore} -> 74) pour ${participant.nom}`);
+            logger.info(`[IA] CENSURE V32: Plafonnage score (${predictionScore} -> 74) pour ${participant.nom}`);
             predictionScore = 74;
         }
 
@@ -305,25 +227,21 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
         if (activePatterns && activePatterns.length > 0) {
             activePatterns.forEach(p => {
                 if (p.type === 'GOLDEN_PATTERN') {
-                    const bonus = Math.min(15, p.roi / 5); // Max +15 pts
+                    const bonus = Math.min(15, p.roi / 5);
                     predictionScore += bonus;
-                    logger.info(`[IA] Bonus Golden Pattern: +${bonus.toFixed(1)}pts`);
                 } else if (p.type === 'DANGER_PATTERN') {
-                    const malus = 20; // Malus fixe sévère
-                    predictionScore -= malus;
-                    logger.info(`[IA] Malus Danger Pattern: -${malus}pts`);
+                    predictionScore -= 20;
                 }
             });
         }
 
         // V27: STRATÉGIE FINANCIÈRE (KELLY)
-        // On enrichit l'objet participant directement
         if (cote > 1) {
-            const kelly = calculateKellyMise(cote, predictionScore, 1000); // Bankroll simu 1000€
+            const kelly = calculateKellyMise(cote, predictionScore, 1000);
             participant.kelly_suggestion = kelly;
         }
 
-        return predictionScore;
+        return Math.round(predictionScore);
 
     } catch (e) {
         logger.error(`IA Architecture v27 Error: ${e.message}`);

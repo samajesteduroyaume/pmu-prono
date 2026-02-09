@@ -6,10 +6,10 @@ import { calculateKellyMise } from './kelly.mjs';
  */
 
 const WEIGHTS_BY_DISCIPLINE = {
-    'TROT': { FORME: 0.25, ENTOURAGE: 0.25, CONFIANCE: 0.20, CONFIGURATION: 0.20, APTITUDE: 0.05, EXPERT: 0.05 },
-    'PLAT': { FORME: 0.40, ENTOURAGE: 0.15, CONFIANCE: 0.25, CONFIGURATION: 0.05, APTITUDE: 0.10, EXPERT: 0.05 },
-    'OBSTACLE': { FORME: 0.35, ENTOURAGE: 0.20, CONFIANCE: 0.15, CONFIGURATION: 0.10, APTITUDE: 0.10, EXPERT: 0.10 },
-    'DEFAULT': { FORME: 0.30, ENTOURAGE: 0.20, CONFIANCE: 0.20, CONFIGURATION: 0.10, APTITUDE: 0.10, EXPERT: 0.10 }
+    'TROT': { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.10, CONFIGURATION: 0.30, APTITUDE: 0.10, EXPERT: 0.05 },
+    'PLAT': { FORME: 0.25, ENTOURAGE: 0.15, CONFIANCE: 0.15, CONFIGURATION: 0.05, APTITUDE: 0.30, EXPERT: 0.10 },
+    'OBSTACLE': { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.05, CONFIGURATION: 0.30, APTITUDE: 0.15, EXPERT: 0.05 },
+    'DEFAULT': { FORME: 0.25, ENTOURAGE: 0.20, CONFIANCE: 0.15, CONFIGURATION: 0.15, APTITUDE: 0.15, EXPERT: 0.10 }
 };
 
 function analyserFormeProfonde(musique, discipline = 'INCONNUE') {
@@ -196,11 +196,11 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
         }
 
         if (!isNaN(cote) && cote > 0) {
-            if (cote < 2.5) scoreConfiance = 100;
-            else if (cote < 4.5) scoreConfiance = 90;
-            else if (cote < 8) scoreConfiance = 75;
-            else if (cote < 15) scoreConfiance = 60;
-            else if (cote < 30) scoreConfiance = 40;
+            // V30: Barème "The Edge" - Neutralisation des favoris écrasants
+            if (cote < 3.0) scoreConfiance = 60;      // Trop "public", pas assez de value
+            else if (cote < 7.0) scoreConfiance = 90; // Zone "Pro" - Cotes de value potentielles
+            else if (cote < 15.0) scoreConfiance = 50;
+            else if (cote < 30.0) scoreConfiance = 30;
             else scoreConfiance = 15;
 
             // Bonus Money Time
@@ -261,6 +261,15 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
         );
 
         let predictionScore = isNaN(finalScore) ? 50 : Math.round(finalScore);
+
+        // V30: CENSURE TECHNIQUE (PLAFONNAGE)
+        // Un cheval ne peut pas être une "pépite" (Score > 75) s'il est en montée de catégorie 
+        // ET que son driver n'est pas dans le top entourage.
+        const cat = determinerChangementCategorie(participant, contexteCourse.prixCourse || 20000);
+        if (cat === 'MONTEE' && !isTop && predictionScore > 75) {
+            logger.info(`[IA] CENSURE V30: Plafonnage score (${predictionScore} -> 74) pour ${participant.nom}`);
+            predictionScore = 74;
+        }
 
         // V29: AJUSTEMENT PAR PATTERNS OPTIMISÉS
         if (activePatterns && activePatterns.length > 0) {

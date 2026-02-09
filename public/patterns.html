@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patterns Optimisés - PMU Elite Punter</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-title">PMU ELITE PUNTER - PATTERNS OPTIMISÉS V29</div>
+            <div class="terminal-controls">
+                <a href="/" class="terminal-btn-tiny">← Dashboard</a>
+            </div>
+        </div>
+
+        <div class="terminal-screen">
+            <div class="screen-header">
+                <div>
+                    <h1>PATTERNS OPTIMISÉS</h1>
+                    <div class="header-sub">ANALYSE CROISÉE MULTI-CRITÈRES</div>
+                </div>
+            </div>
+
+            <!-- Configuration -->
+            <div class="widget" style="margin-bottom: 20px;">
+                <div class="widget-header">
+                    <span style="font-weight: 900">⚙️ CONFIGURATION</span>
+                </div>
+                <div class="widget-content">
+                    <div style="display: flex; gap: 15px; align-items: end;">
+                        <div style="flex: 1;">
+                            <label
+                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">PÉRIODE
+                                D'ANALYSE (JOURS)</label>
+                            <input type="number" id="days" value="30" min="7" max="365"
+                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
+                        </div>
+                        <button onclick="loadPatterns()" class="terminal-btn">
+                            🔍 ANALYSER
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" style="display: none; text-align: center; padding: 40px;">
+                <div style="font-size: 2rem; margin-bottom: 10px;">⏳</div>
+                <div style="color: var(--pmu-green)">Analyse en cours...</div>
+            </div>
+
+            <!-- Résultats -->
+            <div id="results" style="display: none;">
+                <!-- Golden Patterns -->
+                <div class="widget" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">🏆 GOLDEN PATTERNS</span>
+                        <span id="golden-count"
+                            style="background: var(--pmu-green); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;">0</span>
+                    </div>
+                    <div id="golden-patterns" class="widget-content">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Top 20 Patterns -->
+                <div class="widget" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">📊 TOP 20 PATTERNS</span>
+                    </div>
+                    <div class="widget-content">
+                        <table id="patterns-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--pmu-green);">
+                                    <th
+                                        style="text-align: left; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        PATTERN</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        COUNT</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        WIN RATE</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        ROI</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        PROFIT</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        SCORE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patterns-body">
+                                <!-- Rempli dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Patterns Dangereux -->
+                <div class="widget" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">⚠️ PATTERNS À ÉVITER</span>
+                        <span id="danger-count"
+                            style="background: #ff4444; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;">0</span>
+                    </div>
+                    <div id="danger-patterns" class="widget-content">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Smart Money (V29) -->
+                <div class="widget" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">🧠 SMART MONEY DÉTECTÉ</span>
+                        <span id="smart-count"
+                            style="background: var(--pmu-green); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;">0</span>
+                    </div>
+                    <div id="smart-money" class="widget-content">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Corrélation Cotes -->
+                <div class="widget">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">📈 ANALYSE PAR PLAGE DE COTES</span>
+                    </div>
+                    <div id="cotes-analysis" class="widget-content">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadPatterns() {
+            const days = document.getElementById('days').value;
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const res = await fetch(`/api/patterns/optimized?days=${days}`);
+                const data = await res.json();
+
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+
+                renderGoldenPatterns(data.goldenPatterns);
+                renderTopPatterns(data.allPatterns.slice(0, 20));
+                renderDangerPatterns(data.dangerPatterns);
+                renderCotesAnalysis(data.correlationCotes);
+                renderSmartMoneyAlerts(data.smartMoney);
+
+            } catch (e) {
+                console.error('Erreur chargement patterns:', e);
+                document.getElementById('loader').style.display = 'none';
+                alert('Erreur: ' + e.message);
+            }
+        }
+
+        function renderGoldenPatterns(patterns) {
+            const container = document.getElementById('golden-patterns');
+            const count = document.getElementById('golden-count');
+            count.textContent = patterns.length;
+
+            if (patterns.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim)">Aucun Golden Pattern détecté</div>';
+                return;
+            }
+
+            container.innerHTML = patterns.map(p => `
+                <div style="background: rgba(0, 255, 136, 0.05); border-left: 4px solid var(--pmu-green); padding: 15px; margin-bottom: 10px; border-radius: 4px;">
+                    <div style="font-weight: 800; margin-bottom: 8px; font-size: 0.9rem;">🏆 ${p.pattern}</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.75rem;">
+                        <div>
+                            <div style="color: var(--text-dim)">Occurrences</div>
+                            <div style="font-weight: 800">${p.count}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim)">Win Rate</div>
+                            <div style="font-weight: 800; color: var(--pmu-green)">${p.winRate}%</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim)">ROI</div>
+                            <div style="font-weight: 800; color: var(--pmu-green)">+${p.roi}%</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim)">Profit</div>
+                            <div style="font-weight: 800; color: var(--pmu-green)">+${p.profit}€</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTopPatterns(patterns) {
+            const tbody = document.getElementById('patterns-body');
+            tbody.innerHTML = '';
+
+            patterns.forEach((p, index) => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid var(--border-dim)';
+
+                const roiColor = p.roi >= 0 ? 'var(--pmu-green)' : '#ff4444';
+                const profitColor = p.profit >= 0 ? 'var(--pmu-green)' : '#ff4444';
+
+                row.innerHTML = `
+                    <td style="padding: 12px; font-weight: 800;">${index + 1}. ${p.pattern}</td>
+                    <td style="padding: 12px; text-align: right;">${p.count}</td>
+                    <td style="padding: 12px; text-align: right;">${p.winRate}%</td>
+                    <td style="padding: 12px; text-align: right; color: ${roiColor}; font-weight: 800;">${p.roi >= 0 ? '+' : ''}${p.roi}%</td>
+                    <td style="padding: 12px; text-align: right; color: ${profitColor};">${p.profit >= 0 ? '+' : ''}${p.profit}€</td>
+                    <td style="padding: 12px; text-align: right; font-weight: 800;">${p.qualityScore}</td>
+                `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderDangerPatterns(patterns) {
+            const container = document.getElementById('danger-patterns');
+            const count = document.getElementById('danger-count');
+            count.textContent = patterns.length;
+
+            if (patterns.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim)">Aucun pattern dangereux détecté</div>';
+                return;
+            }
+
+            container.innerHTML = patterns.map(p => `
+                <div style="background: rgba(255, 68, 68, 0.05); border-left: 4px solid #ff4444; padding: 15px; margin-bottom: 10px; border-radius: 4px;">
+                    <div style="font-weight: 800; margin-bottom: 8px; font-size: 0.9rem;">⚠️ ${p.pattern}</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.75rem;">
+                        <div>
+                            <div style="color: var(--text-dim)">Occurrences</div>
+                            <div style="font-weight: 800">${p.count}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim)">Win Rate</div>
+                            <div style="font-weight: 800; color: #ff4444">${p.winRate}%</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim)">ROI</div>
+                            <div style="font-weight: 800; color: #ff4444">${p.roi}%</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim)">Profit</div>
+                            <div style="font-weight: 800; color: #ff4444">${p.profit}€</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSmartMoneyAlerts(alerts) {
+            const container = document.getElementById('smart-money');
+            const count = document.getElementById('smart-count');
+
+            if (!alerts) {
+                count.textContent = 0;
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim)">Aucun mouvement suspect détecté</div>';
+                return;
+            }
+
+            count.textContent = alerts.length;
+
+            if (alerts.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim)">Aucun mouvement suspect détecté</div>';
+                return;
+            }
+
+            container.innerHTML = alerts.map(sm => `
+                <div style="background: rgba(0, 255, 136, 0.05); border-left: 4px solid var(--pmu-green); padding: 15px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.9rem;">${sm.cheval}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim)">Course: ${sm.course}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: var(--pmu-green); font-weight: 900; font-size: 1.1rem;">${sm.variation}%</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim)">${sm.coteInitiale} → ${sm.coteActuelle}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCotesAnalysis(data) {
+            const container = document.getElementById('cotes-analysis');
+
+            if (!data || !data.ranges) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim)">Données insuffisantes</div>';
+                return;
+            }
+
+            const recommendation = data.recommendation;
+
+            container.innerHTML = `
+                <div style="background: rgba(0, 255, 136, 0.05); border: 1px solid var(--pmu-green); padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                    <div style="font-weight: 800; margin-bottom: 5px;">💡 RECOMMANDATION</div>
+                    <div style="font-size: 0.85rem;">${recommendation.message}</div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--pmu-green);">
+                            <th style="text-align: left; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">PLAGE</th>
+                            <th style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">COUNT</th>
+                            <th style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">WIN RATE</th>
+                            <th style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">ROI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.ranges.map(r => {
+                const isBest = r.label === recommendation.range;
+                const roiColor = parseFloat(r.roi) >= 0 ? 'var(--pmu-green)' : '#ff4444';
+                return `
+                                <tr style="border-bottom: 1px solid var(--border-dim); ${isBest ? 'background: rgba(0, 255, 136, 0.05);' : ''}">
+                                    <td style="padding: 12px; font-weight: 800;">${r.label} ${isBest ? '⭐' : ''}</td>
+                                    <td style="padding: 12px; text-align: right;">${r.count}</td>
+                                    <td style="padding: 12px; text-align: right;">${r.winRate}%</td>
+                                    <td style="padding: 12px; text-align: right; color: ${roiColor}; font-weight: 800;">${r.roi}%</td>
+                                </tr>
+                            `;
+            }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Charger automatiquement au démarrage
+        window.addEventListener('load', () => loadPatterns());
+    </script>
+</body>
+
+</html>

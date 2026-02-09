@@ -7,7 +7,9 @@
     <meta name="description" content="PMU PRONO v22 - Terminal de Pari Professionnel Premium">
     <meta name="theme-color" content="#008a00">
     <title>PMU PRONO | Terminal Professionnel</title>
-    <link rel="stylesheet" href="css/style.css?v=16.4">
+    <link rel="stylesheet" href="css/style.css?v=16.5">
+    <link rel="stylesheet" href="css/extra.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="pro-terminal">
@@ -27,6 +29,9 @@
                 </a>
                 <a href="#" onclick="showPage('courses')" id="nav-courses">
                     <span class="nav-key">F2</span> PRONO
+                </a>
+                <a href="palmares.html">
+                    <span class="nav-key">F3</span> PALMARÈS
                 </a>
             </nav>
 
@@ -52,6 +57,54 @@
                     </div>
                 </section>
 
+                <!-- Filtres ROI Timeframe -->
+                <div class="roi-filters" style="display:flex; gap:10px; margin-bottom:20px; justify-content:center;">
+                    <button onclick="updateStats(1)" class="terminal-btn-tiny">1J</button>
+                    <button onclick="updateStats(7)" class="terminal-btn-tiny">7J</button>
+                    <button onclick="updateStats(15)" class="terminal-btn-tiny">15J</button>
+                    <button onclick="updateStats(30)" class="terminal-btn-tiny">1M</button>
+                    <button onclick="updateStats(365)" class="terminal-btn-tiny">1AN</button>
+                    <button onclick="updateStats(null)" class="terminal-btn-tiny active"
+                        style="border-color:var(--gold)">MAX</button>
+                </div>
+
+                <div class="screen-header">
+                    <div>
+                        <h1>DASHBOARD</h1>
+                        <div class="header-sub">ANALYSE TEMPS RÉEL</div>
+                    </div>
+                    <div class="live-badge">
+                        <div class="live-dot"></div>
+                        LIVE
+                    </div>
+                </div>
+
+                <!-- V29: PANNEAU D'ALERTES -->
+                <div id="alerts-panel" class="alerts-panel" style="display:none">
+                    <div class="alerts-header">
+                        <div style="display:flex; align-items:center; gap:10px">
+                            <span style="font-size:1.2rem">🔔</span>
+                            <span style="font-weight:800; font-size:0.9rem">ALERTES ACTIVES</span>
+                            <span id="alerts-count" class="alerts-count">0</span>
+                        </div>
+                        <div style="display:flex; gap:10px">
+                            <button onclick="refreshAlerts()" class="terminal-btn-tiny">🔄 Actualiser</button>
+                            <button onclick="dismissAllAlerts()" class="terminal-btn-tiny">✓ Tout Effacer</button>
+                            <button onclick="toggleAlertsPanel()" class="terminal-btn-tiny">✕</button>
+                        </div>
+                    </div>
+                    <div id="alerts-container" class="alerts-container">
+                        <!-- Les alertes seront injectées ici -->
+                    </div>
+                </div>
+
+                <!-- Bouton flottant pour afficher les alertes -->
+                <button id="alerts-toggle-btn" class="alerts-toggle-btn" onclick="toggleAlertsPanel()"
+                    style="display:none">
+                    <span style="font-size:1.2rem">🔔</span>
+                    <span id="alerts-badge" class="alerts-badge">0</span>
+                </button>
+
                 <div class="kpi-monitor">
                     <div class="kpi-card gold-border">
                         <div class="kpi-tag">ROI</div>
@@ -64,6 +117,86 @@
                     <div class="kpi-card">
                         <div class="kpi-tag">COURSES</div>
                         <div class="kpi-value" id="stat-total-courses">0</div>
+                    </div>
+                </div>
+
+                <!-- GRAPHIQUE ÉVOLUTION -->
+                <div class="glass-card" style="margin-bottom:20px; padding:15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="color:var(--gold); font-weight:bold;">TENDANCE PROFIT (CUMULÉ)</span>
+                        <div style="display:flex; gap:15px; font-size:0.8rem; color:var(--text-dim);">
+                            <label style="display:flex; align-items:center; cursor:pointer;" title="Lisser la courbe">
+                                <input type="checkbox" id="check-ma" onchange="updateChartVisibility()"
+                                    style="margin-right:5px;">
+                                MOYENNE MOBILE (7J)
+                            </label>
+                            <label style="display:flex; align-items:center; cursor:pointer;" title="Est. Volatilité">
+                                <input type="checkbox" id="check-range" onchange="updateChartVisibility()"
+                                    style="margin-right:5px;">
+                                PLAGE DE GAINS
+                            </label>
+                        </div>
+                    </div>
+                    <div style="position:relative; height:300px; width:100%;">
+                        <canvas id="profitChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- V28: WIDGET DE TENDANCES -->
+                <div class="glass-card" style="margin-bottom:20px; border-left:4px solid var(--gold)">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+                        <div style="display:flex; align-items:center; gap:10px">
+                            <span style="font-size:1.5rem">📈</span>
+                            <span style="color:var(--gold); font-weight:bold; font-size:1.1rem">ANALYSE DE
+                                TENDANCE</span>
+                        </div>
+                        <span id="tendance-label" class="tendance-badge"
+                            style="padding:5px 15px; border-radius:20px; font-weight:800; font-size:0.75rem">CHARGEMENT...</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px">
+                        <div class="tendance-metric">
+                            <div class="metric-label">MOMENTUM</div>
+                            <div class="metric-value" id="momentum-value">--</div>
+                            <div class="metric-bar">
+                                <div id="momentum-bar" class="metric-bar-fill" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="tendance-metric">
+                            <div class="metric-label">SÉQUENCE ACTUELLE</div>
+                            <div class="metric-value" id="sequence-value">--</div>
+                            <div class="metric-sub" id="sequence-depuis"
+                                style="font-size:0.7rem; color:var(--text-dim)"></div>
+                        </div>
+                        <div class="tendance-metric">
+                            <div class="metric-label">DRAWDOWN</div>
+                            <div class="metric-value" id="drawdown-value">--</div>
+                            <div class="metric-sub" style="font-size:0.7rem; color:var(--text-dim)">Max: <span
+                                    id="drawdown-max">--</span></div>
+                        </div>
+                        <div class="tendance-metric">
+                            <div class="metric-label">RATIO SHARPE</div>
+                            <div class="metric-value" id="sharpe-value">--</div>
+                            <div class="metric-sub" style="font-size:0.7rem; color:var(--text-dim)">Rendement/Risque
+                            </div>
+                        </div>
+                    </div>
+                    <div id="patterns-info"
+                        style="margin-top:15px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; font-size:0.8rem; display:none">
+                        <div style="color:var(--gold); font-weight:bold; margin-bottom:5px">🎯 PATTERNS DÉTECTÉS</div>
+                        <div id="patterns-content"></div>
+                    </div>
+                </div>
+
+                <!-- QUINTE+ PREDICTION SECTION (New) -->
+                <div class="glass-card" style="margin-bottom: 20px; border-left: 4px solid var(--purple);">
+                    <div class="alert-header" style="color:var(--text-primary)">
+                        <span class="pulse-icon" style="color:var(--purple)">🔮</span> PRONOSTIC QUINTÉ+ DU JOUR
+                        <small style="float:right; font-size:0.7rem; color:var(--text-dim)"
+                            id="quinte-info">Recherche...</small>
+                    </div>
+                    <div id="quinte-prediction"
+                        style="padding:15px; display:flex; justify-content:space-around; flex-wrap:wrap; text-align:center">
+                        <div class="loading-inline">Analyse de la course événement...</div>
                     </div>
                 </div>
 

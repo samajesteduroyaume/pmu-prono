@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PMU PRONO - Palmarès et Classements">
+    <meta name="theme-color" content="#008a00">
+    <title>PMU PRONO | Palmarès</title>
+    <link rel="stylesheet" href="css/style.css?v=16.4">
+    <style>
+        .ranking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .ranking-card {
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid var(--pmu-green-dim);
+            border-radius: 4px;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+        }
+        .ranking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .ranking-title {
+            color: var(--gold);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        .rank-table th {
+            text-align: left;
+            color: var(--pmu-green);
+            padding: 5px;
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .rank-table td {
+            padding: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .rank-1 { color: #FFD700; font-weight: bold; }
+        .rank-2 { color: #C0C0C0; font-weight: bold; }
+        .rank-3 { color: #CD7F32; font-weight: bold; }
+        .stat-val { text-align: right; }
+    </style>
+</head>
+
+<body class="pro-terminal">
+    <div class="app-container">
+        <!-- SIDE MONITOR -->
+        <aside class="side-monitor">
+            <div class="terminal-brand">
+                <div class="gold-pulse" style="background:var(--pmu-green); box-shadow: 0 0 10px var(--pmu-green-glow)">
+                </div>
+                <span class="glitch-text" style="color:var(--pmu-green)">PMU PRONO</span>
+                <small>v22.0 Professional</small>
+            </div>
+
+            <nav class="terminal-nav">
+                <a href="index.html" id="nav-dashboard">
+                    <span class="nav-key">F1</span> DASHBOARD
+                </a>
+                <a href="index.html" id="nav-courses">
+                    <span class="nav-key">F2</span> PRONO
+                </a>
+                <a href="palmares.html" class="active">
+                    <span class="nav-key">F3</span> PALMARÈS
+                </a>
+            </nav>
+
+            <div class="system-status">
+                <div class="status-indicator online"></div>
+                <span>IA ENGINE: ARCHITECT v22</span>
+            </div>
+        </aside>
+
+        <!-- PRIMARY SCREEN -->
+        <main class="primary-screen">
+            <section class="screen-header">
+                <div class="header-main">
+                    <h1>PALMARÈS & STATISTIQUES</h1>
+                    <p class="header-sub">CLASSEMENTS BASE DE DONNÉES (Top Performers)</p>
+                </div>
+            </section>
+
+            <div class="ranking-grid">
+                <!-- Jockeys -->
+                <div class="ranking-card">
+                    <div class="ranking-header">
+                        <span class="ranking-title">🏆 TOP JOCKEYS / DRIVERS</span>
+                    </div>
+                    <table class="rank-table" id="table-jockeys">
+                        <thead>
+                            <tr>
+                                <th width="30">#</th>
+                                <th>NOM</th>
+                                <th class="stat-val">C.</th>
+                                <th class="stat-val">V.</th>
+                                <th class="stat-val">% VICT.</th>
+                            </tr>
+                        </thead>
+                        <tbody><tr><td colspan="5">Chargement...</td></tr></tbody>
+                    </table>
+                </div>
+
+                <!-- Chevaux -->
+                <div class="ranking-card">
+                    <div class="ranking-header">
+                        <span class="ranking-title">🐴 TOP CHEVAUX</span>
+                    </div>
+                    <table class="rank-table" id="table-chevaux">
+                        <thead>
+                            <tr>
+                                <th width="30">#</th>
+                                <th>NOM</th>
+                                <th class="stat-val">C.</th>
+                                <th class="stat-val">V.</th>
+                                <th class="stat-val">% VICT.</th>
+                            </tr>
+                        </thead>
+                        <tbody><tr><td colspan="5">Chargement...</td></tr></tbody>
+                    </table>
+                </div>
+
+                <!-- Entraîneurs -->
+                <div class="ranking-card">
+                    <div class="ranking-header">
+                        <span class="ranking-title">⏱️ TOP ENTRAÎNEURS</span>
+                    </div>
+                    <table class="rank-table" id="table-entraineurs">
+                        <thead>
+                            <tr>
+                                <th width="30">#</th>
+                                <th>NOM</th>
+                                <th class="stat-val">C.</th>
+                                <th class="stat-val">V.</th>
+                                <th class="stat-val">% VICT.</th>
+                            </tr>
+                        </thead>
+                        <tbody><tr><td colspan="5">Chargement...</td></tr></tbody>
+                    </table>
+                </div>
+
+                <!-- Propriétaires -->
+                <div class="ranking-card">
+                    <div class="ranking-header">
+                        <span class="ranking-title">🎩 TOP PROPRIÉTAIRES</span>
+                    </div>
+                    <table class="rank-table" id="table-proprietaires">
+                        <thead>
+                            <tr>
+                                <th width="30">#</th>
+                                <th>NOM</th>
+                                <th class="stat-val">C.</th>
+                                <th class="stat-val">V.</th>
+                                <th class="stat-val">% VICT.</th>
+                            </tr>
+                        </thead>
+                        <tbody><tr><td colspan="5">Chargement...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/palmares.js"></script>
+</body>
+</html>

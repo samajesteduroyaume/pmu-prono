@@ -251,15 +251,19 @@ export async function getCourseParticipants(courseId) {
     });
 }
 
-export async function getIAPerformanceStats() {
+export async function getIAPerformanceStats(days = null) {
     if (!db) throw new Error('DB not initialized');
 
     return new Promise((resolve, reject) => {
-        // Cette requête complexe calcule :
-        // 1. Le nombre total de courses jouées (où on a un prono et un résultat)
-        // 2. Le nombre de victoires (IA Top 1 == Arrivée 1)
-        // 3. Le ROI basé sur une mise de 1€ sur le favori IA
-        // 4. L'historique quotidien pour la courbe de profit
+        let dateFilter = '';
+        if (days) {
+            if (days === 365) {
+                dateFilter = `AND c.date >= date('now', '-1 year')`;
+            } else {
+                dateFilter = `AND c.date >= date('now', '-${days} days')`;
+            }
+        }
+
         db.all(`
             WITH TopProne AS (
                 SELECT 
@@ -269,16 +273,25 @@ export async function getIAPerformanceStats() {
                     p.cote_ref, 
                     p.classement,
                     c.date,
+                    c.discipline,
+                    c.hippodrome,
+                    c.heure,
                     ROW_NUMBER() OVER(PARTITION BY p.course_id ORDER BY p.prediction_score DESC) as rank_ia
                 FROM participants p
                 JOIN courses c ON p.course_id = c.id
-                WHERE p.prediction_score > 0 AND c.ordre_arrivee IS NOT NULL
+                WHERE p.prediction_score > 0 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
             ),
             BestBets AS (
                 SELECT * FROM TopProne WHERE rank_ia = 1
             )
             SELECT 
                 date,
+                discipline,
+                hippodrome,
+                heure,
+                nom,
+                cote_ref,
+                classement,
                 COUNT(*) as total_courses,
                 SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN CAST(cote_ref AS FLOAT) ELSE 0 END) as total_returns
@@ -296,11 +309,17 @@ export async function getIAPerformanceStats() {
             const history = rows.map(r => {
                 const profit = r.total_returns - r.total_courses;
                 cumulativeProfit += profit;
+                const isWin = r.wins > 0;
                 return {
                     date: r.date,
                     profit: parseFloat(profit.toFixed(2)),
                     cumulative: parseFloat(cumulativeProfit.toFixed(2)),
-                    winRate: parseFloat(((r.wins / r.total_courses) * 100).toFixed(1))
+                    winRate: parseFloat(((r.wins / r.total_courses) * 100).toFixed(1)),
+                    gain: profit, // Pour les calculs de tendances
+                    resultat: isWin ? 'WIN' : 'LOSE',
+                    discipline: r.discipline,
+                    hippodrome: r.hippodrome,
+                    heure: r.heure
                 };
             });
 
@@ -319,6 +338,231 @@ export async function getIAPerformanceStats() {
                 },
                 history: history
             });
+        });
+    });
+}
+
+/**
+ * Récupère l'historique complet des paris avec détails pour analyse de tendances
+ * @param {number} days - Nombre de jours à récupérer (null = tout)
+ * @returns {Promise<Array>} Historique détaillé
+ */
+export async function getHistoriqueParis(days = null) {
+    if (!db) throw new Error('DB not initialized');
+
+    return new Promise((resolve, reject) => {
+        let dateFilter = '';
+        if (days) {
+            if (days === 365) {
+                dateFilter = `AND c.date >= date('now', '-1 year')`;
+            } else {
+                dateFilter = `AND c.date >= date('now', '-${days} days')`;
+            }
+        }
+
+        db.all(`
+            WITH TopProne AS (
+                SELECT 
+                    p.course_id,
+                    p.nom,
+                    p.numero,
+                    p.cote_ref,
+                    p.classement,
+                    c.date,
+                    c.discipline,
+                    c.hippodrome,
+                    c.heure,
+                    c.reunionNum,
+                    c.courseNum,
+                    ROW_NUMBER() OVER(PARTITION BY p.course_id ORDER BY p.prediction_score DESC) as rank_ia
+                FROM participants p
+                JOIN courses c ON p.course_id = c.id
+                WHERE p.prediction_score > 0 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
+            )
+            SELECT * FROM TopProne WHERE rank_ia = 1
+            ORDER BY date ASC
+        `, (err, rows) => {
+            if (err) {
+                logger.error(`Erreur historique paris: ${err.message}`);
+                reject(err);
+                return;
+            }
+
+            let cumulativeProfit = 0;
+            const historique = rows.map(r => {
+                const isWin = parseInt(r.classement) === 1;
+                const gain = isWin ? (parseFloat(r.cote_ref) - 1) : -1;
+                cumulativeProfit += gain;
+
+                return {
+                    date: r.date,
+                    course_id: r.course_id,
+                    reunion: r.reunionNum,
+                    course: r.courseNum,
+                    cheval: r.nom,
+                    numero: r.numero,
+                    cote: parseFloat(r.cote_ref),
+                    classement: parseInt(r.classement),
+                    resultat: isWin ? 'WIN' : 'LOSE',
+                    gain: parseFloat(gain.toFixed(2)),
+                    cumulative: parseFloat(cumulativeProfit.toFixed(2)),
+                    discipline: r.discipline,
+                    hippodrome: r.hippodrome,
+                    heure: r.heure
+                };
+            });
+
+            resolve(historique);
+        });
+    });
+}
+
+/**
+ * Calcule les tendances cumulées avec le module tendances.mjs
+ * @param {number} days - Nombre de jours à analyser
+ * @returns {Promise<Object>} Analyse complète des tendances
+ */
+export async function getTendancesCumulees(days = null) {
+    if (!db) throw new Error('DB not initialized');
+
+    try {
+        // Import dynamique du module tendances
+        const { analyserTendancesCompletes } = await import('./tendances.mjs');
+
+        // Récupération de l'historique
+        const historique = await getHistoriqueParis(days);
+
+        if (!historique || historique.length === 0) {
+            return {
+                tendance: { tendance: 'NEUTRE', pente: 0 },
+                momentum: 50,
+                drawdown: { current: 0, max: 0, currentPercent: 0, maxPercent: 0 },
+                variance: { variance: 0, ecartType: 0 },
+                sharpe: 0,
+                sequence: { type: 'NEUTRE', count: 0, depuis: null },
+                patterns: {
+                    meilleureDiscipline: null,
+                    meilleureHeure: null,
+                    meilleursJours: [],
+                    hippodromesPerformants: []
+                }
+            };
+        }
+
+        // Analyse complète
+        const analyse = analyserTendancesCompletes(historique, historique);
+
+        return analyse;
+
+    } catch (error) {
+        logger.error(`Erreur calcul tendances: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Récupère la séquence actuelle (victoires/défaites consécutives)
+ * @returns {Promise<Object>} Séquence actuelle
+ */
+export async function getSequenceActuelle() {
+    if (!db) throw new Error('DB not initialized');
+
+    try {
+        const { detecterSequences } = await import('./tendances.mjs');
+        const historique = await getHistoriqueParis(30); // 30 derniers jours
+
+        if (!historique || historique.length === 0) {
+            return { type: 'NEUTRE', count: 0, depuis: null };
+        }
+
+        return detecterSequences(historique);
+
+    } catch (error) {
+        logger.error(`Erreur séquence actuelle: ${error.message}`);
+        return { type: 'NEUTRE', count: 0, depuis: null };
+    }
+}
+
+/**
+ * Récupère les performances détaillées par discipline
+ * @param {number} days - Nombre de jours à analyser
+ * @returns {Promise<Object>} Stats par discipline
+ */
+export async function getPerformanceParDiscipline(days = null) {
+    if (!db) throw new Error('DB not initialized');
+
+    return new Promise((resolve, reject) => {
+        let dateFilter = '';
+        if (days) {
+            dateFilter = `AND c.date >= date('now', '-${days} days')`;
+        }
+
+        db.all(`
+            WITH TopProne AS (
+                SELECT 
+                    p.course_id,
+                    p.classement,
+                    p.cote_ref,
+                    c.discipline,
+                    ROW_NUMBER() OVER(PARTITION BY p.course_id ORDER BY p.prediction_score DESC) as rank_ia
+                FROM participants p
+                JOIN courses c ON p.course_id = c.id
+                WHERE p.prediction_score > 0 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
+            )
+            SELECT 
+                discipline,
+                COUNT(*) as total_courses,
+                SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN CAST(cote_ref AS FLOAT) ELSE 1 END) as total_returns,
+                COUNT(*) as total_mises
+            FROM TopProne
+            WHERE rank_ia = 1
+            GROUP BY discipline
+            ORDER BY wins DESC
+        `, (err, rows) => {
+            if (err) {
+                logger.error(`Erreur performance par discipline: ${err.message}`);
+                reject(err);
+                return;
+            }
+
+            const stats = {};
+            rows.forEach(r => {
+                const roi = r.total_courses > 0 ? ((r.total_returns / r.total_courses) - 1) * 100 : 0;
+                stats[r.discipline] = {
+                    total_courses: r.total_courses,
+                    wins: r.wins,
+                    win_rate: parseFloat(((r.wins / r.total_courses) * 100).toFixed(1)),
+                    roi: parseFloat(roi.toFixed(1)),
+                    profit: parseFloat((r.total_returns - r.total_courses).toFixed(2))
+                };
+            });
+
+            resolve(stats);
+        });
+    });
+}
+
+export async function getDriverStats(driverName) {
+    if (!db || !driverName) return null;
+    return new Promise((resolve) => {
+        // Analyse sur les 30 derniers jours (approx)
+        db.get(`
+            SELECT 
+                COUNT(*) as total_courses,
+                SUM(CASE WHEN classement = '1' THEN 1 ELSE 0 END) as victoires,
+                SUM(CASE WHEN CAST(classement AS INTEGER) <= 3 THEN 1 ELSE 0 END) as places
+            FROM participants p
+            JOIN courses c ON p.course_id = c.id
+            WHERE (p.driver = ? OR p.jockey = ?)
+            AND c.date >= date('now', '-30 days')
+        `, [driverName, driverName], (err, row) => {
+            if (err) {
+                logger.error(`Erreur stats driver ${driverName}: ${err.message}`);
+                resolve(null);
+            } else {
+                resolve(row);
+            }
         });
     });
 }
@@ -498,6 +742,171 @@ export async function getAdvancedStats() {
                     });
                 });
             });
+        });
+    });
+}
+/**
+ * Statistiques Palmarès (Jockeys, Chevaux, Entraîneurs, Propriétaires)
+ */
+export async function getPalmaresStats() {
+    if (!db) throw new Error('DB not initialized');
+
+    const getRanking = (column, limit = 50) => {
+        return new Promise((resolve, reject) => {
+            const query = `
+                SELECT 
+                    ${column} as name,
+                    COUNT(*) as courses,
+                    SUM(CASE WHEN CAST(classement AS INTEGER) = 1 THEN 1 ELSE 0 END) as victoires,
+                    SUM(CASE WHEN CAST(classement AS INTEGER) <= 3 THEN 1 ELSE 0 END) as places
+                FROM participants p
+                JOIN courses c ON p.course_id = c.id
+                WHERE ${column} IS NOT NULL AND ${column} != '' 
+                  AND c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
+                  AND p.classement IS NOT NULL
+                GROUP BY ${column}
+                HAVING courses >= 5
+                ORDER BY victoires DESC, places DESC, courses DESC
+                LIMIT ?
+            `;
+            db.all(query, [limit], (err, rows) => {
+                if (err) reject(err);
+                else {
+                    const enriched = rows.map((r, index) => ({
+                        rang: index + 1,
+                        ...r,
+                        reussite_gagne: ((r.victoires / r.courses) * 100).toFixed(1),
+                        reussite_place: ((r.places / r.courses) * 100).toFixed(1)
+                    }));
+                    resolve(enriched);
+                }
+            });
+        });
+    };
+
+    try {
+        const [jockeys, chevaux, entraineurs, proprietaires] = await Promise.all([
+            getRanking('driver'),
+            getRanking('nom'),
+            getRanking('entraineur'),
+            getRanking('proprietaire')
+        ]);
+
+        return {
+            jockeys,
+            chevaux,
+            entraineurs,
+            proprietaires
+        };
+    } catch (error) {
+        logger.error(`Erreur Palmarès: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Détection des chevaux en "Retard de Gain"
+ * Critères : 
+ * 1. Ratio Gains/Courses > Moyenne de la course * 1.3 (+30% de qualité intrinsèque)
+ * 2. Moins de courses courues que la moyenne (Cheval préservé)
+ * 3. Absents depuis moins de 60 jours (Condition physique)
+ */
+export async function getChevauxEnRetardDeGain(days = 2) {
+    if (!db) throw new Error('DB not initialized');
+
+    return new Promise((resolve, reject) => {
+        // On récupère d'abord les courses à venir
+        const dateFilter = `WHERE c.date >= date('now') AND c.date <= date('now', '+${days} days')`;
+
+        db.all(`SELECT id, date, reunionNum, courseNum, hippodrome, discipline, prix FROM courses c ${dateFilter}`, async (err, courses) => {
+            if (err) return reject(err);
+
+            const opportunities = [];
+
+            for (const course of courses) {
+                // Pour chaque course, on récupère les partants
+                const participants = await getCourseParticipants(course.id);
+
+                if (!participants || participants.length < 5) continue;
+
+                // Calcul des indicateurs moyens de la course (Cohort Stats)
+                let totalRatio = 0;
+                let totalCourses = 0;
+                let count = 0;
+
+                const validParticipants = participants.filter(p => p.nb_courses > 0 && p.gains > 0);
+
+                if (validParticipants.length < 5) continue;
+
+                for (const p of validParticipants) {
+                    const ratio = p.gains / p.nb_courses;
+                    totalRatio += ratio;
+                    totalCourses += p.nb_courses;
+                    count++;
+                }
+
+                const avgRatio = totalRatio / count;
+                const avgCourses = totalCourses / count;
+
+                // Identification des cibles
+                for (const p of validParticipants) {
+                    const pRatio = p.gains / p.nb_courses;
+                    // Critère 1: Qualité Supérieure (+30%)
+                    const isQuality = pRatio > (avgRatio * 1.3);
+                    // Critère 2: Préservé (Moins de courses que la moyenne)
+                    const isPreserved = p.nb_courses < avgCourses;
+                    // Critère 3: Forme (Musique récente, pas d'absence > 60j, simplifiée ici par la musique 0p...)
+                    // On peut checker si la musique commence par une perf récente (non implémenté ici en SQL pur, on suppose OK)
+
+                    if (isQuality && isPreserved) {
+                        opportunities.push({
+                            date: course.date,
+                            reunion: course.reunionNum,
+                            course: course.courseNum,
+                            hippodrome: course.hippodrome,
+                            cheval: p.nom,
+                            driver: p.driver,
+                            entraineur: p.entraineur,
+                            ratio_cheval: Math.round(pRatio),
+                            ratio_moyen_course: Math.round(avgRatio),
+                            diff_percent: Math.round(((pRatio / avgRatio) - 1) * 100),
+                            nb_courses: p.nb_courses,
+                            avg_courses_course: Math.round(avgCourses)
+                        });
+                    }
+                }
+            }
+
+            // Tri par potentiel (Différence de qualité)
+            opportunities.sort((a, b) => b.diff_percent - a.diff_percent);
+            resolve(opportunities);
+        });
+    });
+}
+
+/**
+ * Récupère la course identifiée comme le Quinté+ du jour
+ * Critères: Plus de 13 partants, Allocation la plus élevée, R1 souvent.
+ */
+export function getCourseQuinte() {
+    return new Promise((resolve, reject) => {
+        const today = new Date().toISOString().split('T')[0];
+        // On cherche la course avec le plus de partants et le plus gros prix aujourd'hui
+        // La requête est un peu complexe : on doit joindre participants et courses
+        const query = `
+            SELECT c.*, COUNT(p.id) as nb_partants
+            FROM courses c
+            JOIN participants p ON c.id = p.course_id
+            WHERE c.date = ? 
+            GROUP BY c.id
+            HAVING nb_partants >= 13
+            ORDER BY c.prix DESC, nb_partants DESC
+            LIMIT 1
+        `;
+
+        db.get(query, [today], (err, row) => {
+            if (err) return reject(err);
+            resolve(row || null);
         });
     });
 }

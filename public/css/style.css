@@ -379,11 +379,14 @@ h1 {
 }
 
 .glow-high {
-    box-shadow: 0 0 30px rgba(0, 138, 0, 0.9), inset 0 0 12px rgba(255, 255, 255, 0.3);
-    border: 1px solid rgba(0, 255, 0, 0.8);
-    background: rgba(0, 138, 0, 0.3);
+    box-shadow: 0 0 35px rgba(0, 180, 0, 1), inset 0 0 15px rgba(255, 255, 255, 0.4);
+    border: 2px solid #fff;
+    background: rgba(0, 160, 0, 0.5);
     color: #fff;
-    text-shadow: 0 0 10px #fff, 0 0 20px var(--pmu-green);
+    text-shadow: 0 0 12px #fff, 0 0 25px #00ff00;
+    animation: pulse 2s infinite;
+    font-weight: 900;
+    letter-spacing: 1px;
 }
 
 .glow-extreme {
@@ -538,4 +541,296 @@ h1 {
     display: flex;
     gap: 15px;
     align-items: center;
+}
+
+/* V28: WIDGET DE TENDANCES */
+.tendance-badge {
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+}
+
+.tendance-badge.haussiere {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    border: 1px solid #00ff88;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.tendance-badge.baissiere {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    border: 1px solid #ff4444;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+}
+
+.tendance-badge.neutre {
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffaa00;
+    border: 1px solid #ffaa00;
+}
+
+.tendance-metric {
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid var(--border-dim);
+}
+
+.metric-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 900;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+
+.metric-sub {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.metric-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff4444 0%, #ffaa00 50%, #00ff88 100%);
+    transition: width 0.5s ease;
+    border-radius: 3px;
+}
+
+/* Animations pour séquences */
+@keyframes blinkRed {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.blinking-red {
+    animation: blinkRed 1.5s infinite;
+    color: var(--ruby) !important;
+}
+
+.sequence-win {
+    color: #00ff88;
+}
+
+.sequence-lose {
+    color: #ff4444;
+}
+
+/* V29: SYSTÈME D'ALERTES */
+.alerts-toggle-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--pmu-green);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 138, 0, 0.4);
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.alerts-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 138, 0, 0.6);
+}
+
+.alerts-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4444;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 900;
+    animation: pulse 2s infinite;
+}
+
+.alerts-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 450px;
+    max-height: 80vh;
+    background: var(--bg-terminal);
+    border: 2px solid var(--pmu-green);
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(500px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.alerts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(0, 138, 0, 0.1);
+    border-bottom: 1px solid var(--border-dim);
+}
+
+.alerts-count {
+    background: var(--pmu-green);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 900;
+}
+
+.alerts-container {
+    max-height: calc(80vh - 60px);
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.alert-item {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 4px solid;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.alert-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(-3px);
+}
+
+.alert-item.CRITICAL {
+    border-left-color: #ff0000;
+    background: rgba(255, 0, 0, 0.05);
+}
+
+.alert-item.DANGER {
+    border-left-color: #ff4444;
+    background: rgba(255, 68, 68, 0.05);
+}
+
+.alert-item.OPPORTUNITY {
+    border-left-color: #00ff88;
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.alert-item.WARNING {
+    border-left-color: #ffaa00;
+    background: rgba(255, 170, 0, 0.05);
+}
+
+.alert-item.INFO {
+    border-left-color: #00aaff;
+    background: rgba(0, 170, 255, 0.05);
+}
+
+.alert-title {
+    font-weight: 800;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert-message {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.alert-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+}
+
+.alert-dismiss {
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    font-size: 0.65rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: 0.2s;
+}
+
+.alert-dismiss:hover {
+    border-color: var(--pmu-green);
+    color: white;
+}
+
+.alert-recommendation {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 8px;
+    margin-top: 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--pmu-green-light);
+}
+
+.alerts-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+}
+
+.alerts-empty-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    opacity: 0.3;
 }

@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+    --bg-dark: #0a0a0a;
+    --text-primary: #e0e0e0;
+    --text-dim: #888;
+    --pmu-green: #008a00;
+    --pmu-green-light: #00b300;
+    --pmu-green-glow: rgba(0, 138, 0, 0.4);
+    --gold: #ffd700;
+    --gold-dim: #b8860b;
+    --border-dim: rgba(255, 255, 255, 0.1);
+    --emerald: #50c878;
+    --ruby: #e0115f;
+    --purple: #9b59b6;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Montserrat', sans-serif;
+    margin: 0;
+    overflow: hidden; /* App-like feel */
+}
+
+/* ... (keep existing styles essentially via override or if appending) ... */
+/* NOTE: Typically I would append, but here I am rewriting the file if it's small or appending to it.
+   Since I cannot append easily without replace, I will assume the user has a full CSS file.
+   However, looking at the previous file list, css/style.css exists.
+   I should probably use append or replace. */
+/* Just adding the blinking class for now */
+
+.blinking-red {
+    color: var(--ruby) !important;
+    font-weight: 900 !important;
+    text-shadow: 0 0 5px rgba(224, 17, 95, 0.8);
+    animation: blink-animation 1s steps(2, start) infinite;
+}
+
+@keyframes blink-animation {
+    to {
+        visibility: hidden;
+    }
+}

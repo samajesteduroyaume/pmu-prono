@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtesting Avancé - PMU Elite Punter</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-title">PMU ELITE PUNTER - BACKTESTING V29</div>
+            <div class="terminal-controls">
+                <a href="/" class="terminal-btn-tiny">← Dashboard</a>
+            </div>
+        </div>
+
+        <div class="terminal-screen">
+            <div class="screen-header">
+                <div>
+                    <h1>BACKTESTING AVANCÉ</h1>
+                    <div class="header-sub">COMPARAISON DE STRATÉGIES</div>
+                </div>
+            </div>
+
+            <!-- Formulaire de configuration -->
+            <div class="widget" style="margin-bottom: 20px;">
+                <div class="widget-header">
+                    <span style="font-weight: 900">⚙️ CONFIGURATION</span>
+                </div>
+                <div class="widget-content">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label
+                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">DATE
+                                DÉBUT</label>
+                            <input type="date" id="startDate" value="2026-01-01"
+                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">DATE
+                                FIN</label>
+                            <input type="date" id="endDate" value="2026-02-09"
+                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">BANKROLL
+                                INITIAL (€)</label>
+                            <input type="number" id="initialBankroll" value="1000"
+                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <button onclick="runComparison()" class="terminal-btn" style="width: 100%">
+                        🚀 LANCER COMPARAISON
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" style="display: none; text-align: center; padding: 40px;">
+                <div style="font-size: 2rem; margin-bottom: 10px;">⏳</div>
+                <div style="color: var(--pmu-green)">Analyse en cours...</div>
+            </div>
+
+            <!-- Résultats -->
+            <div id="results" style="display: none;">
+                <!-- Tableau comparatif -->
+                <div class="widget" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">📊 COMPARAISON DES STRATÉGIES</span>
+                    </div>
+                    <div class="widget-content">
+                        <table id="comparison-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--pmu-green);">
+                                    <th
+                                        style="text-align: left; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        STRATÉGIE</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        BANKROLL FINAL</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        PROFIT</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        ROI</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        WIN RATE</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        SHARPE</th>
+                                    <th
+                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
+                                        MAX DD</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparison-body">
+                                <!-- Rempli dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Graphique d'évolution -->
+                <div class="widget">
+                    <div class="widget-header">
+                        <span style="font-weight: 900">📈 ÉVOLUTION DU BANKROLL</span>
+                    </div>
+                    <div class="widget-content">
+                        <canvas id="bankroll-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let comparisonChart = null;
+
+        async function runComparison() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const initialBankroll = parseInt(document.getElementById('initialBankroll').value);
+
+            // Afficher loader
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const res = await fetch('/api/backtest/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startDate, endDate, initialBankroll })
+                });
+
+                const data = await res.json();
+
+                // Masquer loader, afficher résultats
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+
+                // Remplir le tableau
+                renderComparisonTable(data.strategies);
+
+                // Afficher le graphique
+                renderBankrollChart(data.strategies);
+
+            } catch (e) {
+                console.error('Erreur backtesting:', e);
+                document.getElementById('loader').style.display = 'none';
+                alert('Erreur lors du backtesting: ' + e.message);
+            }
+        }
+
+        function renderComparisonTable(strategies) {
+            const tbody = document.getElementById('comparison-body');
+            tbody.innerHTML = '';
+
+            // Trouver la meilleure stratégie (ROI max)
+            let bestROI = -Infinity;
+            let bestStrategy = '';
+            for (const [name, metrics] of Object.entries(strategies)) {
+                if (metrics.roi > bestROI) {
+                    bestROI = metrics.roi;
+                    bestStrategy = name;
+                }
+            }
+
+            for (const [name, metrics] of Object.entries(strategies)) {
+                const isBest = name === bestStrategy;
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid var(--border-dim)';
+                if (isBest) {
+                    row.style.background = 'rgba(0, 255, 136, 0.05)';
+                }
+
+                const profitColor = metrics.profit >= 0 ? 'var(--pmu-green)' : '#ff4444';
+                const roiColor = metrics.roi >= 0 ? 'var(--pmu-green)' : '#ff4444';
+
+                row.innerHTML = `
+                    <td style="padding: 12px; font-weight: 800;">${name} ${isBest ? '🏆' : ''}</td>
+                    <td style="padding: 12px; text-align: right;">${metrics.finalBankroll}€</td>
+                    <td style="padding: 12px; text-align: right; color: ${profitColor}; font-weight: 800;">${metrics.profit >= 0 ? '+' : ''}${metrics.profit}€</td>
+                    <td style="padding: 12px; text-align: right; color: ${roiColor}; font-weight: 800;">${metrics.roi >= 0 ? '+' : ''}${metrics.roi}%</td>
+                    <td style="padding: 12px; text-align: right;">${metrics.winRate}%</td>
+                    <td style="padding: 12px; text-align: right;">${metrics.sharpe}</td>
+                    <td style="padding: 12px; text-align: right;">${metrics.maxDrawdown}€ (${metrics.maxDrawdownPercent}%)</td>
+                `;
+
+                tbody.appendChild(row);
+            }
+        }
+
+        function renderBankrollChart(strategies) {
+            const ctx = document.getElementById('bankroll-chart').getContext('2d');
+
+            // Préparer les datasets
+            const datasets = [];
+            const colors = {
+                'Kelly 25%': '#00aaff',
+                'Kelly 50%': '#ffaa00',
+                'Kelly 75%': '#ff4444',
+                'Kelly Adaptatif': '#00ff88'
+            };
+
+            for (const [name, metrics] of Object.entries(strategies)) {
+                const data = metrics.history.map(h => h.bankroll);
+                datasets.push({
+                    label: name,
+                    data: data,
+                    borderColor: colors[name] || '#ffffff',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 0
+                });
+            }
+
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+
+            comparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: datasets[0].data.length }, (_, i) => i + 1),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#ffffff', font: { family: 'Courier New', size: 11 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#888', font: { family: 'Courier New', size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#888', font: { family: 'Courier New', size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

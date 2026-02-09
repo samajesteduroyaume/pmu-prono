@@ -1,3 +1,5 @@
+import { checkShieldStatus } from './engines/common.mjs';
+
 /**
  * MOTEUR DE FEATURES IA - UNIFIÉ v15.1
  */
@@ -55,6 +57,10 @@ export function extractBaseFeatures(participant, course) {
     }
     const labelConfiance = scoreConfiance >= 80 ? "Favori Solide" : (scoreConfiance >= 50 ? "Appui Marché" : "Outsider");
 
+    // 7. V33 THE SHIELD
+    const shieldMalus = checkShieldStatus(participant, course);
+    const isShielded = shieldMalus >= 30; // Shutdown threshold
+
     return {
         forme: scoreForme / 100,
         classe: scoreClasse / 100,
@@ -63,6 +69,7 @@ export function extractBaseFeatures(participant, course) {
         regularite: scoreReg / 100,
         confiance: scoreConfiance / 100,
         isTrot: isTrot ? 1 : 0,
+        isShielded: isShielded ? 1 : 0,
         // Labels XAI
         xai: {
             forme: labelForme,
@@ -70,7 +77,8 @@ export function extractBaseFeatures(participant, course) {
             config: labelConfig,
             entourage: labelEntourage,
             regularite: labelReg,
-            confiance: labelConfiance
+            confiance: labelConfiance,
+            isShielded: isShielded
         }
     };
 }

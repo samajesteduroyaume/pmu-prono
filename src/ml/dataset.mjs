@@ -24,7 +24,8 @@ function extractFeatures(participant, course) {
             f.entourage,
             f.regularite,
             f.confiance,
-            f.isTrot
+            f.isTrot,
+            f.isShielded
         ]
     };
 }
@@ -60,7 +61,8 @@ export async function prepareDataset() {
                     f.entourage,
                     f.regularite,
                     f.confiance,
-                    f.isTrot
+                    f.isTrot,
+                    f.isShielded
                 ];
 
                 // Label : 1 si gagnant (1er), 0 sinon

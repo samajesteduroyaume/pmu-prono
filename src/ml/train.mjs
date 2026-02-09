@@ -27,7 +27,7 @@ async function trainModel() {
             tf.layers.dense({
                 units: 64,
                 activation: 'relu',
-                inputShape: [7],
+                inputShape: [8],
                 kernelInitializer: 'heNormal'
             }),
             tf.layers.dropout({ rate: 0.2 }),
@@ -59,16 +59,16 @@ async function trainModel() {
     model.summary();
 
     // 5. Entraînement
-    logger.info('Début de l\'entraînement (50 epochs)...');
+    logger.info('Début de l\'entraînement (20 epochs)...');
 
     const history = await model.fit(trainFeatures, trainLabels, {
-        epochs: 50,
+        epochs: 20,
         batchSize: 32,
         validationSplit: 0.2,
         callbacks: {
             onEpochEnd: (epoch, logs) => {
-                if (epoch % 10 === 0) {
-                    logger.info(`Epoch ${epoch + 1}/50 - Loss: ${logs.loss.toFixed(4)}, Acc: ${(logs.acc * 100).toFixed(2)}%`);
+                if (epoch % 5 === 0) {
+                    logger.info(`Epoch ${epoch + 1}/20 - Loss: ${logs.loss.toFixed(4)}, Acc: ${(logs.acc * 100).toFixed(2)}%`);
                 }
             }
         }

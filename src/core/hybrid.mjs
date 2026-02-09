@@ -44,7 +44,8 @@ function extractMLFeatures(participant, course) {
         f.entourage,
         f.regularite,
         f.confiance,
-        f.isTrot
+        f.isTrot,
+        f.isShielded
     ];
 }
 

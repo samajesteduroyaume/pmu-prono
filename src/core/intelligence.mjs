@@ -216,6 +216,14 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
         let predictionScore = engineResult.finalScore;
         participant.active_engine = engineResult.engine; // Pour le frontend
 
+        // V33 - "THE SHIELD" SHUTDOWN LOGIC
+        // Si le bonus d'expertise est très négatif, on neutralise le cheval (Score < 30)
+        if (engineResult.expertiseBonus <= -30) {
+            logger.info(`[IA] SHIELD SHUTDOWN: ${participant.nom} neutralisé (Expertise Malus: ${engineResult.expertiseBonus})`);
+            predictionScore = Math.min(predictionScore, 30);
+            participant.is_shielded = true; // Flag frontend
+        }
+
         // V30: CENSURE TECHNIQUE (PLAFONNAGE)
         const cat = determinerChangementCategorie(participant, contexteCourse.prixCourse || 20000);
         if (cat === 'MONTEE' && !isTop && predictionScore > 75) {

@@ -885,6 +885,7 @@ window.showDetails = async (id) => {
                                         ${p.is_track_specialist ? '<br><span class="live-badge" style="margin-top:2px; border-color:var(--gold); color:var(--gold)">🏆 TRACK LOVER</span>' : ''}
                                         ${p.is_specialist ? '<br><span class="live-badge" style="margin-top:2px; border-color:var(--emerald); color:var(--emerald)">🔍 HYPER-SPECIALIST</span>' : ''}
                                         ${p.active_engine ? `<br><span class="live-badge" style="margin-top:2px; border-color:var(--pmu-green-light); color:var(--pmu-green-light); font-size:0.55rem">⚙️ ${p.active_engine}</span>` : ''}
+                                        ${p.is_shielded ? '<br><span class="live-badge" style="margin-top:2px; border-color:var(--ruby); color:var(--ruby)">🛡️ SHIELDED / FAIL RISK</span>' : ''}
                                         ${p.xai_details?.activePatterns?.length > 0 ? `
                                             <div style="margin-top:10px; padding:5px; background:rgba(0,255,136,0.1); border-radius:4px; font-size:0.6rem; color:var(--pmu-green-light); font-weight:bold">
                                                 🎯 PATTERN DETECTÉ : ${p.xai_details.activePatterns[0].pattern}

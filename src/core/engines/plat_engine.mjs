@@ -1,6 +1,8 @@
 /**
  * ENGINE: PLAT - V32
  */
+import { checkShieldStatus } from './common.mjs';
+
 const WEIGHTS = { FORME: 0.25, ENTOURAGE: 0.15, CONFIANCE: 0.15, CONFIGURATION: 0.05, APTITUDE: 0.30, EXPERT: 0.10 };
 
 export async function processPlat(participant, contexte, baseScores) {
@@ -22,6 +24,10 @@ export async function processPlat(participant, contexte, baseScores) {
         // Grands hippodromes = avantage aux "grosses écuries"
         expertise += 5;
     }
+
+    // 4. THE SHIELD (V33)
+    const shieldMalus = checkShieldStatus(participant, contexte);
+    expertise -= shieldMalus;
 
     return {
         engine: 'PRO-GALOP V32',

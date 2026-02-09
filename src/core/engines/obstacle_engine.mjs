@@ -1,6 +1,8 @@
 /**
  * ENGINE: OBSTACLE (HAIES/STEEPLE/CROSS) - V32
  */
+import { checkShieldStatus } from './common.mjs';
+
 const WEIGHTS = { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.05, CONFIGURATION: 0.30, APTITUDE: 0.15, EXPERT: 0.05 };
 
 export async function processObstacle(participant, contexte, baseScores) {
@@ -24,6 +26,10 @@ export async function processObstacle(participant, contexte, baseScores) {
         // Malus si première fois (simulé par faible nb courses)
         if (participant.nb_courses <= 2) expertise -= 20;
     }
+
+    // 4. THE SHIELD (V33)
+    const shieldMalus = checkShieldStatus(participant, contexte);
+    expertise -= shieldMalus;
 
     return {
         engine: 'PRO-OBSTACLE V32',

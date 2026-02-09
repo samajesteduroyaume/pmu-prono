@@ -1,7 +1,7 @@
 /**
  * ENGINE: ATTELÉ ("LA CHARETTE") - V32
  */
-import { getTopEntourage, getCracks, determinerChangementCategorie, calculerRegularite } from './common.mjs';
+import { getTopEntourage, getCracks, determinerChangementCategorie, calculerRegularite, checkShieldStatus } from './common.mjs';
 
 const WEIGHTS = { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.10, CONFIGURATION: 0.30, APTITUDE: 0.10, EXPERT: 0.05 };
 
@@ -22,6 +22,10 @@ export async function processAttelé(participant, contexte, baseScores) {
 
     const reg = calculerRegularite(participant);
     if (reg > 50) expertise += 10;
+
+    // 4. THE SHIELD (V33)
+    const shieldMalus = checkShieldStatus(participant, contexte);
+    expertise -= shieldMalus;
 
     // 3. SYNERGIE CRACK DRIVER
     const cracks = getCracks();

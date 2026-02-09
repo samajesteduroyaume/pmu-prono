@@ -1,7 +1,7 @@
 /**
  * ENGINE: MONTÉ - V32
  */
-import { calculerRegularite } from './common.mjs';
+import { calculerRegularite, checkShieldStatus } from './common.mjs';
 
 const WEIGHTS = { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.05, CONFIGURATION: 0.35, APTITUDE: 0.10, EXPERT: 0.05 };
 
@@ -23,6 +23,10 @@ export async function processMonté(participant, contexte, baseScores) {
     // Les jeunes chevaux (4-6 ans) sont souvent plus véloces au monté
     const age = parseInt(participant.age);
     if (age >= 4 && age <= 6) expertise += 10;
+
+    // 4. THE SHIELD (V33)
+    const shieldMalus = checkShieldStatus(participant, contexte);
+    expertise -= shieldMalus;
 
     return {
         engine: 'PRO-MONTÉ V32',

@@ -69,9 +69,12 @@ function analyserFormeProfonde(musique, discipline = 'INCONNUE') {
             }
         }
 
-        // Bonus Spécialisation (Discipline)
+        // Bonus Spécialisation (Discipline) - V31: Renforcé pour Spécialités
         const currentType = isTrot ? (discipline.includes('MONTE') ? 'm' : 'a') : (discipline.includes('PLAT') ? 'p' : (discipline.includes('HAIE') ? 'h' : 's'));
-        if (type === currentType) points *= 1.15;
+        if (type === currentType) {
+            const specBonus = (discipline.includes('MONTE') || !isTrot) ? 1.25 : 1.15;
+            points *= specBonus;
+        }
 
         // Pondération Dégressive (La dernière perf compte le plus)
         // V27: Dégressivité plus marquée (0.8 au lieu de 0.85)
@@ -145,7 +148,15 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
         else if (disc.includes('PLAT')) discKey = 'PLAT';
         else if (disc.includes('OBSTACLE') || disc.includes('HAIE') || disc.includes('STEEPLE')) discKey = 'OBSTACLE';
 
-        const weights = WEIGHTS_BY_DISCIPLINE[discKey] || WEIGHTS_BY_DISCIPLINE.DEFAULT;
+        let weights = { ...(WEIGHTS_BY_DISCIPLINE[discKey] || WEIGHTS_BY_DISCIPLINE.DEFAULT) };
+
+        // V31: ADAPTATION À LA DISTANCE (EXTRÊMES)
+        const dist = parseInt(contexteCourse.distance) || 2100;
+        if (dist < 1600 || dist > 2900) {
+            // Sur distances extrêmes, l'aptitude (Classe) prime sur l'entourage
+            weights.APTITUDE += 0.05;
+            weights.ENTOURAGE -= 0.05;
+        }
 
         // 1. FORME PROFONDE (V27)
         const scoreForme = analyserFormeProfonde(participant.musique, disc);
@@ -174,6 +185,15 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
                     scoreEntourage -= 10; // ❄️ COLD STREAK
                 }
             }
+        }
+
+        // V31: BONUS "TOP 4 CRACKS" DANS LES GRANDES COURSES
+        const cracks = ['RAFFIN', 'BAZIRE', 'NIVARD', 'ABRIVARD'];
+        const isCrack = cracks.some(c => (participant.driver || '').toUpperCase().includes(c));
+        const highEnjeu = (contexteCourse.prixCourse || 0) >= 40000;
+        if (isCrack && highEnjeu) {
+            scoreEntourage += 10;
+            logger.info(`[IA] V31 Crack Driver Bonus: ${participant.driver} dans course à ${contexteCourse.prixCourse}€`);
         }
 
         // 5. CONFIANCE (Marché & MONEY TIME)
@@ -227,9 +247,14 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
         const hippodrome = (contexteCourse.hippodrome || '').toUpperCase();
 
         // Bonus 1: Vincennes Meeting D4 (Configuration Optimale)
-        if (hippodrome.includes('VINCENNES') && participant.ferrage && participant.ferrage.includes('D4')) {
-            expertScore += 10; // Bonus Spécialiste Meeting
-            participant.is_track_specialist = true; // Flag frontend
+        if (hippodrome.includes('VINCENNES')) {
+            if (participant.ferrage && participant.ferrage.includes('D4')) {
+                expertScore += 10; // Bonus Spécialiste Meeting
+                participant.is_track_specialist = true; // Flag frontend
+            } else if (!participant.ferrage || participant.ferrage === 'FERRE') {
+                // V31: Sévérité accrue à Vincennes (Malus si ferré)
+                expertScore -= 10;
+            }
         }
 
         // Bonus 2: Mémoire de l'IA (Si on avait l'historique complet)
@@ -249,6 +274,11 @@ export function calculerPrediction(participant, contexteCourse, activePatterns =
                 participant.is_retard_gain = true; // Flag pour le frontend
                 logger.info(`[IA] RETARD GAIN DETECTÉ: ${participant.nom} (+15pts)`);
             }
+        }
+
+        // V31: DÉTECTION "HYPER-SPECIALIST" (Flag Frontend)
+        if ((scoreForme > 80 && expertScore > 70) || (isCrack && scoreForme > 75)) {
+            participant.is_specialist = true;
         }
 
         const finalScore = (

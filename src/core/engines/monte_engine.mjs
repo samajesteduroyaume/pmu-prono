@@ -1,5 +1,6 @@
 import { CONFIG } from '../../config/settings.mjs';
 import { checkShieldStatus } from '../../utils/engine_utils.mjs';
+import { calculerBonusDistanceTerrain } from './distance_terrain.mjs';
 
 const WEIGHTS = CONFIG.weights.MONTE;
 const SETTINGS = CONFIG.engine_settings.monte;
@@ -23,6 +24,10 @@ export async function processMonté(participant, contexte, baseScores) {
     // 4. THE SHIELD (V33)
     const shieldMalus = checkShieldStatus(participant, contexte);
     expertise -= shieldMalus;
+
+    // 5. DISTANCE & TERRAIN (v43)
+    const dtBonus = calculerBonusDistanceTerrain(participant, contexte);
+    expertise += dtBonus;
 
     return {
         engine: 'ARCHITECT-MONTÉ v27.1',

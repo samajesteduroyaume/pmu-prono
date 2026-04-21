@@ -19,18 +19,20 @@ const MAX_BET_PERCENT = FINANCE.max_bet_percent;
 const MIN_EDGE_THRESHOLD = FINANCE.min_edge_threshold;
 
 /**
- * CALIBRATION DES PROBABILITÉS IA (V40 Final)
- * Aligne le score Architect (0-100) sur les fréquences de gain réelles observées en backtest.
+ * CALIBRATION DES PROBABILITÉS IA (v43 — Empirique)
+ * Basée sur la table de calibration centralisée dans CONFIG.calibration.
+ * Alignée sur le win rate réel observé en backtest (30.77%).
+ * L'ancienne version sous-estimait systématiquement les hauts scores,
+ * rendant Kelly quasi-nul et bloquant toute prise de position.
  */
 export function calibrateProbability(score) {
-    if (score >= 95) return 0.45; // Plafond réaliste pour les super-favoris
-    if (score >= 90) return 0.38;
-    if (score >= 80) return 0.28;
-    if (score >= 70) return 0.18;
-    if (score >= 60) return 0.12;
-    if (score >= 50) return 0.08;
-    return (score / 100) * 0.1; // Chute drastique pour les faibles scores
+    const table = CONFIG.calibration;
+    for (const entry of table) {
+        if (score >= entry.minScore) return entry.prob;
+    }
+    return 0.05; // Plancher de sécurité
 }
+
 
 export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKROLL_DEFAULT) {
     if (!cote || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };

@@ -1,6 +1,85 @@
 import { calculerPredictionHybride } from './hybrid.mjs';
 import { determinerChangementCategorie } from '../utils/engine_utils.mjs';
 
+// ============================================================
+// v43: HELPERS EXTRACTION DONNÉES PMU API — TERRAIN & DISTANCE
+// ============================================================
+
+/**
+ * Normalise le code terrain brut de l'API PMU vers une valeur standard.
+ * L'API PMU peut retourner différentes formes : "BON", "TRES_BON", "SOUPLE",
+ * "LOURD", "TRES_LOURD", ou des codes numériques 0-5.
+ */
+function normaliserTerrain(terrainBrut) {
+    if (!terrainBrut) return null;
+    const t = String(terrainBrut).toUpperCase().trim();
+
+    // Codes numériques API PMU (0=Très bon, 5=Très lourd)
+    const CODES_NUMERIQUES = {
+        '0': 'TRES_BON', '1': 'BON', '2': 'BON_SOUPLE',
+        '3': 'SOUPLE', '4': 'LOURD', '5': 'TRES_LOURD'
+    };
+    if (CODES_NUMERIQUES[t]) return CODES_NUMERIQUES[t];
+
+    // Libellés texte
+    if (t.includes('TRES_BON') || t.includes('TRES BON'))   return 'TRES_BON';
+    if (t.includes('BON_SOUPLE') || t.includes('BON SOUPLE')) return 'BON_SOUPLE';
+    if (t.includes('TRES_LOURD') || t.includes('TRES LOURD')) return 'TRES_LOURD';
+    if (t.includes('LOURD'))  return 'LOURD';
+    if (t.includes('SOUPLE')) return 'SOUPLE';
+    if (t.includes('BON'))    return 'BON';
+    if (t.includes('SABLE'))  return 'SABLE';
+    if (t.includes('SYNTHETIC') || t.includes('ALL_WEATHER')) return 'SYNTHETIQUE';
+
+    return t; // Retourner tel quel si non reconnu
+}
+
+/**
+ * Extrait la préférence de terrain du participant depuis les données API PMU.
+ * L'API retourne parfois `participant.preferencesTerrain` ou dans les perfs historiques.
+ */
+function extraireTerrainPrefere(p) {
+    // Champ direct (PMU le fournit parfois)
+    if (p.preferencesTerrain) return normaliserTerrain(p.preferencesTerrain);
+    if (p.terrainPrefere)     return normaliserTerrain(p.terrainPrefere);
+    if (p.typeTerrain)        return normaliserTerrain(p.typeTerrain);
+
+    // Analyse des performances historiques si disponibles (p.performances[])
+    if (p.performances && Array.isArray(p.performances) && p.performances.length >= 3) {
+        const wins = p.performances.filter(perf => perf.ordreArrivee === 1);
+        if (wins.length > 0) {
+            // Prendre le terrain le plus fréquent parmi les victoires
+            const terrainCount = {};
+            wins.forEach(perf => {
+                const t = normaliserTerrain(perf.terrain);
+                if (t) terrainCount[t] = (terrainCount[t] || 0) + 1;
+            });
+            const best = Object.entries(terrainCount).sort((a, b) => b[1] - a[1])[0];
+            if (best) return best[0];
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Extrait l'historique des distances depuis les performances API PMU.
+ * L'API retourne `participant.performances[]` avec `distance` par course.
+ * On retourne un tableau JSON des distances (en mètres) pour les N dernières courses.
+ */
+function extraireDistancesHistory(p) {
+    const perfs = p.performances || p.dernieresCourses || [];
+    if (!Array.isArray(perfs) || perfs.length === 0) return null;
+
+    const distances = perfs
+        .slice(0, 12) // 12 dernières courses
+        .map(perf => parseInt(perf.distance || perf.distanceCourse || 0))
+        .filter(d => d > 0);
+
+    return distances.length > 0 ? JSON.stringify(distances) : null;
+}
+
+
 /**
  * Transforme les données brutes de l'API PMU en format compatible avec la base de données
  */
@@ -8,6 +87,19 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
     return Promise.all(rawRaces.map(async race => {
         const raceDate = race.heureDepart ? new Date(race.heureDepart) : dayDate;
         const meteo = reunionData.meteo || {};
+
+        // v43: Extraction du terrain depuis les données météo de l'API PMU
+        // L'API retourne : meteo.nebulositeCode, meteo.temperature, et au niveau piste :
+        // race.terrain (directement) ou reunion.terrain
+        const terrainBrut = race.terrain
+            || race.typePiste
+            || reunionData.terrain
+            || meteo.etatPiste
+            || null;
+        const terrain = normaliserTerrain(terrainBrut);
+
+        // Distance de la course (en mètres, entier)
+        const distanceCourse = parseInt(race.distance) || 0;
 
         // Extraction Participants
         const participants = await Promise.all((race.participants || []).map(async p => {
@@ -29,7 +121,12 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
                 statut: p.statut || 'PARTANT',
                 classement: p.ordreArrivee || null,
                 cote_ref: p.dernierRapportDirect?.rapport || 0,
-                avis: p.avisEntraineur || null
+                avis: p.avisEntraineur || null,
+                // v43: Signaux Distance & Terrain depuis l'API PMU
+                distance_course: distanceCourse,
+                terrain_prefere: extraireTerrainPrefere(p),
+                distances_history: extraireDistancesHistory(p)
+
             };
 
             // Calcul du changement de catégorie
@@ -40,7 +137,9 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
                 const result = await calculerPredictionHybride(participantObj, {
                     corde: race.corde,
                     prixCourse: race.montantPrix || 0,
-                    discipline: race.discipline
+                    discipline: race.discipline,
+                    distance: distanceCourse,   // v43
+                    terrain: terrain             // v43
                 });
                 participantObj.prediction_score = result.score;
             } catch (err) {
@@ -74,6 +173,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
             partants: race.nombreDeclaresPartants || 0,
             prix: race.montantPrix || 0,
             meteo: meteo,
+            terrain: terrain,   // v43: État normalisé de la piste
             type_pari: paris,
             ordre_arrivee: ordreArrivee,
             rapports: race.rapportsDefinitifs || null,

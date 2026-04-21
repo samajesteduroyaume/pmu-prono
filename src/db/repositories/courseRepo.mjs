@@ -50,13 +50,14 @@ export async function insertCourses(courses) {
         const sqlCourse = `
             INSERT INTO courses (
                 date, heure, hippodrome, discipline, distance, statut, partants, prix, 
-                reunionNum, courseNum, corde, categorie, conditions, meteo, type_pari, ordre_arrivee, rapports
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                reunionNum, courseNum, corde, categorie, conditions, meteo, type_pari, ordre_arrivee, rapports, terrain
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(date, reunionNum, courseNum) DO UPDATE SET
                 statut = excluded.statut,
                 ordre_arrivee = excluded.ordre_arrivee,
                 rapports = excluded.rapports,
                 meteo = excluded.meteo,
+                terrain = excluded.terrain,
                 type_pari = excluded.type_pari,
                 partants = excluded.partants
         `;
@@ -65,8 +66,9 @@ export async function insertCourses(courses) {
             INSERT INTO participants (
                 course_id, nom, numero, sexe, age, musique, gains, 
                 driver, entraineur, proprietaire, ferrage, oeilleres, nb_courses, nb_victoires, nb_places, 
-                cat_statut, cote_ref, statut, prediction_score, classement, avis
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                cat_statut, cote_ref, statut, prediction_score, classement, avis,
+                distance_course, distances_history, terrain_prefere
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(course_id, numero) DO UPDATE SET
                 cote_ref = excluded.cote_ref,
                 statut = excluded.statut,
@@ -74,14 +76,17 @@ export async function insertCourses(courses) {
                 musique = excluded.musique,
                 gains = excluded.gains,
                 cat_statut = excluded.cat_statut,
-                avis = excluded.avis
+                avis = excluded.avis,
+                distance_course = excluded.distance_course,
+                distances_history = COALESCE(excluded.distances_history, distances_history),
+                terrain_prefere = COALESCE(excluded.terrain_prefere, terrain_prefere)
         `;
 
         for (const c of courses) {
             await run(sqlCourse, [
                 c.date, c.heure, c.hippodrome, c.discipline, c.distance, c.statut, c.partants, c.prix,
                 c.reunionNum, c.courseNum, c.corde, c.categorie, c.conditions, JSON.stringify(c.meteo), c.type_pari,
-                c.ordre_arrivee, JSON.stringify(c.rapports)
+                c.ordre_arrivee, JSON.stringify(c.rapports), c.terrain || null
             ]);
 
             const row = await get("SELECT id FROM courses WHERE date = ? AND reunionNum = ? AND courseNum = ?",
@@ -92,7 +97,8 @@ export async function insertCourses(courses) {
                     await run(sqlParticipant, [
                         row.id, p.nom, p.numero, p.sexe, p.age, p.musique, p.gains,
                         p.driver, p.entraineur, p.proprietaire, p.ferrage, p.oeilleres, p.nb_courses, p.nb_victoires, p.nb_places,
-                        p.cat_statut || 'STABLE', p.cote_ref, p.statut, p.prediction_score || 0, p.classement || null, p.avis || null
+                        p.cat_statut || 'STABLE', p.cote_ref, p.statut, p.prediction_score || 0, p.classement || null, p.avis || null,
+                        p.distance_course || null, p.distances_history || null, p.terrain_prefere || null
                     ]);
                 }
             }
@@ -147,7 +153,12 @@ export async function getCourseParticipants(courseId) {
     const db = getDB();
     return new Promise((resolve, reject) => {
         const query = `
-            SELECT p.*, c.prix as prix_course
+            SELECT p.*,
+                   c.prix as prix_course,
+                   c.terrain as terrain_course,
+                   c.distance as distance_course_raw,
+                   c.discipline as discipline_course,
+                   c.hippodrome as hippodrome_course
             FROM participants p
             JOIN courses c ON p.course_id = c.id
             WHERE p.course_id = ? 
@@ -158,11 +169,18 @@ export async function getCourseParticipants(courseId) {
                 logger.error(`Erreur récupération participants: ${err.message}`);
                 reject(err);
             } else {
-                resolve(rows);
+                // Normaliser : exposer terrain_course et distance pour les moteurs
+                const enriched = rows.map(row => ({
+                    ...row,
+                    _terrain_course: row.terrain_course || null,
+                    _distance_course: parseInt(row.distance_course_raw) || parseInt(row.distance_course) || 0
+                }));
+                resolve(enriched);
             }
         });
     });
 }
+
 
 export async function getCourseQuinte() {
     const db = getDB();

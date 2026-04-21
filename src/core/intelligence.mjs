@@ -12,6 +12,7 @@ import { processMonté } from './engines/monte_engine.mjs';
 import { processPlat } from './engines/plat_engine.mjs';
 import { processObstacle } from './engines/obstacle_engine.mjs';
 import { detectInconsistencies, applyCorrection } from './inconsistency_checker.mjs';
+import { evaluerSignalGate } from './signal_gate.mjs';
 
 /**
  * MOTEUR D'INTELLIGENCE ARTIFICIELLE "ARCHITECT v30 - ELITE"
@@ -297,6 +298,10 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
             participant.inconsistency_alerts = alerts; // Pour affichage UI
             participant.is_inconsistent = true;
         }
+
+        // V43: SIGNAL GATE — Évaluation multi-signaux
+        const gate = evaluerSignalGate(participant, contexteCourse, predictionScore);
+        participant.signal_gate = gate; // Pour affichage UI et Value Hunter
 
         return Math.round(Math.max(0, Math.min(100, predictionScore)));
 

@@ -1,5 +1,6 @@
 import { CONFIG } from '../../config/settings.mjs';
 import { determinerChangementCategorie, calculerRegularite, checkShieldStatus, getCracks } from '../../utils/engine_utils.mjs';
+import { calculerBonusDistanceTerrain } from './distance_terrain.mjs';
 
 const WEIGHTS = CONFIG.weights.ATTELE;
 const SETTINGS = CONFIG.engine_settings.attele;
@@ -30,6 +31,10 @@ export async function processAttelé(participant, contexte, baseScores) {
     const cracks = getCracks();
     const isCrack = cracks.some(c => (participant.driver || '').toUpperCase().includes(c));
     if (isCrack && (contexte.prixCourse || 0) >= SETTINGS.crack_price_threshold) expertise += 10;
+
+    // 5. DISTANCE & TERRAIN (v43)
+    const dtBonus = calculerBonusDistanceTerrain(participant, contexte);
+    expertise += dtBonus;
 
     return {
         engine: 'ARCHITECT-ATTELÉ v27.1',

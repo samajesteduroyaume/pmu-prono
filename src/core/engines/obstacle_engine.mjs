@@ -1,5 +1,6 @@
 import { CONFIG } from '../../config/settings.mjs';
 import { checkShieldStatus } from '../../utils/engine_utils.mjs';
+import { calculerBonusDistanceTerrain } from './distance_terrain.mjs';
 
 const WEIGHTS = CONFIG.weights.OBSTACLE;
 const SETTINGS = CONFIG.engine_settings.obstacle;
@@ -25,6 +26,10 @@ export async function processObstacle(participant, contexte, baseScores) {
     // 4. THE SHIELD (V33)
     const shieldMalus = checkShieldStatus(participant, contexte);
     expertise -= shieldMalus;
+
+    // 5. DISTANCE & TERRAIN (v43)
+    const dtBonus = calculerBonusDistanceTerrain(participant, contexte);
+    expertise += dtBonus;
 
     return {
         engine: 'ARCHITECT-OBSTACLE v27.1',

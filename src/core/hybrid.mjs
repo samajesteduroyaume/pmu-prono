@@ -36,8 +36,23 @@ export async function loadMLModel() {
 
 import { extractBaseFeatures } from './features.mjs';
 
-function extractMLFeatures(participant, course) {
+function extractMLFeatures(participant, course, allParticipants = []) {
     const f = extractBaseFeatures(participant, course);
+
+    // v43: Rang de la côte parmi les partants (0=favori, 1=outsider)
+    // Signal non-circulaire qui remplace l'expertScore neutralisé à 0.5
+    let rangCoteNorm = 0.5;
+    if (allParticipants.length > 1) {
+        const sorted = [...allParticipants]
+            .filter(p => p.cote_ref && parseFloat(p.cote_ref) > 0)
+            .sort((a, b) => parseFloat(a.cote_ref) - parseFloat(b.cote_ref));
+        const idx = sorted.findIndex(p => p.id === participant.id || p.nom === participant.nom);
+        if (idx !== -1) rangCoteNorm = idx / Math.max(1, sorted.length - 1);
+    }
+
+    // v43: Nombre de partants normalisé (plus de partants = épreuve plus dure)
+    const nbrePartantsNorm = Math.min(1, (allParticipants.length || 10) / 20);
+
     return [
         f.forme,
         f.classe,
@@ -48,18 +63,18 @@ function extractMLFeatures(participant, course) {
         f.isTrot,
         f.isShielded,
         f.sentiment,
-        0.5 // V27.1: Neutralisé (0.5) pour casser la circularité avec l'expertise
+        rangCoteNorm  // v43: Remplace 0.5 statique (feature circulaire)
     ];
 }
 
 /**
  * Prédiction ML pure (V40+ avec 10 features)
  */
-async function predictML(participant, contexteCourse) {
+async function predictML(participant, contexteCourse, allParticipants = []) {
     if (!model) return null;
 
     try {
-        const features = extractMLFeatures(participant, contexteCourse);
+        const features = extractMLFeatures(participant, contexteCourse, allParticipants);
         const tensor = tf.tensor2d([features]);
         const prediction = model.predict(tensor);
         const probability = await prediction.data();

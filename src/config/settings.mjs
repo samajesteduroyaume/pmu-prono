@@ -6,6 +6,18 @@ export const CONFIG = {
         trainers: ['DUVALDESTIN', 'BAZIRE', 'GUARATO', 'ABRIVARD', 'ALLAIRE', 'LEVESQUE', 'SOULOY', 'ROUGET', 'FABRE', 'PANTALL']
     },
 
+    // Calibration empirique des probabilités (v43) — Alignée sur win rate réel (30.77%)
+    // Scores IA → probabilités de victoire observées en backtest
+    calibration: [
+        { minScore: 95, prob: 0.48 },
+        { minScore: 90, prob: 0.42 },
+        { minScore: 80, prob: 0.34 },
+        { minScore: 70, prob: 0.24 },
+        { minScore: 60, prob: 0.16 },
+        { minScore: 50, prob: 0.10 },
+        { minScore: 0,  prob: 0.05 }
+    ],
+
     // Pondérations par défaut du moteur IA (Optimisées v40)
     weights: {
         TROT: {
@@ -185,7 +197,12 @@ export const CONFIG = {
         },
         value_hunter: {
             target_disciplines: ['TROT', 'ATTELE', 'MONTE'],
-            min_edge_value: 0.05
+            min_edge_value: 0.08,          // v43: Durci de 5% à 8%
+            min_score: 70,                 // v43: Score IA minimum
+            min_cote: 2.5,                 // v43: Cote plancher (éviter les supers-favoris sans valeur)
+            max_cote: 12.0,                // v43: Cote plafond (éviter les outsiders fuyards)
+            min_signals: 3,                // v43: Minimum de signaux positifs requis (Signal Gate)
+            require_no_inconsistency: true // v43: Rejeter les chevaux inconsistants
         },
         patterns: {
             min_significance_count: 3,

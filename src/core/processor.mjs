@@ -1,5 +1,5 @@
 import { calculerPredictionHybride } from './hybrid.mjs';
-import { determinerChangementCategorie } from './intelligence.mjs';
+import { determinerChangementCategorie } from '../utils/engine_utils.mjs';
 
 /**
  * Transforme les données brutes de l'API PMU en format compatible avec la base de données
@@ -28,20 +28,25 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
                 nb_places: p.nombrePlaces || 0,
                 statut: p.statut || 'PARTANT',
                 classement: p.ordreArrivee || null,
-                cote_ref: p.dernierRapportDirect?.rapport || 0
+                cote_ref: p.dernierRapportDirect?.rapport || 0,
+                avis: p.avisEntraineur || null
             };
 
             // Calcul du changement de catégorie
             participantObj.cat_statut = determinerChangementCategorie(participantObj, race.montantPrix || 0);
 
-            // HYBRIDATION ML (v26)
-            const result = await calculerPredictionHybride(participantObj, {
-                corde: race.corde,
-                prixCourse: race.montantPrix || 0,
-                discipline: race.discipline
-            });
-
-            participantObj.prediction_score = result.score;
+            // HYBRIDATION ML (v27.1 - Sécurisée)
+            try {
+                const result = await calculerPredictionHybride(participantObj, {
+                    corde: race.corde,
+                    prixCourse: race.montantPrix || 0,
+                    discipline: race.discipline
+                });
+                participantObj.prediction_score = result.score;
+            } catch (err) {
+                console.error(`[PROCESSOR] Hybridation échouée pour ${participantObj.nom}:`, err.message);
+                participantObj.prediction_score = 0; // Fallback neutre sécurisé
+            }
 
             return participantObj;
         }));

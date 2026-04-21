@@ -16,10 +16,10 @@ async function testEngines() {
     };
 
     const disciplines = [
-        { name: "ATTELE", expectedEngine: "PRO-ATTELÉ V32" },
-        { name: "MONTE", expectedEngine: "PRO-MONTÉ V32" },
-        { name: "PLAT", expectedEngine: "PRO-GALOP V32" },
-        { name: "HAIE", expectedEngine: "PRO-OBSTACLE V32" }
+        { name: "ATTELE", expectedEngine: "ARCHITECT-ATTELÉ v27.1" },
+        { name: "MONTE", expectedEngine: "ARCHITECT-MONTÉ v27.1" },
+        { name: "PLAT", expectedEngine: "ARCHITECT-GALOP v27.1" },
+        { name: "HAIE", expectedEngine: "ARCHITECT-OBSTACLE v27.1" }
     ];
 
     for (const d of disciplines) {

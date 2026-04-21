@@ -13,9 +13,11 @@ function normalizeValue(value, min, max) {
 }
 
 import { extractBaseFeatures } from '../core/features.mjs';
+import { calculerPrediction } from '../core/intelligence.mjs';
 
-function extractFeatures(participant, course) {
-    const f = extractBaseFeatures(participant, course);
+async function extractFeatures(participant, course) {
+    const expertScore = await calculerPrediction(participant, course);
+    const f = extractBaseFeatures(participant, course, expertScore);
     return {
         features: [
             f.forme,
@@ -25,7 +27,9 @@ function extractFeatures(participant, course) {
             f.regularite,
             f.confiance,
             f.isTrot,
-            f.isShielded
+            f.isShielded,
+            f.sentiment,
+            f.expertScore
         ]
     };
 }
@@ -48,33 +52,34 @@ export async function prepareDataset() {
                 return;
             }
 
-            logger.info(`Analyse de ${rows.length} participants avec résultats...`);
+            const dataset = [];
+            
+            async function processRows() {
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (i % 100 === 0) logger.info(`Traitement participant ${i}/${rows.length}...`);
+                    
+                    const contexts = { discipline: row.discipline, prixCourse: row.prix };
+                    const expertScore = await calculerPrediction(row, contexts);
+                    const f = extractBaseFeatures(row, contexts, expertScore);
 
-            const dataset = rows.map(row => {
-                const f = extractBaseFeatures(row, { discipline: row.discipline, prix: row.prix });
+                    const featureVector = [
+                        f.forme, f.classe, f.config, f.entourage, f.regularite, 
+                        f.confiance, f.isTrot, f.isShielded, f.sentiment, f.expertScore
+                    ];
 
-                // Features vector [7]
-                const featureVector = [
-                    f.forme,
-                    f.classe,
-                    f.config,
-                    f.entourage,
-                    f.regularite,
-                    f.confiance,
-                    f.isTrot,
-                    f.isShielded
-                ];
+                    const arrivee = row.ordre_arrivee || '';
+                    const positions = arrivee.split('-').map(n => parseInt(n));
+                    const isWinner = positions[0] === row.numero ? 1 : 0;
 
-                // Label : 1 si gagnant (1er), 0 sinon
-                const arrivee = row.ordre_arrivee || '';
-                const positions = arrivee.split('-').map(n => parseInt(n));
-                const isWinner = positions[0] === row.numero ? 1 : 0;
+                    dataset.push({
+                        features: featureVector,
+                        label: isWinner
+                    });
+                }
+            }
 
-                return {
-                    features: featureVector,
-                    label: isWinner
-                };
-            });
+            processRows().then(() => {
 
             // Split train/test (80/20)
             const shuffled = dataset.sort(() => Math.random() - 0.5);
@@ -83,10 +88,11 @@ export async function prepareDataset() {
             const trainData = shuffled.slice(0, splitIndex);
             const testData = shuffled.slice(splitIndex);
 
-            logger.success(`Dataset préparé : ${trainData.length} train, ${testData.length} test`);
+                logger.success(`Dataset préparé : ${trainData.length} train, ${testData.length} test`);
 
-            db.close();
-            resolve({ trainData, testData });
+                db.close();
+                resolve({ trainData, testData });
+            });
         });
     });
 }

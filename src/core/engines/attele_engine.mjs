@@ -1,46 +1,45 @@
-/**
- * ENGINE: ATTELÉ ("LA CHARETTE") - V32
- */
-import { getTopEntourage, getCracks, determinerChangementCategorie, calculerRegularite, checkShieldStatus } from './common.mjs';
+import { CONFIG } from '../../config/settings.mjs';
+import { determinerChangementCategorie, calculerRegularite, checkShieldStatus, getCracks } from '../../utils/engine_utils.mjs';
 
-const WEIGHTS = { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.10, CONFIGURATION: 0.30, APTITUDE: 0.10, EXPERT: 0.05 };
+const WEIGHTS = CONFIG.weights.ATTELE;
+const SETTINGS = CONFIG.engine_settings.attele;
 
 export async function processAttelé(participant, contexte, baseScores) {
     let expertise = 50;
     const hippodrome = (contexte.hippodrome || '').toUpperCase();
     const isVincennes = hippodrome.includes('VINCENNES');
 
-    // 1. FOCUS SHOEING (DÉFERRAGE) - CRITIQUE AU TROT
+    // 1. FOCUS VINCENNES (DÉFERRAGE)
     const ferrage = (participant.ferrage || '').toUpperCase();
-    if (ferrage.includes('D4')) expertise += 25;
-    else if (ferrage.includes('DA') || ferrage.includes('DP')) expertise += 15;
-    else if (isVincennes && (ferrage === 'FERRE' || !ferrage)) expertise -= 15;
+    if (isVincennes && (ferrage === 'FERRE' || !ferrage)) {
+        expertise -= SETTINGS.vincennes_ferrage_malus;
+    }
 
     // 2. RÉGULARITÉ & CATÉGORIE
     const cat = determinerChangementCategorie(participant, contexte.prixCourse || 20000);
-    if (cat === 'DESCENTE') expertise += 15;
+    if (cat === 'DESCENTE') expertise += SETTINGS.desc_bonus;
 
     const reg = calculerRegularite(participant);
-    if (reg > 50) expertise += 10;
+    if (reg > 50) expertise += SETTINGS.reg_bonus;
 
-    // 4. THE SHIELD (V33)
+    // 3. THE SHIELD (V33)
     const shieldMalus = checkShieldStatus(participant, contexte);
     expertise -= shieldMalus;
 
-    // 3. SYNERGIE CRACK DRIVER
+    // 4. SYNERGIE CRACK DRIVER
     const cracks = getCracks();
     const isCrack = cracks.some(c => (participant.driver || '').toUpperCase().includes(c));
-    if (isCrack && (contexte.prixCourse || 0) >= 40000) expertise += 10;
+    if (isCrack && (contexte.prixCourse || 0) >= SETTINGS.crack_price_threshold) expertise += 10;
 
     return {
-        engine: 'PRO-ATTELÉ V32',
+        engine: 'ARCHITECT-ATTELÉ v27.1',
         weights: WEIGHTS,
         expertiseBonus: expertise - 50,
         finalScore: Math.round(
             (baseScores.forme * WEIGHTS.FORME) +
             (baseScores.entourage * WEIGHTS.ENTOURAGE) +
             (baseScores.confiance * WEIGHTS.CONFIANCE) +
-            (baseScores.config * WEIGHTS.CONFIGURATION) + // config already integrated ferrage in base logic
+            (baseScores.config * WEIGHTS.CONFIGURATION) +
             (baseScores.aptitude * WEIGHTS.APTITUDE) +
             (expertise * WEIGHTS.EXPERT)
         )

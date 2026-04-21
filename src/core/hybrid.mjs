@@ -2,6 +2,7 @@ import * as tf from '@tensorflow/tfjs-node';
 import path from 'path';
 import fs from 'fs';
 import { calculerPrediction as calculerPredictionV14 } from './intelligence.mjs';
+import { CONFIG } from '../config/settings.mjs';
 
 const MODEL_PATH = './src/ml/model';
 let model = null;
@@ -45,12 +46,14 @@ function extractMLFeatures(participant, course) {
         f.regularite,
         f.confiance,
         f.isTrot,
-        f.isShielded
+        f.isShielded,
+        f.sentiment,
+        0.5 // V27.1: Neutralisé (0.5) pour casser la circularité avec l'expertise
     ];
 }
 
 /**
- * Prédiction ML pure
+ * Prédiction ML pure (V40+ avec 10 features)
  */
 async function predictML(participant, contexteCourse) {
     if (!model) return null;
@@ -90,8 +93,9 @@ export async function calculerPredictionHybride(participant, contexteCourse, act
         return { score: scoreV14, xai: f.xai };
     }
 
-    // Hybride : 70% ML + 30% v14
-    const scoreHybride = Math.round((scoreML * 0.7) + (scoreV14 * 0.3));
+    // Hybride v27.1 : Poids paramétrables (70% ML + 30% Heuristiques par défaut)
+    const { mlWeight, heuristicWeight } = CONFIG.architect.hybride;
+    const scoreHybride = Math.round((scoreML * mlWeight) + (scoreV14 * heuristicWeight));
 
     return {
         score: scoreHybride,

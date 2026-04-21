@@ -1,35 +1,31 @@
-/**
- * ENGINE: MONTÉ - V32
- */
-import { calculerRegularite, checkShieldStatus } from './common.mjs';
+import { CONFIG } from '../../config/settings.mjs';
+import { checkShieldStatus } from '../../utils/engine_utils.mjs';
 
-const WEIGHTS = { FORME: 0.20, ENTOURAGE: 0.25, CONFIANCE: 0.05, CONFIGURATION: 0.35, APTITUDE: 0.10, EXPERT: 0.05 };
+const WEIGHTS = CONFIG.weights.MONTE;
+const SETTINGS = CONFIG.engine_settings.monte;
 
 export async function processMonté(participant, contexte, baseScores) {
     let expertise = 50;
 
-    // 1. SYNERGIE JOCKEY (Poids porté / Expérience)
-    // Dans le monté, le jockey est encore plus vital qu'à l'attelé
-    const topJockeysMonte = ['MOTTIER', 'RAFFIN', 'ABRIVARD', 'LAGADEUC', 'ROCHARD'];
-    const isTopJockey = topJockeysMonte.some(j => (participant.driver || '').toUpperCase().includes(j));
+    // 1. SYNERGIE JOCKEY
+    const isTopJockey = SETTINGS.top_jockeys.some(j => (participant.driver || '').toUpperCase().includes(j));
     if (isTopJockey) expertise += 20;
 
-    // 2. APTITUDE DISCIPLINE (m) dans la musique
+    // 2. APTITUDE DISCIPLINE (m)
     const musique = participant.musique || '';
     const hasMonteWins = (musique.match(/1m|2m|3m/g) || []).length > 0;
-    if (hasMonteWins) expertise += 15;
+    if (hasMonteWins) expertise += SETTINGS.win_bonus;
 
     // 3. AGE & RÉSISTANCE
-    // Les jeunes chevaux (4-6 ans) sont souvent plus véloces au monté
     const age = parseInt(participant.age);
-    if (age >= 4 && age <= 6) expertise += 10;
+    if (age >= 4 && age <= 6) expertise += SETTINGS.age_bonus;
 
     // 4. THE SHIELD (V33)
     const shieldMalus = checkShieldStatus(participant, contexte);
     expertise -= shieldMalus;
 
     return {
-        engine: 'PRO-MONTÉ V32',
+        engine: 'ARCHITECT-MONTÉ v27.1',
         weights: WEIGHTS,
         expertiseBonus: expertise - 50,
         finalScore: Math.round(

@@ -1,12 +1,24 @@
 import { format } from 'date-fns';
 
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
+];
+
+function getRandomUA() {
+    return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
 const DEFAULT_HEADERS = {
     'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
-    'Referer': 'https://www.pmu.fr/turf/',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'Referer': 'https://www.pmu.fr/turf/'
 };
 
 /**
@@ -24,24 +36,50 @@ export async function closeBrowser() {
 }
 
 /**
- * Exécute une requête API directe
+ * Exécute une requête API directe avec résilience
  */
-export async function fetchApi(url, config = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: DEFAULT_HEADERS,
-            ...config
-        });
+export async function fetchApi(url, config = {}, retries = 3) {
+    const headers = {
+        ...DEFAULT_HEADERS,
+        'User-Agent': getRandomUA(),
+        ...config.headers
+    };
 
-        if (!response.ok) {
-            if (response.status === 404) return null;
-            throw new Error(`HTTP ${response.status}`);
+    for (let i = 0; i < retries; i++) {
+        try {
+            // Délai aléatoire entre 500ms et 1500ms pour imiter un humain
+            await sleep(500 + Math.random() * 1000);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+            const response = await fetch(url, {
+                ...config,
+                headers,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.status === 429 || response.status === 403) {
+                const waitTime = (i + 1) * 2000;
+                console.warn(`[API FETCH RATE-LIMIT] Status ${response.status}. Retry ${i+1}/${retries} after ${waitTime}ms...`);
+                await sleep(waitTime);
+                continue;
+            }
+
+            if (!response.ok) {
+                if (response.status === 404 || response.status === 400) return null;
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            if (i === retries - 1) {
+                console.error(`[API FETCH ERROR] Final try failed for ${url}:`, error.message);
+                return null;
+            }
+            await sleep(1000 * (i + 1));
         }
-
-        return await response.json();
-    } catch (error) {
-        console.error(`[API FETCH ERROR] ${url}:`, error.message);
-        return null;
     }
 }
 
@@ -88,16 +126,18 @@ export async function fetchDay(day, config = {}) {
     // Exécution parallèle par groupe de 10 pour éviter le rate-limit
     for (let i = 0; i < allCoursesToFetch.length; i += 10) {
         const chunk = allCoursesToFetch.slice(i, i + 10);
+        console.log(`[API FETCH] Syncing chunk ${Math.floor(i/10)+1}...`);
         await Promise.all(chunk.map(async ({ reunion, course }) => {
             const details = await fetchCourseParticipants(formattedDate, reunion.numOfficiel, course.numOrdre);
             if (details && details.participants) {
                 course.participants = details.participants;
             }
-            if (course.statut === 'ARRIVEE_DEFINITIVE_COMPLETE' || course.statut === 'ARRIVEE') {
+            if (course.statut === 'ARRIVEE_DEFINITIVE_COMPLETE' || course.statut === 'ARRIVE_DEFINITIVE') {
                 const rapports = await fetchCourseRapports(formattedDate, reunion.numOfficiel, course.numOrdre);
                 if (rapports) course.rapportsDefinitifs = rapports;
             }
         }));
+        console.log(`[API FETCH] ${Math.min(i + 10, allCoursesToFetch.length)}/${allCoursesToFetch.length} courses traitées.`);
     }
 
     return programmeData;

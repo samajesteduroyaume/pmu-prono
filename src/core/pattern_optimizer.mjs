@@ -1,14 +1,16 @@
 /**
- * OPTIMISATION DE PATTERNS AVANCÉE - V29
+ * OPTIMISATION DE PATTERNS AVANCÉE - ARCHITECT v27.1
  * 
  * Analyse croisée multi-critères pour identifier les combinaisons gagnantes
  */
 
 import logger from '../utils/logger.mjs';
+import CONFIG from '../config/settings.mjs';
+
+const PAT = CONFIG.engine_settings.patterns;
 
 /**
  * Analyse croisée de patterns multi-critères
- * Identifie les combinaisons de facteurs qui maximisent le ROI
  */
 export async function analysePatternsCroises(historique) {
     if (!historique || historique.length === 0) {
@@ -95,7 +97,7 @@ export async function analysePatternsCroises(historique) {
     // Calculer les métriques finales
     const results = [];
     patterns.forEach(p => {
-        if (p.count >= 3) { // Minimum 3 occurrences pour être significatif
+        if (p.count >= PAT.min_significance_count) { // Minimum significatif
             p.winRate = (p.wins / p.count) * 100;
             p.roi = p.totalMise > 0 ? ((p.totalGain / p.totalMise) * 100) : 0;
             p.avgOdds = p.wins > 0 ? (p.oddsSum / p.wins) : 0;
@@ -134,9 +136,9 @@ export async function analysePatternsCroises(historique) {
  */
 export function identifierGoldenPatterns(patterns) {
     return patterns.filter(p =>
-        p.roi > 20 &&
-        p.winRate > 40 &&
-        p.count >= 5
+        p.roi > PAT.golden_roi_threshold &&
+        p.winRate > PAT.golden_winrate_threshold &&
+        p.count >= PAT.golden_count_threshold
     );
 }
 
@@ -145,8 +147,8 @@ export function identifierGoldenPatterns(patterns) {
  */
 export function identifierPatternsAEviter(patterns) {
     return patterns.filter(p =>
-        p.roi < -10 &&
-        p.count >= 5
+        p.roi < PAT.danger_roi_threshold &&
+        p.count >= PAT.golden_count_threshold
     );
 }
 
@@ -212,8 +214,8 @@ export function detecterSmartMoney(coursesRecentes) {
 
             const variation = ((coteActuelle - coteInitiale) / coteInitiale) * 100;
 
-            // Baisse significative de cote (> 20%) = smart money
-            if (variation < -20) {
+            // Baisse significative de cote = smart money
+            if (variation < PAT.smart_money_threshold) {
                 alerts.push({
                     course: `${course.reunionNum}C${course.courseNum}`,
                     cheval: participant.nom,
@@ -225,8 +227,8 @@ export function detecterSmartMoney(coursesRecentes) {
                 });
             }
 
-            // Hausse significative (> 30%) = délaissement
-            if (variation > 30) {
+            // Hausse significative = délaissement
+            if (variation > PAT.abandonment_threshold) {
                 alerts.push({
                     course: `${course.reunionNum}C${course.courseNum}`,
                     cheval: participant.nom,

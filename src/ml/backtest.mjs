@@ -1,12 +1,16 @@
 import { initDB, getAllCourses, getCourseParticipants } from '../core/db.mjs';
 import { calculerPredictionHybride, loadMLModel } from '../core/hybrid.mjs';
+import CONFIG from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
+import path from 'path';
+
+const FINANCE = CONFIG.engine_settings.finance;
 
 /**
- * MOTEUR DE BACKTESTING ELITE v1.0
+ * MOTEUR DE BACKTESTING - ARCHITECT v27.1
  */
 export async function runBacktest(startDate, endDate) {
-    logger.header(`LANCEMENT BACKTEST : ${startDate} au ${endDate}`);
+    logger.header(`LANCEMENT DU BACKTEST v27.1 : ${startDate} au ${endDate}`);
 
     await initDB();
     await loadMLModel();
@@ -113,7 +117,7 @@ export async function compareKellyStrategies(startDate, endDate, initialBankroll
     await loadMLModel();
 
     const { getTendancesCumulees, getHistoriqueParis } = await import('../core/db.mjs');
-    const { calculateKellyMise, calculateKellyAdaptatif } = await import('../core/kelly.mjs');
+    const { calculateKellyMise, calculateKellyAdaptatif, calibrateProbability } = await import('../core/kelly.mjs');
 
     const courses = await getAllCourses();
     const filtered = courses.filter(c => {
@@ -125,7 +129,7 @@ export async function compareKellyStrategies(startDate, endDate, initialBankroll
 
     // Initialiser 4 stratégies
     const strategies = {
-        'Kelly 25%': { bankroll: initialBankroll, fraction: 0.25, history: [], wins: 0, losses: 0 },
+        [`Kelly ${FINANCE.kelly_fraction * 100}%`]: { bankroll: initialBankroll, fraction: FINANCE.kelly_fraction, history: [], wins: 0, losses: 0 },
         'Kelly 50%': { bankroll: initialBankroll, fraction: 0.50, history: [], wins: 0, losses: 0 },
         'Kelly 75%': { bankroll: initialBankroll, fraction: 0.75, history: [], wins: 0, losses: 0 },
         'Kelly Adaptatif': { bankroll: initialBankroll, fraction: null, history: [], wins: 0, losses: 0 }
@@ -175,20 +179,21 @@ export async function compareKellyStrategies(startDate, endDate, initialBankroll
                     const kellyResult = await calculateKellyAdaptatif(rapport, top1.score, strat.bankroll, tendances);
                     mise = kellyResult.mise || 0;
                 } catch (e) {
+                    logger.warn(`[Backtest] Kelly Adaptatif erreur: ${e.message} - Fallback sur Kelly Classique`);
                     // Fallback sur Kelly 50% si erreur
                     const kellyResult = calculateKellyMise(rapport, top1.score, strat.bankroll);
                     mise = kellyResult.mise || 0;
                 }
             } else {
-                // Kelly classique avec fraction spécifique
+                // Kelly classique avec fraction spécifique (V40 Calibré)
                 const b = rapport - 1;
-                const p = top1.score / 100;
+                const p = calibrateProbability(top1.score);
                 const q = 1 - p;
                 let f = ((b * p) - q) / b;
 
                 if (f > 0) {
                     f = f * strat.fraction;
-                    const maxBet = strat.bankroll * 0.05; // Max 5%
+                    const maxBet = strat.bankroll * FINANCE.max_bet_percent;
                     mise = Math.min(strat.bankroll * f, maxBet);
                     mise = Math.floor(mise);
                 }
@@ -303,66 +308,105 @@ export async function compareKellyStrategies(startDate, endDate, initialBankroll
     };
 }
 
+import { Worker } from 'worker_threads';
+import os from 'os';
+
 /**
- * V29: SIMULATION MONTE CARLO
- * Simule N fois le backtest avec variations aléatoires pour estimer risque
+ * V30: SIMULATION MONTE CARLO PARALLÉLISÉE
+ * Utilise des Worker Threads pour diviser la charge de calcul
  */
-export async function runMonteCarloSimulation(startDate, endDate, simulations = 1000, initialBankroll = 1000) {
-    logger.header(`SIMULATION MONTE CARLO : ${simulations} simulations`);
-
+export async function runMonteCarloSimulation(startDate, endDate, simulations = 100, initialBankroll = 1000) {
+    logger.header(`SIMULATION MONTE CARLO PARALLÉLISÉE : ${simulations} simulations`);
+    
     const results = [];
+    const maxWorkers = Math.max(1, os.cpus().length - 1); // Laisser un cœur libre
+    logger.info(`Utilisation de ${maxWorkers} Workers maximum`);
 
-    for (let i = 0; i < simulations; i++) {
-        // Pour chaque simulation, on pourrait varier:
-        // - L'ordre des courses (shuffle)
-        // - Les cotes (ajouter du bruit)
-        // - Les résultats (probabilités)
+    let activeWorkers = 0;
+    let completedSims = 0;
+    
+    return new Promise((resolve) => {
+        const runNext = () => {
+            if (completedSims >= simulations) {
+                if (activeWorkers === 0) finalize();
+                return;
+            }
 
-        // Version simplifiée: on lance juste le backtest normal
-        const result = await runBacktest(startDate, endDate);
-        results.push(parseFloat(result.summary.profit));
+            while (activeWorkers < maxWorkers && (completedSims + activeWorkers) < simulations) {
+                const simIndex = completedSims + activeWorkers;
+                const worker = new Worker(path.join(path.dirname(fileURLToPath(import.meta.url)), 'monte_carlo_worker.mjs'), {
+                    workerData: { startDate, endDate, simulationIndex: simIndex }
+                });
 
-        if ((i + 1) % 100 === 0) {
-            logger.info(`Simulation ${i + 1}/${simulations} terminée`);
-        }
-    }
+                activeWorkers++;
 
-    // Analyser les résultats
-    results.sort((a, b) => a - b);
+                worker.on('message', (msg) => {
+                    if (msg.success) {
+                        results.push(msg.profit);
+                    }
+                    if ((results.length) % 10 === 0) {
+                        logger.info(`Progrès : ${results.length}/${simulations} simulations terminées`);
+                    }
+                });
 
-    const mean = results.reduce((a, b) => a + b, 0) / results.length;
-    const median = results[Math.floor(results.length / 2)];
-    const p5 = results[Math.floor(results.length * 0.05)];
-    const p95 = results[Math.floor(results.length * 0.95)];
-    const min = results[0];
-    const max = results[results.length - 1];
+                worker.on('error', (err) => {
+                    logger.error(`Worker error: ${err.message}`);
+                });
 
-    const ruinCount = results.filter(r => r <= -initialBankroll).length;
-    const ruinProbability = (ruinCount / simulations) * 100;
+                worker.on('exit', () => {
+                    activeWorkers--;
+                    completedSims++;
+                    runNext();
+                });
+            }
+        };
 
-    logger.success(`MONTE CARLO TERMINÉ`);
-    logger.info(`Profit Moyen: ${mean.toFixed(2)}€`);
-    logger.info(`Profit Médian: ${median.toFixed(2)}€`);
-    logger.info(`Intervalle 90% (P5-P95): ${p5.toFixed(2)}€ à ${p95.toFixed(2)}€`);
-    logger.info(`Min/Max: ${min.toFixed(2)}€ / ${max.toFixed(2)}€`);
-    logger.info(`Probabilité de Ruine: ${ruinProbability.toFixed(2)}%`);
+        const finalize = () => {
+            results.sort((a, b) => a - b);
 
-    return {
-        simulations,
-        mean,
-        median,
-        p5,
-        p95,
-        min,
-        max,
-        ruinProbability,
-        distribution: results
-    };
+            const mean = results.reduce((a, b) => a + b, 0) / results.length;
+            const median = results[Math.floor(results.length / 2)];
+            const p5 = results[Math.floor(results.length * 0.05)] || results[0];
+            const p95 = results[Math.floor(results.length * 0.95)] || results[results.length - 1];
+            const min = results[0];
+            const max = results[results.length - 1];
+
+            const ruinCount = results.filter(r => r <= -initialBankroll).length;
+            const ruinProbability = (ruinCount / simulations) * 100;
+
+            logger.success(`MONTE CARLO TERMINÉ`);
+            logger.info(`Profit Moyen: ${mean.toFixed(2)}€`);
+            logger.info(`Profit Médian: ${median.toFixed(2)}€`);
+            logger.info(`Intervalle 90% (P5-P95): ${p5.toFixed(2)}€ à ${p95.toFixed(2)}€`);
+            logger.info(`Min/Max: ${min.toFixed(2)}€ / ${max.toFixed(2)}€`);
+            logger.info(`Probabilité de Ruine: ${ruinProbability.toFixed(2)}%`);
+
+            resolve({
+                simulations,
+                mean,
+                median,
+                p5,
+                p95,
+                min,
+                max,
+                ruinProbability,
+                distribution: results
+            });
+        };
+
+        runNext();
+    });
 }
 
 // Auto-run if executed directly
-if (process.argv[1].includes('backtest.mjs')) {
+import { fileURLToPath } from 'url';
+const isDirectRun = process.argv[1] && (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]));
+
+if (isDirectRun) {
     const start = process.argv[2] || '2026-01-01';
     const end = process.argv[3] || '2026-12-31';
-    runBacktest(start, end).then(() => process.exit(0));
+    runBacktest(start, end).then(() => process.exit(0)).catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
 }

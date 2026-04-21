@@ -1,6 +1,6 @@
 import { calculerPrediction } from './src/core/intelligence.mjs';
 
-console.log("--- TEST PREDICTION V27 (FULL OPTIONS) ---");
+console.log("--- TEST PREDICTION V30 ELITE ---");
 
 // Mock Context
 const mockContext = {
@@ -24,42 +24,36 @@ const perfectHorse = {
     nb_courses: 30,
     nb_victoires: 25,
     nb_places: 2,
-    // Simulation Driver Form
-    driverStats: { victoires: 10, places: 5, total_courses: 30 } // > 30% win rate = HOT
+    driverStats: { victoires: 10, places: 5, total_courses: 30 }
 };
 
-console.log(`\nTEST 1: ${perfectHorse.nom} (Favori + Forme + D4 + Vincennes)`);
-const score1 = calculerPrediction(perfectHorse, mockContext);
+console.log(`\nTEST 1: ${perfectHorse.nom} (Elite Driver/Trainer + Forme + D4 + Vincennes)`);
+const score1 = await calculerPrediction(perfectHorse, mockContext);
 console.log(`>>> SCORE: ${score1} / 100`);
-if (perfectHorse.is_track_specialist) console.log("✅ BONUS: Track Specialist");
-if (perfectHorse.is_money_time) console.log("✅ BONUS: Money Time");
 
-// 2. CHEVAL "OUTSIDER" (Money Time)
+// 2. CHEVAL "OUTSIDER" (Monte de catégorie)
 const outsiderHorse = {
     nom: 'GO ON BOY',
     musique: '4a 2a 5a',
     age: 8,
-    gains: 800000,
+    gains: 300000, // Faible gains pour simuler montée de catégorie
     ferrage: 'D4',
     driver: 'R. DERIEUX',
     entraineur: 'R. DERIEUX',
-    cote_ref: 4.8, // < 5 donc éligible Money Time
+    cote_ref: 12.0,
     nb_courses: 50,
     nb_victoires: 10,
     nb_places: 20,
     driverStats: { victoires: 2, places: 5, total_courses: 20 }
 };
 
-console.log(`\nTEST 2: ${outsiderHorse.nom} (Outsider + Money Time Potential)`);
-const score2 = calculerPrediction(outsiderHorse, mockContext);
+console.log(`\nTEST 2: ${outsiderHorse.nom} (Outsider + Montée de Catégorie)`);
+const score2 = await calculerPrediction(outsiderHorse, mockContext);
 console.log(`>>> SCORE: ${score2} / 100`);
-if (outsiderHorse.is_money_time) console.log("💰 ALERT: Money Time Détecté !");
 
 if (outsiderHorse.kelly_suggestion) {
     console.log("------------------------------------------------");
     console.log(`💸 STRATÉGIE FINANCIÈRE (Kelly) :`);
     console.log(`   Conseil : ${outsiderHorse.kelly_suggestion.advice}`);
     console.log(`   Mise    : ${outsiderHorse.kelly_suggestion.mise}€ (sur bankroll 1000€)`);
-    console.log(`   Raison  : ${outsiderHorse.kelly_suggestion.explanation || 'Value Bet détecté'}`);
 }
-

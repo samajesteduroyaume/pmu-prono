@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "scripts": {
     "start": "node src/server/app.mjs",
     "sync": "node src/pipelines/sync.mjs",
@@ -9,8 +10,11 @@
     "@tensorflow/tfjs-node": "^4.22.0",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "node-cache": "^5.1.2",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "zod": "^4.3.6"
   }
 }

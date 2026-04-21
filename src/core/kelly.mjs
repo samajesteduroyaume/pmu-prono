@@ -8,16 +8,36 @@
  * q : Probabilité de défaite (1 - p)
  */
 
-const BANKROLL_DEFAULT = 1000; // Bankroll fictive si non connectée
-const KELLY_FRACTION = 0.5; // "Half-Kelly" pour réduire la variance (Sécurité)
-const MAX_BET_PERCENT = 0.05; // Plafond de mise (5% max par course)
+import { getBankroll } from './db.mjs';
+import CONFIG from '../config/settings.mjs';
+
+const FINANCE = CONFIG.engine_settings.finance;
+
+const BANKROLL_DEFAULT = FINANCE.bankroll_default;
+const KELLY_FRACTION = FINANCE.kelly_fraction;
+const MAX_BET_PERCENT = FINANCE.max_bet_percent;
+const MIN_EDGE_THRESHOLD = FINANCE.min_edge_threshold;
+
+/**
+ * CALIBRATION DES PROBABILITÉS IA (V40 Final)
+ * Aligne le score Architect (0-100) sur les fréquences de gain réelles observées en backtest.
+ */
+export function calibrateProbability(score) {
+    if (score >= 95) return 0.45; // Plafond réaliste pour les super-favoris
+    if (score >= 90) return 0.38;
+    if (score >= 80) return 0.28;
+    if (score >= 70) return 0.18;
+    if (score >= 60) return 0.12;
+    if (score >= 50) return 0.08;
+    return (score / 100) * 0.1; // Chute drastique pour les faibles scores
+}
 
 export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKROLL_DEFAULT) {
     if (!cote || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
 
-    // 1. Calcul des variables
+    // 1. Calcul des variables avec Calibration
     const b = cote - 1; // Cote nette
-    const p = winProbPercent / 100; // Proba victoire (0.0 à 1.0)
+    const p = calibrateProbability(winProbPercent); // Proba calibrée (v40)
     const q = 1 - p; // Proba défaite
 
     // 2. Formule de Kelly
@@ -60,16 +80,28 @@ export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKR
  * @param {Array} currentPatterns - Liste des patterns actifs pour le contexte actuel
  * @returns {Object} Suggestion de mise adaptée
  */
-export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankroll = BANKROLL_DEFAULT, tendances = null, currentPatterns = []) {
+export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankroll = 'shadow', tendances = null, currentPatterns = []) {
+    // Résoudre la Bankroll V42 si une clé de portfolio est fournie (au lieu d'un nombre)
+    let bankrollValue = BANKROLL_DEFAULT;
+    if (typeof currentBankroll === 'string') {
+        try {
+            bankrollValue = await getBankroll(currentBankroll);
+        } catch (e) {
+            bankrollValue = BANKROLL_DEFAULT;
+        }
+    } else if (typeof currentBankroll === 'number') {
+        bankrollValue = currentBankroll;
+    }
+
     // Si pas de tendances, utiliser Kelly classique
     if (!tendances) {
-        return calculateKellyMise(cote, winProbPercent, currentBankroll);
+        return calculateKellyMise(cote, winProbPercent, bankrollValue);
     }
 
     if (!cote || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
 
     const b = cote - 1;
-    const p = winProbPercent / 100;
+    const p = calibrateProbability(winProbPercent);
     const q = 1 - p;
 
     let f = ((b * p) - q) / b;
@@ -132,22 +164,31 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
         });
     }
 
+    // 7. FILTRAGE PAR EDGE (V40)
+    const marketProb = 1 / cote;
+    const edge = p - marketProb;
+    
+    if (edge < MIN_EDGE_THRESHOLD) {
+        fractionAdaptee *= 0.5; // Réduire de moitié si l'edge est trop fin
+        adjustments.push(`Edge faible (${(edge * 100).toFixed(1)}%) - Sécurité (-50%)`);
+    }
+
     // Appliquer la fraction adaptée
-    let fractionReelle = f * fractionAdaptee;
+    let fractionReelleFinal = f * fractionAdaptee;
 
     // Plafond de sécurité
-    if (fractionReelle > MAX_BET_PERCENT) fractionReelle = MAX_BET_PERCENT;
+    if (fractionReelleFinal > MAX_BET_PERCENT) fractionReelleFinal = MAX_BET_PERCENT;
 
     // Plancher minimum (ne pas descendre en dessous de 0.5%)
-    if (fractionReelle < 0.005) fractionReelle = 0.005;
+    if (fractionReelleFinal < 0.005) fractionReelleFinal = 0.005;
 
-    const miseConseillee = Math.floor(currentBankroll * fractionReelle);
+    const miseConseillee = Math.floor(bankrollValue * fractionReelleFinal);
 
     return {
         mise: miseConseillee,
-        percentage: (fractionReelle * 100).toFixed(2),
+        percentage: (fractionReelleFinal * 100).toFixed(2),
         advice: 'BET ADAPTATIF',
-        bankroll: currentBankroll,
+        bankroll: bankrollValue,
         espérance: ((p * (cote - 1)) - q).toFixed(2),
         adjustments: adjustments,
         kellyFraction: fractionAdaptee.toFixed(2)

@@ -1,4 +1,5 @@
 import logger from '../utils/logger.mjs';
+import { getPlageHoraire } from './pattern_optimizer.mjs';
 
 /**
  * MODULE DE TENDANCES CUMULÉES AVANCÉES v1.0
@@ -292,7 +293,7 @@ export function detecterPatterns(courses) {
     courses.forEach(c => {
         if (!c.heure) return;
         const heure = parseInt(c.heure.split(':')[0]);
-        const plage = `${heure}h-${heure + 1}h`;
+        const plage = getPlageHoraire(heure);
         if (!parHeure[plage]) {
             parHeure[plage] = { total: 0, wins: 0 };
         }

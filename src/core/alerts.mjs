@@ -5,6 +5,10 @@
  */
 
 import logger from '../utils/logger.mjs';
+import { sendTelegramNotification } from '../utils/webhook.mjs';
+import CONFIG from '../config/settings.mjs';
+
+const MON = CONFIG.engine_settings.monitoring;
 
 // Types d'alertes
 export const ALERT_TYPES = {
@@ -53,6 +57,13 @@ function createAlert(type, title, message, priority = ALERT_PRIORITY.MEDIUM, dat
 
     logger.info(`[ALERTE ${type}] ${title}: ${message}`);
 
+    // Envoi Webhook Telegram pour les alertes importantes (V42)
+    if (priority >= ALERT_PRIORITY.MEDIUM) {
+        sendTelegramNotification(title, message, priority).catch(err => {
+            logger.error(`Erreur asynchrone Webhook: ${err.message}`);
+        });
+    }
+
     return alert;
 }
 
@@ -66,7 +77,7 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
     const newAlerts = [];
 
     // 1. ALERTE DRAWDOWN CRITIQUE
-    if (tendances.drawdown.currentPercent > 0.20) {
+    if (tendances.drawdown.currentPercent > MON.alert_drawdown_critical) {
         newAlerts.push(createAlert(
             ALERT_TYPES.CRITICAL,
             '🚨 DRAWDOWN CRITIQUE',
@@ -78,7 +89,7 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
                 recommendation: 'Arrêter les paris ou réduire à 10% des mises normales'
             }
         ));
-    } else if (tendances.drawdown.currentPercent > 0.15) {
+    } else if (tendances.drawdown.currentPercent > MON.alert_drawdown_warning) {
         newAlerts.push(createAlert(
             ALERT_TYPES.WARNING,
             '⚠️ Drawdown Élevé',
@@ -89,7 +100,7 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
     }
 
     // 2. ALERTE SÉQUENCE DE DÉFAITES
-    if (tendances.sequence.type === 'LOSE' && tendances.sequence.count >= 5) {
+    if (tendances.sequence.type === 'LOSE' && tendances.sequence.count >= MON.alert_lose_streak_critical) {
         newAlerts.push(createAlert(
             ALERT_TYPES.DANGER,
             '❄️ SÉQUENCE DANGEREUSE',
@@ -112,7 +123,7 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
     }
 
     // 3. ALERTE OPPORTUNITÉ
-    if (tendances.momentum >= 80 && tendances.tendance.tendance === 'HAUSSIERE') {
+    if (tendances.momentum >= MON.alert_momentum_ultra && tendances.tendance.tendance === 'HAUSSIERE') {
         newAlerts.push(createAlert(
             ALERT_TYPES.OPPORTUNITY,
             '🔥 OPPORTUNITÉ DÉTECTÉE',
@@ -159,7 +170,7 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
     }
 
     // 5. ALERTE SHARPE RATIO FAIBLE
-    if (tendances.sharpe < -0.5) {
+    if (tendances.sharpe < MON.alert_sharpe_min) {
         newAlerts.push(createAlert(
             ALERT_TYPES.WARNING,
             '📉 Ratio Sharpe Négatif',

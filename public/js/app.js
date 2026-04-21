@@ -7,7 +7,7 @@ let currentView = 'dashboard';
 // Init
 document.addEventListener('DOMContentLoaded', async () => {
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('current-date').textContent = 'PMU PRONO V22 | ' + new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+    document.getElementById('current-date').textContent = 'ARCHITECT v27.1 | ' + new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
 
     const filterDateInput = document.getElementById('filter-date');
     if (filterDateInput) filterDateInput.value = today;

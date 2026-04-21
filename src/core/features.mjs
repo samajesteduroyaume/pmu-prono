@@ -1,48 +1,54 @@
-import { checkShieldStatus } from './engines/common.mjs';
+import { checkShieldStatus, calculerRegularite } from '../utils/engine_utils.mjs';
+import { 
+    analyserFormeProfonde, 
+    analyserClasse, 
+    analyserConfig
+} from './intelligence.mjs';
+import { CONFIG } from '../config/settings.mjs';
 
 /**
- * MOTEUR DE FEATURES IA - UNIFIÉ v15.1
+ * MOTEUR DE FEATURES IA - UNIFIÉ v30
  */
 
 export function extractBaseFeatures(participant, course) {
     const discipline = (course.discipline || 'PLAT').toUpperCase();
     const isTrot = discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE');
 
-    // 1. Forme Profonde (Logic v14)
-    const scoreForme = calculateForme(participant.musique, discipline);
+    // 1. Forme Profonde (Logic v30)
+    const scoreForme = analyserFormeProfonde(participant.musique, discipline);
     const labelForme = scoreForme >= 80 ? "Forme Exceptionnelle" : (scoreForme >= 60 ? "Bonne Forme" : (scoreForme >= 40 ? "Forme Stable" : "Forme Douteuse"));
 
-    // 2. Classe Calibrée
-    const age = parseInt(participant.age) || 5;
-    const gains = parseFloat(participant.gains) || 0;
-    const scoreClasse = (age < 2) ? 50 : Math.min(Math.round((gains / (age * 12000)) * 45), 100) || 50;
+    // 2. Classe Calibrée (Logic v30)
+    const scoreClasse = analyserClasse(participant);
     const labelClasse = scoreClasse >= 70 ? "Classe Supérieure" : (scoreClasse >= 40 ? "Catégorie Adaptée" : "Classe Limite");
 
-    // 3. Configuration (Ferrage/Oeilleres)
-    let scoreConfig = 50;
+    // 3. Configuration (Logic v30)
+    const scoreConfig = analyserConfig(participant, discipline);
     let labelConfig = "Configuration Standard";
     if (isTrot) {
-        const ferrage = (participant.ferrage || '').toUpperCase();
-        if (ferrage.includes('D4')) { scoreConfig = 95; labelConfig = "Déferré des 4 (Optimal)"; }
-        else if (ferrage.includes('DA') || ferrage.includes('DP')) { scoreConfig = 75; labelConfig = "Déferré Partiel"; }
-        else if (ferrage.includes('PL')) { scoreConfig = 60; labelConfig = "Plaqué"; }
+        if (scoreConfig >= 90) labelConfig = "Déferré des 4 (Optimal)";
+        else if (scoreConfig >= 75) labelConfig = "Déferré Partiel";
+        else if (scoreConfig >= 60) labelConfig = "Plaqué";
     } else {
         if (participant.oeilleres && participant.oeilleres !== 'SANS_OEILLERES') {
-            scoreConfig = 70;
             labelConfig = "Équipé d'Œillères";
         }
     }
 
-    // 4. Entourage
-    const topDrivers = ['BAZIRE', 'NIVARD', 'RAFFIN', 'ABRIVARD', 'ROCHARD', 'BARZALONA', 'SOUMILLON', 'GUYON', 'PASQUIER', 'DEMURO'];
+    // 4. Entourage (Experts v30)
+    const topDrivers = CONFIG.experts.drivers;
+    const topTrainers = CONFIG.experts.trainers;
     const dr = (participant.driver || '').toUpperCase();
+    const tr = (participant.entraineur || '').toUpperCase();
+    
     const isTopDriver = topDrivers.some(d => dr.includes(d));
-    const scoreEntourage = isTopDriver ? 90 : 50;
-    const labelEntourage = isTopDriver ? "Driver/Jockey Elite" : "Entourage Standard";
+    const isTopTrainer = topTrainers.some(t => tr.includes(t));
+    
+    const scoreEntourage = (isTopDriver && isTopTrainer) ? 95 : (isTopDriver || isTopTrainer ? 80 : 50);
+    const labelEntourage = (isTopDriver && isTopTrainer) ? "Entourage Elite" : (isTopDriver || isTopTrainer ? "Expert Détecté" : "Entourage Standard");
 
-    // 5. Régularité & Expert
-    const nbCourses = participant.nb_courses || 1;
-    const scoreReg = Math.round((((participant.nb_victoires || 0) + (participant.nb_places || 0)) / nbCourses) * 100);
+    // 5. Régularité
+    const scoreReg = calculerRegularite(participant);
     const labelReg = scoreReg >= 50 ? "Trés Régulier" : (scoreReg >= 30 ? "Régulier" : "Irrégulier");
 
     // 6. Confiance Marché (Cote)
@@ -57,9 +63,45 @@ export function extractBaseFeatures(participant, course) {
     }
     const labelConfiance = scoreConfiance >= 80 ? "Favori Solide" : (scoreConfiance >= 50 ? "Appui Marché" : "Outsider");
 
-    // 7. V33 THE SHIELD
     const shieldMalus = checkShieldStatus(participant, course);
     const isShielded = shieldMalus >= 30; // Shutdown threshold
+
+    // 8. Sentiment (v40)
+    const avis = (participant.avis || '').toUpperCase();
+    const sentimentScore = avis === 'POSITIF' ? 1.0 : (avis === 'NEGATIF' ? 0.0 : 0.5);
+
+    // V30: Calcul d'influence XAI (basé sur les poids de la discipline)
+    const weights = CONFIG.weights[discipline] || CONFIG.weights.DEFAULT;
+    const rawScores = {
+        forme: scoreForme,
+        entourage: scoreEntourage,
+        confiance: scoreConfiance,
+        config: scoreConfig,
+        aptitude: 50, // Par défaut
+        expertise: 50
+    };
+
+    const weightedScores = {
+        forme: rawScores.forme * weights.FORME,
+        entourage: rawScores.entourage * weights.ENTOURAGE,
+        confiance: rawScores.confiance * weights.CONFIANCE,
+        config: rawScores.config * weights.CONFIGURATION,
+        aptitude: rawScores.aptitude * weights.APTITUDE,
+        expertise: rawScores.expertise * weights.EXPERT
+    };
+
+    const totalWeighted = Object.values(weightedScores).reduce((a, b) => a + b, 0);
+    const influences = {};
+    Object.keys(weightedScores).forEach(k => {
+        influences[k] = totalWeighted > 0 ? Math.round((weightedScores[k] / totalWeighted) * 100) : 0;
+    });
+
+    // Déterminer l'insight principal
+    let topInsight = "Profil équilibré";
+    if (scoreForme >= 90) topInsight = "Forme étincelante, pret pour la victoire";
+    else if (scoreEntourage >= 90) topInsight = "Duo Driver/Entraîneur redoutable";
+    else if (scoreConfig >= 90) topInsight = "Configuration de ferrage optimale";
+    else if (isShielded) topInsight = "Attention : Signaux négatifs détectés (Shield)";
 
     return {
         forme: scoreForme / 100,
@@ -69,52 +111,21 @@ export function extractBaseFeatures(participant, course) {
         regularite: scoreReg / 100,
         confiance: scoreConfiance / 100,
         isTrot: isTrot ? 1 : 0,
-        isShielded: isShielded ? 1 : 0,
-        // Labels XAI
+        isShielded: Math.min(shieldMalus, 100) / 100,
+        sentiment: sentimentScore,
+        // Labels XAI Enrichis v30
         xai: {
-            forme: labelForme,
-            classe: labelClasse,
-            config: labelConfig,
-            entourage: labelEntourage,
-            regularite: labelReg,
-            confiance: labelConfiance,
-            isShielded: isShielded
+            labels: {
+                forme: labelForme,
+                classe: labelClasse,
+                config: labelConfig,
+                entourage: labelEntourage,
+                regularite: labelReg,
+                confiance: labelConfiance
+            },
+            isShielded: isShielded,
+            influences,
+            top_insight: topInsight
         }
     };
-}
-
-function calculateForme(musique, discipline) {
-    if (!musique) return 20;
-    const cleanMusic = musique.replace(/\(\d+\)/g, '');
-    const perfs = cleanMusic.match(/([0-9DA]|Dist)[a-zA-Z]/g) || [];
-    if (perfs.length === 0) return 30;
-
-    let score = 0;
-    let totalWeight = 0;
-    const depth = Math.min(perfs.length, 6);
-    const isTrot = discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE');
-
-    for (let i = 0; i < depth; i++) {
-        const perf = perfs[i];
-        const val = perf.slice(0, -1).toUpperCase();
-        let points = 20;
-
-        if (!isNaN(val)) {
-            const place = parseInt(val);
-            if (place === 1) points = 100;
-            else if (place === 2) points = 80;
-            else if (place === 3) points = 65;
-            else if (place === 4) points = 50;
-            else if (place === 5) points = 40;
-            else points = 10;
-        } else {
-            if (val === 'D' || val === 'DIST') points = isTrot ? 0 : 10;
-            else points = 5;
-        }
-
-        const weight = Math.pow(0.85, i);
-        score += points * weight;
-        totalWeight += weight;
-    }
-    return Math.round(score / totalWeight);
 }

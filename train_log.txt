@@ -1,0 +1,1090 @@
+2026-04-11 12:31:09.706851: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+=== ENTRAÎNEMENT IA v15 (ML) ===
+
+=== PRÉPARATION DATASET ML ===
+[PMU API] ℹ️  Base de données connectée: ./data/pmu.db
+[PMU API] ℹ️  Tables courses et participants (V12-Arrivées) créées/vérifiées
+[PMU API] ℹ️  Traitement participant 0/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour JENTIL DIESCHOOT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour IALTO D'HERTALS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour ILLICO DU JAS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour IMPERIAL KEY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour HUMOUR FESTIF (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOGAN JIEL neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUCKY PIYA neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KALOU D'IROISE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JOYEUX NONNA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 200/29010...
+[PMU API] ℹ️  Traitement participant 300/29010...
+[PMU API] ℹ️  Traitement participant 400/29010...
+[PMU API] ℹ️  Traitement participant 500/29010...
+[PMU API] ℹ️  Traitement participant 600/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour FELIX AUX ORMES (Montée de cat)
+[PMU API] ℹ️  Traitement participant 700/29010...
+[PMU API] ℹ️  Traitement participant 800/29010...
+[PMU API] ℹ️  Traitement participant 900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HEROINE RINGEAT neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JOIE DE LA COTE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -11 pts pour JAG MAHCATH (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour HANDSOME BOY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour HURRICANE WAY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour GARD (Montée de cat)
+[PMU API] ℹ️  Traitement participant 1000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARAMEL TENDRE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FILS DU NIL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 1100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JET STREAM DELO neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GATSBY D'AVRIL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour ZELORO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour LAVENDIN (Montée de cat)
+[PMU API] ℹ️  Traitement participant 1200/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour HUMAN EVOLUTION (Montée de cat)
+[PMU API] ℹ️  Traitement participant 1300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PRESTIGE D'OLVA neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: OCRE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGOLAS TEK neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE ROUGE EST MIS neutralisé (Expertise Malus: -65)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOYFULL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUDMIKO neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LASCARIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: STARBOSS neutralisé (Expertise Malus: -70)
+[PMU API] ℹ️  Traitement participant 1400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOZEN DE LORME neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CANONBIE LAD neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CHASING GREAT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MURRAYFIELD PARK neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IGLOO IGLOO neutralisé (Expertise Malus: -85)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ESPRIT TRANQUILLE neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LES FLOTS BLEUS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TENUTA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOSIE D 'AJONC neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 1500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IN AMERICA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NEOH DAIRPET neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 1600/29010...
+[PMU API] ℹ️  Traitement participant 1700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON INCONNUE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour INTERDIT DE JEU (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LESTRU neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE ROI LOTH neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: EDAMURA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MIKI BILLY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NOIRE WULF neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 1800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HALITE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAKE SENSE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 1900/29010...
+[PMU API] ℹ️  Traitement participant 2000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOGGER KILY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 2100/29010...
+[PMU API] ℹ️  Traitement participant 2200/29010...
+[PMU API] ℹ️  Traitement participant 2300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NINA SIMONE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAEVA DES PRES neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KING TURGOT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 2400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MARTINO BELLO neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 2500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JASMINE DU MELEUC neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 2600/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour KALIMERO JASMA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour KENYAN BLUES (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour KRACK CLEA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour GUARDAMI (Montée de cat)
+[PMU API] ℹ️  Traitement participant 2700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INDY ROCK neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour MENTOR DE PLAY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour DIVA DEL RONCO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour LOUIS VITTON MIJO (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HOPPELA THEPOL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour IDOLE JALLERIE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JOY DU CARNOIS (Montée de cat)
+[PMU API] ℹ️  Traitement participant 2800/29010...
+[PMU API] ℹ️  Traitement participant 2900/29010...
+[PMU API] ℹ️  Traitement participant 3000/29010...
+[PMU API] ℹ️  Traitement participant 3100/29010...
+[PMU API] ℹ️  Traitement participant 3200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON SEUL DESIR neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RYGIA neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY ZAZA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ROQUEPINE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MISTER DES PLACES neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LENZA CONTI neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LORELEYE neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  Traitement participant 3300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -15 pts pour NIKITA DES CHARMES (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -14 pts pour NAYARA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour JAPAROV LIRE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 3400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MILOU DE CAZOULENE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KLIMT MERITE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JALAPA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 3500/29010...
+[PMU API] ℹ️  Traitement participant 3600/29010...
+[PMU API] ℹ️  Traitement participant 3700/29010...
+[PMU API] ℹ️  Traitement participant 3800/29010...
+[PMU API] ℹ️  Traitement participant 3900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KONTIO DE LOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 4000/29010...
+[PMU API] ℹ️  Traitement participant 4100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEFORT FLIGNY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOVE AND SUN neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LIBERTA MESLOISE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 4200/29010...
+[PMU API] ℹ️  Traitement participant 4300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: BLACK SUNNY neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 4400/29010...
+[PMU API] ℹ️  Traitement participant 4500/29010...
+[PMU API] ℹ️  Traitement participant 4600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: L'ODYSSEE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUNIC neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  Traitement participant 4700/29010...
+[PMU API] ℹ️  Traitement participant 4800/29010...
+[PMU API] ℹ️  Traitement participant 4900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MELODIE LOULOMA neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MINUTIEUSE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MILANO neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 5000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LORD SUGAR neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JET ME FREE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 5100/29010...
+[PMU API] ℹ️  Traitement participant 5200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KALIU A neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 5300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KOZIELLO DE LOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 5400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ONE LOVE BIANCA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 5500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JET STREAM DELO neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY GIBUS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KEFIR COHIAIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 5600/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour MY QUEEN (Montée de cat)
+[PMU API] ℹ️  Traitement participant 5700/29010...
+[PMU API] ℹ️  Traitement participant 5800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INCROYABLE TALENT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DONIZETTI (SWE) neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 5900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HEAGLE ONE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LIEUTENANT COLONEL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 6000/29010...
+[PMU API] ℹ️  Traitement participant 6100/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour KALAHANI (Montée de cat)
+[PMU API] ℹ️  Traitement participant 6200/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour JOEY UP (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOVELY TRIP neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIRMANE DE LAVAU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 6300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIF DU BIEF neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour I KEEP CALM (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARNAVAL POINT neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: VIOLET HILL neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CHOEUR DESAINTONGE neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  Traitement participant 6400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KALYOPIE DU CANET neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 6500/29010...
+[PMU API] ℹ️  Traitement participant 6600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MY LADY CASH neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KALINE JULMA neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 6700/29010...
+[PMU API] ℹ️  Traitement participant 6800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON TRESOR DORE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KING OF FRANCS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MISTER CARA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 6900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE ROUGE EST MIS neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MIKI BILLY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SAINT GENY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FALCON JET neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MURRAYFIELD PARK neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 7000/29010...
+[PMU API] ℹ️  Traitement participant 7100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY PETTEVINIERE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGENDE DRY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -8 pts pour JIMBO SPORT (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LAZIE PONT VAUTIER neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGENDE DU GERS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 7200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IN AMERICA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 7300/29010...
+[PMU API] ℹ️  Traitement participant 7400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MOOREA BOND neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HELIOS BONBON neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GALION DES PRES neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KENZO BY MAGALOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAJOR DE LARRE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MINIMUM neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOOPING DE MA neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LORENZO DAIRPET neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 7500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KUZCO DU BOSSU neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JEROCASH DE PHYT'S neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour JOSHUA PEJI (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -13 pts pour JOLYDOLE (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIDAM DU METZ neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour LE TOUQUET (Montée de cat)
+[PMU API] ℹ️  Traitement participant 7600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ISLA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOCKSTRAP neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 7700/29010...
+[PMU API] ℹ️  Traitement participant 7800/29010...
+[PMU API] ℹ️  Traitement participant 7900/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour BOWENSONFIRE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 8000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour PANIC ATTACK (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour DOCTOR STEINBERG (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour GAELIC WARRIOR (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour GREY DAWNING (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour HAITI COULEURS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour JANGO BAIE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour L'HOMME PRESSE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour THE JUKEBOX MAN (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: EAST INDIA EXPRESS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DA CAPO GLORY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CHARLUS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 8100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KATOKI neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 8200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NIGHT DE BANVILLE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LICORNE DU VAAL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour NO LIMIT DREAM (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour ZELORO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 8300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour SUN PROJECT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour MONTGAUDRY (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARESSE DU LARGE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: WALKA neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GANAGO neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TAFEDNEY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MARS ATTACK neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 8400/29010...
+[PMU API] ℹ️  Traitement participant 8500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IDAHO A LA BRUYERE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUCKY PIYA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JUSTIFY MY LOVE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 8600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KING DE BASSIERE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 8700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour IMPOSE TOI (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour KABRAL DU MATHAN (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour HEART WOOD (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour IMPAIRE ET PASSE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JPR ONE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 8800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RED DIRT ROAD neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: BOLD ENDEAVOUR neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GLENGOULY neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  Traitement participant 8900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INKY PERRINE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 9000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INDIGO GEDE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MASTER FALCON neutralisé (Expertise Malus: -80)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ROMAN SKIES neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PROPORTIONNALY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE CARIGNAN neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GOLDKIKOU neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PINACLOUDDOWN neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LENZA CONTI neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOUBA neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FOREST CROWN neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TENUTA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LASCA DE THAIX neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 9100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: AMARNA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 9200/29010...
+[PMU API] ℹ️  Traitement participant 9300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour WESTERN FOLD (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CHART TOPPER neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HMS SEAHORSE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour STUMPTOWN (Montée de cat)
+[PMU API] ℹ️  Traitement participant 9400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour FAVORI DE CHAMPDOU (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour IL ETAIT TEMPS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour MAJBOROUGH (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour SAINT SEGAL (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour CALICO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 9500/29010...
+[PMU API] ℹ️  Traitement participant 9600/29010...
+[PMU API] ℹ️  Traitement participant 9700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ILLENCA DE CRU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 9800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -7 pts pour JASMINE DE NEUVY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JAZZY THOURJAN (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour JOKER DE FROULAY (Montée de cat)
+[PMU API] ℹ️  Traitement participant 9900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LAKE OAKS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 10000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour MAMBONUMBERFIVE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour IROKO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour JAGWAR (Montée de cat)
+[PMU API] ℹ️  Traitement participant 10100/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour ALEXEI (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour THE NEW LION (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour BRIGHTERDAYSAHEAD (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour GOLDEN ACE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour LOSSIEMOUTH (Montée de cat)
+[PMU API] ℹ️  Traitement participant 10200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUTIN D'HERMES neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KENTUCKY SCARLET neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FIFTY WINNER neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 10300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KONSTANCIA D'OYSE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -9 pts pour JASMIN GEMA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 10400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JOYEUX NONNA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour IXELLE BLEUE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour GARD (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON INCONNUE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JUST A JOKE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE CHAMP DU CYGNE neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PLANEUR neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: WAR SOLDIER neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KEASY STORM neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: UNCHECKABLE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: OSAXALINA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAGUELON neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  Traitement participant 10500/29010...
+[PMU API] ℹ️  Traitement participant 10600/29010...
+[PMU API] ℹ️  Traitement participant 10700/29010...
+[PMU API] ℹ️  Traitement participant 10800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour HARLEY GEMA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour GREAT DANCER (Montée de cat)
+[PMU API] ℹ️  Traitement participant 10900/29010...
+[PMU API] ℹ️  Traitement participant 11000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IDEFIX HERBLINAIE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 11100/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour SORBETTO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 11200/29010...
+[PMU API] ℹ️  Traitement participant 11300/29010...
+[PMU API] ℹ️  Traitement participant 11400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGOLAS PAULOIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAEVA DES PRES neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 11500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MALDIVES JEWEL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KENZA DE LA BESVRE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MALTESE KNIGHT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: L'IMPERATRICE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MELODY CHANTEREINE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 11600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NINA SIMONE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 11700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOU FAST neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIRIKOU DES MERS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SHAENJET neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: J'AI LA COTE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RAFFLES LIAISON neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FURIOSO neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAZARIN DU BERLAIS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour INLANDSIS (Montée de cat)
+[PMU API] ℹ️  Traitement participant 11800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HALITE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: BUMBASIA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KATE DES GENIEVRES neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KRAKEN neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: WALFER neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TRIOMPHE DE MAINE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LITTLE KING neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FORZA DI GARRY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CELEB neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ALGAJUST neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RINGO STAR neutralisé (Expertise Malus: -65)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: QUICK DADDY neutralisé (Expertise Malus: -85)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CAPTAIN DU BERLAIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 11900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ILLICO DE LOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour IALKO JENILAT (Montée de cat)
+[PMU API] ℹ️  Traitement participant 12000/29010...
+[PMU API] ℹ️  Traitement participant 12100/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour KINGSLAND DE SIMM (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY DRY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FIFTY WINNER neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 12200/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour KIKI AND CO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour JOUR DE FETE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 12300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -7 pts pour JACOMO BELLO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JOS MAZA (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAITRESSE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ROSEMALE HAS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SANDY BAY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ETINCELLE UNIQUE neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MADAME LE MAIRE neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HEART AND SOUL neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MIRACLE DECIERGUES neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 12400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INTIME WILD neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: EL MUNDO neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: AZUBAH neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LORD DES FANES neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 12500/29010...
+[PMU API] ℹ️  Traitement participant 12600/29010...
+[PMU API] ℹ️  Traitement participant 12700/29010...
+[PMU API] ℹ️  Traitement participant 12800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -14 pts pour CREW DRAGON (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour KRASKHOV (Montée de cat)
+[PMU API] ℹ️  Traitement participant 12900/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour GRAND MACHO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 13000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LYMKA PRINCESSE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MADAME DES LOYAUX neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 13100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JESABELLE DU JOUR neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GOAL STAR neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour JOEY DU NOYER (Montée de cat)
+[PMU API] ℹ️  Traitement participant 13200/29010...
+[PMU API] ℹ️  Traitement participant 13300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour JENTIL DIESCHOOT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour JUST DE L'OISON (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour IRIS FROM (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour HADES DE L'ITON (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -8 pts pour JILORD VIVA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 13400/29010...
+[PMU API] ℹ️  Traitement participant 13500/29010...
+[PMU API] ℹ️  Traitement participant 13600/29010...
+[PMU API] ℹ️  Traitement participant 13700/29010...
+[PMU API] ℹ️  Traitement participant 13800/29010...
+[PMU API] ℹ️  Traitement participant 13900/29010...
+[PMU API] ℹ️  Traitement participant 14000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOUSTIC neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 14100/29010...
+[PMU API] ℹ️  Traitement participant 14200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GOLD DE LA COTE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KILIA PETTEVINIERE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 14300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: OVER THE LIGHT AS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JURTIKALINE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 14400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: L'ARTISTE MIL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 14500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INDIGODARCHE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KENAVO TUILERIE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 14600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CHASING GREAT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TATOO neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TENUTA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUTT MATTEN neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TAGANAY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 14700/29010...
+[PMU API] ℹ️  Traitement participant 14800/29010...
+[PMU API] ℹ️  Traitement participant 14900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JACHAR neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LACCIO CONTI neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE ROI LOTH neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour LEBRIO DES MOTTES (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CALIGRAMME neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 15000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LES FLOTS BLEUS neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CARGO DE NUIT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LIGHT OF STAR neutralisé (Expertise Malus: -80)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MARVEL DELABLAIRIE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LA PAGAILLE neutralisé (Expertise Malus: -70)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARNAVAL POINT neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: EASTER SUNDAY neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  Traitement participant 15100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FEELING BOY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JESABELLE DU JOUR neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 15200/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour IDOLE JALLERIE (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NEVIS DE CANDALE AA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 15300/29010...
+[PMU API] ℹ️  Traitement participant 15400/29010...
+[PMU API] ℹ️  Traitement participant 15500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LYZA DES THIRONS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 15600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JUST RAPID neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MALAGA DESBOIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 15700/29010...
+[PMU API] ℹ️  Traitement participant 15800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INOX MAZA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MASTERSTROKE LADY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LILLOU neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KALENDARIUS VAL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAGNETO neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: REAL HOPE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MISTER CARA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JALZAN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 15900/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour MISTRAL DU BOIS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour IZIJAL (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -7 pts pour HORCHESTRO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour KISS ME HONEY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -10 pts pour JE M'ENVOLE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour KEENGAME (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -7 pts pour JOSHUA PEJI (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour HOMARD LAND (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour MAGIC MAN (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour MAESTRO VRIE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -9 pts pour L'AS DESBOIS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour KOBAYASHI (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour KELLY DE BANVILLE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour KAPAULA DE L'EPINE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16100/29010...
+[PMU API] ℹ️  Traitement participant 16200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY DRY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MADE IN ATALANTE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 16300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JIVAGO DE BEYLEV neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: FIFTY WINNER neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour NASSIF (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour PIANA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour GREAT WISH (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour TUMBLER (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour DIOPTASE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -12 pts pour MOUNT KOSCIUSZKO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour BALBOA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour HAMMOND (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour CREOLE CHROME (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16500/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour LEGACY JIEL (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour LOBBING DE BLARY (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16600/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour IALTO D'HERTALS (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JUSTICIA SMART (Montée de cat)
+[PMU API] ℹ️  Traitement participant 16800/29010...
+[PMU API] ℹ️  Traitement participant 16900/29010...
+[PMU API] ℹ️  Traitement participant 17000/29010...
+[PMU API] ℹ️  Traitement participant 17100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARESSE D'EURVAD neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour HAJIME (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MADE IN GEDE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour ILLICO DU JAS (Montée de cat)
+[PMU API] ℹ️  Traitement participant 17200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON POTE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HEART AND SOUL neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KING OF FRANCS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 17300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIMARILLO neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LORD VIVO neutralisé (Expertise Malus: -70)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON SEUL DESIR neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RAZAMIX neutralisé (Expertise Malus: -75)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ROQUEPINE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY ZAZA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DREAM FILLY neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUDMIKO neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LONDON GIRL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INDIGO GEDE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 17400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour ILIO MANNETOT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour FOREVER D'ARIANE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour HIDALGO DE VARENNE (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KATIUSKA CM neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 17500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MOLLY D'ACADIE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 17600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MYKERINOS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MEGA HORSE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LALICA JAC neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GHOST DES CHARRONS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour JACOMO BELLO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour DIVA DEL RONCO (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SIDNEY CELEBER neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 17700/29010...
+[PMU API] ℹ️  Traitement participant 17800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour VESINABA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 17900/29010...
+[PMU API] ℹ️  Traitement participant 18000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LINDSTEDT neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour IMPERIAL KEY (Montée de cat)
+[PMU API] ℹ️  Traitement participant 18100/29010...
+[PMU API] ℹ️  Traitement participant 18200/29010...
+[PMU API] ℹ️  Traitement participant 18300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour GRAND MACHO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 18400/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ALL MOONSHINE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DEMOISEL DE PARIS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE PRINCE BURGOND neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LORENZO DU CHENET neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NOMADE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KRAKEN neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIR SACRE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KLOVIS BLEUE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LILLOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: QUICK DADDY neutralisé (Expertise Malus: -100)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LA PAIX neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 18500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KRONOS DU KLAU neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MELINA BILOU neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 18600/29010...
+[PMU API] ℹ️  Traitement participant 18700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOU FAST neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SHAENJET neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TATOO neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GOLDKIKOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RAFFLES LIAISON neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ESPRIT TRANQUILLE neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LA PAGAILLE neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  Traitement participant 18800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour KAPACA DE THAIX (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DINOZAURE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAZARIN DU BERLAIS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KOP DE BOULOGNE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: WALFER neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CELEB neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ALGAJUST neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KAPTAIN DE L'OCEAN (FR) neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 18900/29010...
+[PMU API] ℹ️  Traitement participant 19000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour ELNAJMM (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour FORT GEORGE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour DIVIDEND (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour TUMBLER (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour ROYAL POWER (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour MEYDAAN (Montée de cat)
+[PMU API] ℹ️  Traitement participant 19100/29010...
+[PMU API] ℹ️  Traitement participant 19200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KRIS MARTIN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 19300/29010...
+[PMU API] ℹ️  Traitement participant 19400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour JUNKIES MINDS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour KHEO VIVANCIERE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 19500/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -11 pts pour HOMARD LAND (Montée de cat)
+[PMU API] ℹ️  Traitement participant 19600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOKER BODENSEE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JALZAN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ANTAIOS neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  Traitement participant 19700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour FERDINAND PREMIER (Montée de cat)
+[PMU API] ℹ️  Traitement participant 19800/29010...
+[PMU API] ℹ️  Traitement participant 19900/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour PUMALIN PARK (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour NO LIMIT DREAM (Montée de cat)
+[PMU API] ℹ️  Traitement participant 20000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour EN PLEIN AIR (Montée de cat)
+[PMU API] ℹ️  Traitement participant 20100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LITTLE LOVE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MALOU DU BOIS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 20200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOOPING DE MA neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOVELY GAZELLE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGENDE SEVEN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 20300/29010...
+[PMU API] ℹ️  Traitement participant 20400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour TONNANT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour REVE DU FRAISSE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 20500/29010...
+[PMU API] ℹ️  Traitement participant 20600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARO DU BELET neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 20700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour IN RACE LORRAINE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 20800/29010...
+[PMU API] ℹ️  Traitement participant 20900/29010...
+[PMU API] ℹ️  Traitement participant 21000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour LOVE IS GOLD (Montée de cat)
+[PMU API] ℹ️  Traitement participant 21100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MASTER FALCON neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  Traitement participant 21200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KEASY STORM neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INTIME WILD neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HIGHBOURNEDYNAMITE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TRESOR DE BALLON neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NOUS neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LONDON GIRL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NEMESIS DU METZ neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: L'AS DU PERCHE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 21300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INKY PERRINE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 21400/29010...
+[PMU API] ℹ️  Traitement participant 21500/29010...
+[PMU API] ℹ️  Traitement participant 21600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NEVIS DE CANDALE AA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAGIQUE PONTADOUR AA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MR KELL neutralisé (Expertise Malus: -65)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: QUO VOLARE neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KARONY MAJEAN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JEAN D'HOLLENBOURG neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KISS ME ALEX neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 21700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HOLLINS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KLASSIC DE SYVA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KAPELLA FABULET neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 21800/29010...
+[PMU API] ℹ️  Traitement participant 21900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HETRE D'OURVILLE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KABOBBY SANT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 22000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour FALTO DES LANDIERS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour IKURO JIEL (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour KOUREAS D'ELA (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour KASSYA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 22100/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour LAMBADA DU GOUTIER (Montée de cat)
+[PMU API] ℹ️  Traitement participant 22200/29010...
+[PMU API] ℹ️  Traitement participant 22300/29010...
+[PMU API] ℹ️  Traitement participant 22400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour GREY DAWNING (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour HEART WOOD (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IL EST FRANCAIS neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour MADARA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 22500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE ROI LOTH neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CARGO DE NUIT neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON INCONNUE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MASTER FALCON neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  Traitement participant 22600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LESTRU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGOLAS TEK neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE KARMA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LIPRIKA D'ANJOU neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 22700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JACK DES MALBERAUX (Montée de cat)
+[PMU API] ℹ️  Traitement participant 22800/29010...
+[PMU API] ℹ️  Traitement participant 22900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JEWEL DES FANES neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JARINGO DE DUFFEL TF neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MISTER FLAC neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour MAMBONUMBERFIVE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour PROTEKTORAT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour SPILLANE'S TOWER (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour EL FABIOLO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour POTTERS CHARM (Montée de cat)
+[PMU API] ℹ️  Traitement participant 23000/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -9 pts pour JOTUNN DU DOME (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour JOLIE SURPRISE (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour ISTER MAN (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JASPER JOHNS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KISS YOU DU VERGER neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 23100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MADNESS DOLCE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 23200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: IGLOO IGLOO neutralisé (Expertise Malus: -85)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: AZUBAH neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CAPE COD neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KING OF SAINTLY neutralisé (Expertise Malus: -95)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KRACK DU BONHEUR neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SPINOZZAR neutralisé (Expertise Malus: -80)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KENPIC neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 23300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour CAYSSIE MA STAR (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour EL KRAKEN (Montée de cat)
+[PMU API] ℹ️  Traitement participant 23400/29010...
+[PMU API] ℹ️  Traitement participant 23500/29010...
+[PMU API] ℹ️  Traitement participant 23600/29010...
+[PMU API] ℹ️  Traitement participant 23700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour GOWAY (Montée de cat)
+[PMU API] ℹ️  Traitement participant 23800/29010...
+[PMU API] ℹ️  Traitement participant 23900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JUST A JOKE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KEEP CALM DARIYAN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 24000/29010...
+[PMU API] ℹ️  Traitement participant 24100/29010...
+[PMU API] ℹ️  Traitement participant 24200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LITCHI ROQUE neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NOIRE WULF neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MIKI BILLY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE PHILOSOPHE neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PARISIMIX neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: UNCHECKABLE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 24300/29010...
+[PMU API] ℹ️  Traitement participant 24400/29010...
+[PMU API] ℹ️  Traitement participant 24500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DEMOISEL DE PARIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 24600/29010...
+[PMU API] ℹ️  Traitement participant 24700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KILIM DE MEAUTIS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 24800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HAPPY BEJI neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 24900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INO DE BREVOL neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 25000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KOZIELLO DE LOU neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOUSTIC DU MIDI neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 25100/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -6 pts pour LANZELOT GOLD (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour PURPLE LION (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour TEN HORNS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour PROXIMA DU CENTAUR (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour ORACLE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 25200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADELONETTE neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOVE DE LA NOVERIE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LIUJOGIRL neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 25300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: CHOEURALYA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour GARD (Montée de cat)
+[PMU API] ℹ️  Traitement participant 25400/29010...
+[PMU API] ℹ️  Traitement participant 25500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LITTLE DREAM D'ERI neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 25600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MANCHEGO LANDING neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MUFASA ACE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 25700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MERCURY BOND neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 25800/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LA NUIT JE MENS neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 25900/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour MISTRAL DU BOIS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour HANNAH (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour JOJO TOONS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -5 pts pour HAUTE COTE DE NUIT (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour DIVA DEL RONCO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 26000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SAINT TURGEON neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PARIOLI neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  Traitement participant 26100/29010...
+[PMU API] ℹ️  Traitement participant 26200/29010...
+[PMU API] ℹ️  Traitement participant 26300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour POINT DUME (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour BOUTWELL TIME (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour HOT GOSSIP (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour TALK TO ME JIMMY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour BRAVARO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour OTTINHO (Montée de cat)
+[PMU API] ℹ️  Traitement participant 26400/29010...
+[PMU API] ℹ️  Traitement participant 26500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LELY DU MONCEL neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGENDE D'YVEL neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KERMES QUICK neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JAMES MADRIK neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HILTON MAZA neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JEAN NO DU MARGAS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MALKO BOIS MORIN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 26600/29010...
+[PMU API] ℹ️  Traitement participant 26700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOYAU D'INFREVILLE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 26800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour LIBERTA DEL PHEDO (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIDAM DU METZ neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 26900/29010...
+[PMU API] ℹ️  Traitement participant 27000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOKER CARISAIE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour HERODE DU CORTA (Montée de cat)
+[PMU API] ℹ️  Traitement participant 27100/29010...
+[PMU API] ℹ️  Traitement participant 27200/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LASCA DE THAIX neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: AMARNA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour BLEKOLINA (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOUBA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE ROI DAVID neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KIRIKOU DES MERS neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 27300/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour VOL D'ARGENT (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ASTON D'ENOCQ neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LA SEULE FACON neutralisé (Expertise Malus: -50)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: PORZMAN neutralisé (Expertise Malus: -60)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LOWAVE neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: TAGANAY neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE PRINCE BURGOND neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RINGO STAR neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: QUICK DADDY neutralisé (Expertise Malus: -85)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOSIE D 'AJONC neutralisé (Expertise Malus: -40)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LEGENDE SEVEN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOGGER KILY neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MINI FORTUNE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MALIKA DU GUESCLIN neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 27400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour ROMANCE MARINE (Montée de cat)
+[PMU API] ℹ️  Traitement participant 27500/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY D'ECOTAY neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 27600/29010...
+[PMU API] ℹ️  Traitement participant 27700/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour JOLIE STAR (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -8 pts pour IDOLE OF LOVE (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JAMES MADRIK neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: GORDON PAGUERIE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 27800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -9 pts pour JOKER DE FROULAY (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour IMELDA (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: INDIGODARCHE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 27900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: ROMAN SKIES neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MIRACLE DECIERGUES neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: RYGIA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LADY ZAZA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON INCONNUE neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JACHAR neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: DREAM RIQUE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LUTT MATTEN neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MAKE SENSE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KAPKI neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LES FLOTS BLEUS neutralisé (Expertise Malus: -55)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LA LOUISIANE neutralisé (Expertise Malus: -80)
+[PMU API] ℹ️  Traitement participant 28000/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: BUMBASIA neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: KLOVIS BLEUE neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MARS ATTACK neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: SOBEST neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: BIENBATHY neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 28100/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: L'ODYSSEE neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 28200/29010...
+[PMU API] ℹ️  Traitement participant 28300/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: VANILLA RUN neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 28400/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour CHESS (Montée de cat)
+[PMU API] ℹ️  Traitement participant 28500/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -3 pts pour MOZART DES BRIERES (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -4 pts pour IRBIS (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -1 pts pour AUTUMN TWILIGHT (Montée de cat)
+[PMU API] ℹ️  Traitement participant 28600/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: HEART AND SOUL neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: MON SEUL DESIR neutralisé (Expertise Malus: -30)
+[PMU API] ℹ️  Traitement participant 28700/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: NEOPHYTE GIGI neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 28800/29010...
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -10 pts pour JAMAICA PHEDO (Montée de cat)
+[PMU API] ℹ️  [IA] CAT-MALUS v30: -2 pts pour LERIKA DU CHENE (Montée de cat)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JAVA DE BOITRON neutralisé (Expertise Malus: -35)
+[PMU API] ℹ️  Traitement participant 28900/29010...
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: LE PRINCE DU RIS neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  [IA] SHIELD SHUTDOWN: JOKER DE JANEIRO neutralisé (Expertise Malus: -45)
+[PMU API] ℹ️  Traitement participant 29000/29010...
+[PMU API] ✅ Dataset préparé : 23208 train, 5802 test
+[PMU API] ℹ️  Tenseurs créés
+[PMU API] ℹ️  Modèle compilé
+__________________________________________________________________________________________
+Layer (type)                Input Shape               Output shape              Param #   
+==========================================================================================
+dense_Dense1 (Dense)        [[null,10]]               [null,128]                1408      
+__________________________________________________________________________________________
+dropout_Dropout1 (Dropout)  [[null,128]]              [null,128]                0         
+__________________________________________________________________________________________
+dense_Dense2 (Dense)        [[null,128]]              [null,64]                 8256      
+__________________________________________________________________________________________
+dropout_Dropout2 (Dropout)  [[null,64]]               [null,64]                 0         
+__________________________________________________________________________________________
+dense_Dense3 (Dense)        [[null,64]]               [null,32]                 2080      
+__________________________________________________________________________________________
+dense_Dense4 (Dense)        [[null,32]]               [null,1]                  33        
+==========================================================================================
+Total params: 11777
+Trainable params: 11777
+Non-trainable params: 0
+__________________________________________________________________________________________
+[PMU API] ℹ️  Début de l'entraînement (30 epochs)...
+Epoch 1 / 30
+(node:18537) [DEP0051] DeprecationWarning: The `util.isNullOrUndefined` API is deprecated. Please use `arg === null || arg === undefined` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+9982ms 538us/step - acc=0.911 loss=0.272 val_acc=0.917 val_loss=0.243 
+[PMU API] ℹ️  Epoch 1/30 - Loss: 0.2716, Acc: 91.11%
+Epoch 2 / 30
+
+8766ms 472us/step - acc=0.911 loss=0.259 val_acc=0.917 val_loss=0.240 
+Epoch 3 / 30
+
+8274ms 446us/step - acc=0.911 loss=0.256 val_acc=0.917 val_loss=0.238 
+Epoch 4 / 30
+
+8575ms 462us/step - acc=0.911 loss=0.255 val_acc=0.917 val_loss=0.238 
+Epoch 5 / 30
+
+8121ms 437us/step - acc=0.911 loss=0.254 val_acc=0.917 val_loss=0.238 
+Epoch 6 / 30
+
+8779ms 473us/step - acc=0.911 loss=0.253 val_acc=0.917 val_loss=0.238 
+[PMU API] ℹ️  Epoch 6/30 - Loss: 0.2533, Acc: 91.12%
+Epoch 7 / 30
+
+8552ms 461us/step - acc=0.911 loss=0.253 val_acc=0.917 val_loss=0.240 
+Epoch 8 / 30
+
+8555ms 461us/step - acc=0.911 loss=0.253 val_acc=0.917 val_loss=0.237 
+Epoch 9 / 30
+
+9150ms 493us/step - acc=0.911 loss=0.253 val_acc=0.917 val_loss=0.238 
+Epoch 10 / 30
+
+8450ms 455us/step - acc=0.911 loss=0.251 val_acc=0.917 val_loss=0.239 
+Epoch 11 / 30
+
+9181ms 494us/step - acc=0.911 loss=0.251 val_acc=0.917 val_loss=0.238 
+[PMU API] ℹ️  Epoch 11/30 - Loss: 0.2512, Acc: 91.12%
+Epoch 12 / 30
+
+9487ms 511us/step - acc=0.911 loss=0.251 val_acc=0.917 val_loss=0.237 
+Epoch 13 / 30
+
+8454ms 455us/step - acc=0.911 loss=0.251 val_acc=0.917 val_loss=0.240 
+Epoch 14 / 30
+
+8372ms 451us/step - acc=0.911 loss=0.250 val_acc=0.917 val_loss=0.242 
+Epoch 15 / 30
+
+8312ms 448us/step - acc=0.911 loss=0.250 val_acc=0.917 val_loss=0.236 
+Epoch 16 / 30
+
+8969ms 483us/step - acc=0.911 loss=0.251 val_acc=0.917 val_loss=0.237 
+[PMU API] ℹ️  Epoch 16/30 - Loss: 0.2513, Acc: 91.12%
+Epoch 17 / 30
+
+8976ms 483us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.237 
+Epoch 18 / 30
+
+9261ms 499us/step - acc=0.911 loss=0.250 val_acc=0.917 val_loss=0.238 
+Epoch 19 / 30
+
+9045ms 487us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.236 
+Epoch 20 / 30
+
+6333ms 341us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.238 
+Epoch 21 / 30
+
+6579ms 354us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.236 
+[PMU API] ℹ️  Epoch 21/30 - Loss: 0.2491, Acc: 91.12%
+Epoch 22 / 30
+
+7083ms 382us/step - acc=0.911 loss=0.248 val_acc=0.917 val_loss=0.236 
+Epoch 23 / 30
+
+6379ms 344us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.236 
+Epoch 24 / 30
+
+6036ms 325us/step - acc=0.911 loss=0.250 val_acc=0.917 val_loss=0.236 
+Epoch 25 / 30
+
+6676ms 360us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.239 
+Epoch 26 / 30
+
+6928ms 373us/step - acc=0.911 loss=0.249 val_acc=0.917 val_loss=0.235 
+[PMU API] ℹ️  Epoch 26/30 - Loss: 0.2486, Acc: 91.12%
+Epoch 27 / 30
+
+6152ms 331us/step - acc=0.911 loss=0.248 val_acc=0.917 val_loss=0.237 
+Epoch 28 / 30
+
+6246ms 336us/step - acc=0.911 loss=0.248 val_acc=0.917 val_loss=0.236 
+Epoch 29 / 30
+
+6497ms 350us/step - acc=0.911 loss=0.248 val_acc=0.917 val_loss=0.238 
+Epoch 30 / 30
+
+6555ms 353us/step - acc=0.911 loss=0.248 val_acc=0.917 val_loss=0.237 
+
+=== ÉVALUATION ===
+[PMU API] ✅ Test Loss: 0.2479
+[PMU API] ✅ Test Accuracy: 91.16%
+[PMU API] ✅ Modèle sauvegardé dans ./src/ml/model
+[PMU API] ✅ Métadonnées sauvegardées
+[PMU API] ℹ️  Base de données fermée
+
+=== ENTRAÎNEMENT TERMINÉ ===
+{
+  "version": "v40-ML-Hybrid",
+  "trainedAt": "2026-04-11T10:35:18.993Z",
+  "trainSamples": 23208,
+  "testSamples": 5802,
+  "testAccuracy": 0.9115822315216064,
+  "testLoss": 0.24786709249019623,
+  "architecture": {
+    "layers": 4,
+    "neurons": [
+      64,
+      32,
+      16,
+      1
+    ],
+    "dropout": [
+      0.2,
+      0.1,
+      0,
+      0
+    ]
+  }
+}

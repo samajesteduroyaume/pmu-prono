@@ -11,10 +11,9 @@ logger.info('- src/config/: Configuration centralisée');
 logger.info('- src/tests/: Scripts de test et debug');
 
 logger.info('\nPour exécuter un pipeline:');
-logger.info('node src/pipelines/pipeline_1week.mjs');
-logger.info('node src/pipelines/pipeline_1month.mjs');
-logger.info('node src/pipelines/pipeline_4months.mjs');
-logger.info('node src/pipelines/pipeline_6months.mjs');
+logger.info('npm run sync         # Synchroniser le jour actuel');
+logger.info('npm run sync:month   # Synchroniser les 30 derniers jours');
+logger.info('npm run sync:year    # Synchroniser les 365 derniers jours');
 
 logger.info('\nPour tester la connexion:');
 logger.info('node src/tests/test_connection.mjs');

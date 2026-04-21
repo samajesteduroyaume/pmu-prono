@@ -8,7 +8,7 @@ import path from 'path';
 const MODEL_PATH = './src/ml/model';
 
 async function trainModel() {
-    logger.header('ENTRAÎNEMENT IA v15 (ML)');
+    logger.header('ENTRAÎNEMENT IA - ARCHITECT v27.1');
 
     // 1. Préparation du dataset
     const { trainData, testData } = await prepareDataset();
@@ -25,20 +25,20 @@ async function trainModel() {
     const model = tf.sequential({
         layers: [
             tf.layers.dense({
-                units: 64,
+                units: 128,
                 activation: 'relu',
-                inputShape: [8],
+                inputShape: [10],
                 kernelInitializer: 'heNormal'
             }),
             tf.layers.dropout({ rate: 0.2 }),
             tf.layers.dense({
-                units: 32,
+                units: 64,
                 activation: 'relu',
                 kernelInitializer: 'heNormal'
             }),
             tf.layers.dropout({ rate: 0.1 }),
             tf.layers.dense({
-                units: 16,
+                units: 32,
                 activation: 'relu'
             }),
             tf.layers.dense({
@@ -59,16 +59,16 @@ async function trainModel() {
     model.summary();
 
     // 5. Entraînement
-    logger.info('Début de l\'entraînement (20 epochs)...');
+    logger.info('Début de l\'entraînement (30 epochs)...');
 
     const history = await model.fit(trainFeatures, trainLabels, {
-        epochs: 20,
+        epochs: 30,
         batchSize: 32,
         validationSplit: 0.2,
         callbacks: {
             onEpochEnd: (epoch, logs) => {
                 if (epoch % 5 === 0) {
-                    logger.info(`Epoch ${epoch + 1}/20 - Loss: ${logs.loss.toFixed(4)}, Acc: ${(logs.acc * 100).toFixed(2)}%`);
+                    logger.info(`Epoch ${epoch + 1}/30 - Loss: ${logs.loss.toFixed(4)}, Acc: ${(logs.acc * 100).toFixed(2)}%`);
                 }
             }
         }
@@ -93,7 +93,7 @@ async function trainModel() {
 
     // 8. Métadonnées
     const metadata = {
-        version: 'v15-ML',
+        version: 'Architect-v27.1-Hybrid',
         trainedAt: new Date().toISOString(),
         trainSamples: trainData.length,
         testSamples: testData.length,
@@ -101,7 +101,7 @@ async function trainModel() {
         testLoss: testLoss[0],
         architecture: {
             layers: 4,
-            neurons: [64, 32, 16, 1],
+            neurons: [128, 64, 32, 1],
             dropout: [0.2, 0.1, 0, 0]
         }
     };

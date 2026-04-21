@@ -11,6 +11,7 @@ import { processAttelé } from './engines/attele_engine.mjs';
 import { processMonté } from './engines/monte_engine.mjs';
 import { processPlat } from './engines/plat_engine.mjs';
 import { processObstacle } from './engines/obstacle_engine.mjs';
+import { detectInconsistencies, applyCorrection } from './inconsistency_checker.mjs';
 
 /**
  * MOTEUR D'INTELLIGENCE ARTIFICIELLE "ARCHITECT v30 - ELITE"
@@ -287,6 +288,14 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
 
             const kelly = calculateKellyMise(cote, predictionScore, 1000);
             participant.kelly_suggestion = kelly;
+        }
+
+        // V42: DÉTECTION DES INCOHÉRENCES ET CORRECTION FINALE
+        const alerts = detectInconsistencies(participant, contexteCourse, baseScores, predictionScore);
+        if (alerts.length > 0) {
+            predictionScore = applyCorrection(predictionScore, alerts);
+            participant.inconsistency_alerts = alerts; // Pour affichage UI
+            participant.is_inconsistent = true;
         }
 
         return Math.round(Math.max(0, Math.min(100, predictionScore)));

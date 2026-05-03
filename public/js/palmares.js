@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPalmares();
 });
 
+async function refreshData() {
+    await loadPalmares();
+}
+
 async function loadPalmares() {
     try {
         const response = await fetch('/api/palmares');
@@ -29,24 +33,20 @@ function renderTable(tableId, data) {
     tbody.innerHTML = '';
 
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Aucune donnée</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-low); padding: 40px;">Aucune donnée disponible</td></tr>';
         return;
     }
 
-    data.forEach((item, index) => {
+    data.slice(0, 50).forEach((item, index) => {
         const tr = document.createElement('tr');
-
-        let rankClass = '';
-        if (index === 0) rankClass = 'rank-1';
-        else if (index === 1) rankClass = 'rank-2';
-        else if (index === 2) rankClass = 'rank-3';
+        const winRate = item.reussite_gagne || ((item.victoires / item.courses) * 100).toFixed(1);
+        const nameColor = index < 3 ? 'var(--accent-gold)' : 'var(--text-high)';
 
         tr.innerHTML = `
-            <td class="${rankClass}">${item.rang}</td>
-            <td style="color:#fff">${item.name}</td>
-            <td class="stat-val">${item.courses}</td>
-            <td class="stat-val" style="color:var(--pmu-green)">${item.victoires}</td>
-            <td class="stat-val">${item.reussite_gagne}%</td>
+            <td style="color: ${nameColor}; font-weight: 600;">${item.name}</td>
+            <td style="text-align: right; font-family: 'JetBrains Mono';">${item.courses}</td>
+            <td style="text-align: right; font-family: 'JetBrains Mono'; color: var(--accent-emerald);">${item.victoires}</td>
+            <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 700;">${winRate}%</td>
         `;
         tbody.appendChild(tr);
     });

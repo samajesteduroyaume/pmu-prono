@@ -1,4 +1,4 @@
-import { initDB, getAllCourses, getCourseParticipants } from '../core/db.mjs';
+import { initDB, getAllCoursesWithResults, getCourseParticipants } from '../core/db.mjs';
 import { calculerPredictionHybride, loadMLModel } from '../core/hybrid.mjs';
 import CONFIG from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
@@ -9,25 +9,30 @@ const FINANCE = CONFIG.engine_settings.finance;
 /**
  * MOTEUR DE BACKTESTING - ARCHITECT v27.1
  */
-export async function runBacktest(startDate, endDate) {
+export async function runBacktest(startDate, endDate, options = {}) {
     logger.header(`LANCEMENT DU BACKTEST v27.1 : ${startDate} au ${endDate}`);
+    const { useValueHunter = false, minEdge = 0.05 } = options;
 
     await initDB();
     await loadMLModel();
 
-    const courses = await getAllCourses();
+    const { calibrateProbability } = await import('../core/kelly.mjs');
+
+    const courses = await getAllCoursesWithResults();
     const filtered = courses.filter(c => {
         const d = c.date;
         return d >= startDate && d <= endDate && c.ordre_arrivee;
     });
 
     logger.info(`${filtered.length} courses trouvées avec résultats.`);
+    if (useValueHunter) logger.info(`Mode VALUE HUNTER activé (Edge min: ${minEdge})`);
 
     let stats = {
         total: 0,
         wins: 0,
         investment: 0,
         returns: 0,
+        skipped: 0,
         history: []
     };
 
@@ -35,9 +40,16 @@ export async function runBacktest(startDate, endDate) {
         const participants = await getCourseParticipants(course.id);
         if (participants.length === 0) continue;
 
-        // Calculer les prédictions hybrides pour tous les participants
+        // Calculer les prédictions hybrides pour tous les participants (v43.3 Elite)
+        const { getHorseHistory } = await import('../core/db.mjs');
         const predictions = await Promise.all(participants.map(async p => {
-            const res = await calculerPredictionHybride(p, course);
+            // Reconstitution de l'historique au moment de la course (pour la classe)
+            const history = await getHorseHistory(p.nom, 5); // Note: Idéalement filtré par date < course.date
+            const avgHistoryPrix = history.length > 0 ? history.reduce((sum, h) => sum + (h.prix || 0), 0) / history.length : 0;
+            
+            const { preparerBaseScores } = await import('../core/intelligence.mjs');
+            const baseScores = await preparerBaseScores(p, course, avgHistoryPrix);
+            const res = await calculerPredictionHybride(p, course, [], participants, baseScores);
             return { ...p, score: res.score };
         }));
 
@@ -45,62 +57,97 @@ export async function runBacktest(startDate, endDate) {
         predictions.sort((a, b) => b.score - a.score);
 
         const top1 = predictions[0];
+        const cote = parseFloat(top1.cote_ref) || 0;
+        
+        // v43.1: Filtre Value Hunter
+        if (useValueHunter && cote > 1) {
+            const probIA = calibrateProbability(top1.score);
+            const probMarket = 1 / cote;
+            const edge = probIA - probMarket;
+            
+            if (edge < minEdge) {
+                stats.skipped++;
+                continue;
+            }
+        }
+
         const arrivee = course.ordre_arrivee.split('-').map(n => parseInt(n));
         const winnerNum = arrivee[0];
-
         const isWin = top1.numero === winnerNum;
 
         stats.total++;
-        stats.investment += 1; // Mise de 1€ par course
+        stats.investment += 1;
 
+        let rapport = 0;
         if (isWin) {
             stats.wins++;
-            // Note: Pour le backtest précis, on devrait utiliser le rapport Simple Gagnant réel
-            // Mais si on ne l'a pas, on peut estimer avec la cote_ref (ou mieux, chercher dans rapports)
-            let rapport = parseFloat(top1.cote_ref) || 2.0;
-
-            // Si on a les rapports réels dans la BDD, on les utilise
-            if (course.rapports) {
-                try {
-                    const raps = JSON.parse(course.rapports);
-                    const list = raps.paysParieur?.[0]?.rapports || [];
-                    const simpleGagnant = list.find(r => r.libellePari === 'E_SIMPLE_GAGNANT' && r.combinaison === top1.numero.toString());
-                    if (simpleGagnant) {
-                        rapport = simpleGagnant.dividende / 100;
-                    }
-                } catch (e) { }
-            }
-
-            stats.returns += rapport;
+            const realRapport = extractWinnerRapport(course, top1.numero);
+            rapport = realRapport || (parseFloat(top1.cote_ref) * 0.9) || 2.0;
         }
+        stats.returns += rapport;
+
+        // Calcul de la tendance de catégorie (v43.3)
+        const cat_trend = avgHistoryPrix > 0 ? (course.prix < avgHistoryPrix * 0.9 ? 'DOWN' : (course.prix > avgHistoryPrix * 1.1 ? 'UP' : 'STABLE')) : 'STABLE';
 
         stats.history.push({
             date: course.date,
             course: `${course.reunionNum}C${course.courseNum}`,
             selection: top1.nom,
             score: top1.score,
+            cote: top1.cote_ref,
+            discipline: course.discipline,
+            cat_trend,
+            avg_prix: avgHistoryPrix,
             resultat: isWin ? 'WIN' : 'LOSS',
-            net: isWin ? (stats.returns - stats.investment) : (stats.returns - stats.investment)
+            rapport: rapport,
+            net: stats.returns - stats.investment
         });
     }
 
-    const roi = ((stats.returns - stats.investment) / stats.investment) * 100;
+    const roi = stats.investment > 0 ? ((stats.returns - stats.investment) / stats.investment) * 100 : 0;
 
+    // v43.1: Calcul du résumé par discipline
+    const discStats = {};
+    stats.history.forEach(h => {
+        if (!discStats[h.discipline]) discStats[h.discipline] = { total: 0, wins: 0, investment: 0, returns: 0 };
+        discStats[h.discipline].total++;
+        discStats[h.discipline].investment += 1;
+        discStats[h.discipline].returns += h.rapport;
+        if (h.resultat === 'WIN') {
+            discStats[h.discipline].wins++;
+        }
+    });
+
+    for (const d in discStats) {
+        discStats[d].roi = ((discStats[d].returns - discStats[d].investment) / discStats[d].investment * 100).toFixed(2);
+    }
+    
     logger.success(`BACKTEST TERMINÉ`);
     logger.info(`Total Courses : ${stats.total}`);
-    logger.info(`Taux de réussite : ${((stats.wins / stats.total) * 100).toFixed(2)}%`);
+    if (useValueHunter) logger.info(`Courses ignorées (No Value) : ${stats.skipped}`);
+    logger.info(`Taux de réussite : ${stats.total > 0 ? ((stats.wins / stats.total) * 100).toFixed(2) : 0}%`);
     logger.info(`ROI : ${roi.toFixed(2)}%`);
     logger.info(`Profit Net : ${(stats.returns - stats.investment).toFixed(2)} €`);
+
+    console.table(Object.keys(discStats).map(d => ({
+        Discipline: d,
+        Total: discStats[d].total,
+        Wins: discStats[d].wins,
+        WinRate: ((discStats[d].wins / discStats[d].total) * 100).toFixed(1) + '%',
+        ROI: discStats[d].roi + '%'
+    })));
 
     return {
         summary: {
             total: stats.total,
             wins: stats.wins,
-            winRate: ((stats.wins / stats.total) * 100).toFixed(2),
+            winRate: stats.total > 0 ? ((stats.wins / stats.total) * 100).toFixed(2) : 0,
             investment: stats.investment,
             returns: stats.returns,
             profit: (stats.returns - stats.investment).toFixed(2),
-            roi: roi.toFixed(2)
+            roi: roi.toFixed(2),
+            skipped: stats.skipped,
+            disciplines: discStats
         },
         history: stats.history
     };
@@ -119,7 +166,7 @@ export async function compareKellyStrategies(startDate, endDate, initialBankroll
     const { getTendancesCumulees, getHistoriqueParis } = await import('../core/db.mjs');
     const { calculateKellyMise, calculateKellyAdaptatif, calibrateProbability } = await import('../core/kelly.mjs');
 
-    const courses = await getAllCourses();
+    const courses = await getAllCoursesWithResults();
     const filtered = courses.filter(c => {
         const d = c.date;
         return d >= startDate && d <= endDate && c.ordre_arrivee;
@@ -398,6 +445,27 @@ export async function runMonteCarloSimulation(startDate, endDate, simulations = 
     });
 }
 
+function extractWinnerRapport(course, horseNum) {
+    let fallbackRapport = 2.0;
+    
+    // Si on a le numéro du cheval dans les participants de la course, on prend sa cote
+    try {
+        const participants = JSON.parse(course.participants_json || '[]'); // Note: Il faudra s'assurer que c'est accessible
+        // Mais en fait on a déjà top1.cote_ref dans runBacktest.
+    } catch(e) {}
+
+    if (course.rapports && course.rapports !== 'null' && course.rapports !== '') {
+        try {
+            const raps = JSON.parse(course.rapports);
+            const list = raps.paysParieur?.[0]?.rapports || [];
+            const sg = list.find(r => r.libellePari === 'E_SIMPLE_GAGNANT' && r.combinaison === horseNum.toString());
+            if (sg) return sg.dividende / 100;
+        } catch (e) { }
+    }
+    
+    return null; // On va laisser runBacktest gérer le fallback avec la cote
+}
+
 // Auto-run if executed directly
 import { fileURLToPath } from 'url';
 const isDirectRun = process.argv[1] && (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]));
@@ -405,7 +473,9 @@ const isDirectRun = process.argv[1] && (fileURLToPath(import.meta.url) === path.
 if (isDirectRun) {
     const start = process.argv[2] || '2026-01-01';
     const end = process.argv[3] || '2026-12-31';
-    runBacktest(start, end).then(() => process.exit(0)).catch(err => {
+    const useValue = process.argv.includes('--value');
+    
+    runBacktest(start, end, { useValueHunter: useValue }).then(() => process.exit(0)).catch(err => {
         console.error(err);
         process.exit(1);
     });

@@ -77,7 +77,8 @@ export async function detectOpportunities(date = new Date().toISOString().split(
                 advice: kelly.advice,
                 is_smart_money: isSmartMoney,
                 confidence: Math.round(probaCalibree * 100),
-                signal_gate: gate
+                signal_gate: gate,
+                heure: course.heure
             };
             
             opportunities.push(opp);
@@ -91,6 +92,13 @@ export async function detectOpportunities(date = new Date().toISOString().split(
             }
         }
     }
+
+    // Trier par heure (v43.3 Chronologique)
+    opportunities.sort((a, b) => {
+        const hA = a.heure || '23:59';
+        const hB = b.heure || '23:59';
+        return hA.localeCompare(hB);
+    });
 
     logger.info(`Analyse terminée. ${opportunities.length} opportunités filtrées (v43 strict).`);
     return opportunities;

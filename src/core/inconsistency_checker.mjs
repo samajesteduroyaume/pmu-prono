@@ -61,17 +61,19 @@ export function detectInconsistencies(participant, contexte, baseScores, finalSc
     }
 
     // 5. ANOMALIE : RENTRÉE ANNUELLE SUR-PONDÉRÉE
-    const years = musique.match(/\((\d+)\)/g);
-    if (years && years.length > 0) {
-        const currentYear = new Date().getFullYear() % 100;
-        const lastYearStr = years[years.length - 1].replace(/[()]/g, '');
-        const lastYear = parseInt(lastYearStr);
-        if (currentYear !== lastYear && lastYear !== (currentYear - 1) && finalScore > 65) {
-            alerts.push({
-                type: 'LONG_REST_BIAS',
-                severity: 'HIGH',
-                message: 'Rentrée de plus d\'un an. Le score IA ne reflète pas l\'incertitude physique.'
-            });
+    const trimmedMusique = musique.trim();
+    if (trimmedMusique.startsWith('(')) {
+        const firstYearMatch = trimmedMusique.match(/^\((\d+)\)/);
+        if (firstYearMatch) {
+            const currentYear = new Date().getFullYear() % 100;
+            const lastYear = parseInt(firstYearMatch[1]);
+            if (currentYear !== lastYear && lastYear !== (currentYear - 1) && finalScore > 65) {
+                alerts.push({
+                    type: 'LONG_REST_BIAS',
+                    severity: 'HIGH',
+                    message: 'Rentrée de plus d\'un an. Le score IA ne reflète pas l\'incertitude physique.'
+                });
+            }
         }
     }
 
@@ -89,8 +91,8 @@ export function applyCorrection(score, alerts) {
     let correctedScore = score;
     
     alerts.forEach(alert => {
-        if (alert.severity === 'HIGH') correctedScore -= 18;
-        if (alert.severity === 'MEDIUM') correctedScore -= 8;
+        if (alert.severity === 'HIGH') correctedScore -= 25; // v43.2: Pénalité augmentée pour plus de réalisme
+        if (alert.severity === 'MEDIUM') correctedScore -= 15; // v43.2: Pénalité augmentée pour plus de réalisme
     });
 
     return Math.round(Math.max(0, Math.min(100, correctedScore)));

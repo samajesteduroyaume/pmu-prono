@@ -35,26 +35,31 @@ export async function analysePatternsCroises(historique) {
 
         const plageHoraire = getPlageHoraire(heure);
 
-        // Générer toutes les combinaisons possibles
+        const catTrend = pari.cat_trend || 'STABLE';
+
+        // Générer toutes les combinaisons possibles (Enrichies v43.3)
         const combinaisons = [
             // Simples
             `${discipline}`,
             `${jour}`,
             `${plageHoraire}`,
             `${hippodrome}`,
+            `${catTrend}`,
 
             // Doubles
             `${discipline} + ${jour}`,
-            `${discipline} + ${plageHoraire}`,
+            `${discipline} + ${catTrend}`,
+            `${hippodrome} + ${catTrend}`,
             `${discipline} + ${hippodrome}`,
             `${jour} + ${plageHoraire}`,
 
-            // Triples
+            // Triples (Combinaisons Elite)
+            `${discipline} + ${catTrend} + ${hippodrome}`,
             `${discipline} + ${jour} + ${plageHoraire}`,
             `${discipline} + ${plageHoraire} + ${hippodrome}`,
 
-            // Quadruple (pattern complet)
-            `${discipline} + ${jour} + ${plageHoraire} + ${hippodrome}`
+            // Quadruple (Pattern Sniper)
+            `${discipline} + ${catTrend} + ${hippodrome} + ${plageHoraire}`
         ];
 
         const isWin = pari.resultat === 'WIN' || pari.resultat === 'win';
@@ -339,6 +344,9 @@ function matchPattern(pattern, contexte) {
 
         // Vérifier hippodrome
         if (contexte.hippodrome && part === contexte.hippodrome) return true;
+
+        // Vérifier Catégorie (v43.3)
+        if (contexte.catTrend && part === contexte.catTrend) return true;
 
         return false;
     });

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ARCHITECT v43.3 - Suivi des Pépites IA (Score >= 60, Edge > 5%).">
+    <meta name="theme-color" content="#0a0f14">
+    <title>ARCHITECT | Pépites IA</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=43.3.1">
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation Rail -->
+        <nav class="nav-rail">
+            <div class="brand">
+                <h2>ARCHITECT</h2>
+                <span>Terminal d'Intelligence</span>
+            </div>
+
+            <div class="nav-links">
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-crown"></i>
+                    <span>Quinté du Jour</span>
+                </a>
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-microchip"></i>
+                    <span>Scanner Exhaustif</span>
+                </a>
+                <a href="pepites.html" class="nav-item active">
+                    <i class="fas fa-gem"></i>
+                    <span>Pépites IA</span>
+                </a>
+                <a href="palmares.html" class="nav-item">
+                    <i class="fas fa-trophy"></i>
+                    <span>Palmarès</span>
+                </a>
+                <a href="backtest.html" class="nav-item">
+                    <i class="fas fa-vial"></i>
+                    <span>Laboratoire</span>
+                </a>
+            </div>
+
+            <div class="nav-footer">
+                <div style="margin-top: 16px; font-size: 10px; color: var(--text-low); text-align: center; font-weight: 800;">
+                    SYSTÈME : <span style="color: var(--accent-emerald)">EN LIGNE</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Stage -->
+        <main class="main-stage">
+            <header class="stage-header">
+                <div class="title-group">
+                    <h1>Pépites & Opportunités</h1>
+                    <div class="meta"><span class="live-indicator"></span> FILTRE : SCORE IA ≥ 60% ET AVANTAGE > 5%</div>
+                </div>
+                <div class="actions" style="display: flex; gap: 12px;">
+                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
+                        <i class="fas fa-history"></i>
+                        <span>Synchro. Étendue</span>
+                    </button>
+                    <button onclick="syncMarket()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; background: hsla(var(--h-indigo), 84%, 67%, 0.1);">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Sync. Directe</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="scroll-content">
+                <div id="performance-banner" style="display: none; margin-bottom: 40px; background: hsla(var(--h-indigo), 84%, 67%, 0.03); border: 1px solid hsla(var(--h-indigo), 84%, 67%, 0.15); padding: 32px; border-radius: 24px; backdrop-filter: blur(10px);">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;">
+                        <div class="stat-item">
+                            <label style="display: block; font-size: 11px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; letter-spacing: 1px;">ROI Global (Elite)</label>
+                            <div id="stat-roi" style="font-size: 32px; font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono';">--%</div>
+                        </div>
+                        <div class="stat-item">
+                            <label style="display: block; font-size: 11px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; letter-spacing: 1px;">Taux de Réussite</label>
+                            <div id="stat-winrate" style="font-size: 32px; font-weight: 800; color: var(--text-pure); font-family: 'JetBrains Mono';">--%</div>
+                        </div>
+                        <div class="stat-item">
+                            <label style="display: block; font-size: 11px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; letter-spacing: 1px;">Profit Net (Simulé)</label>
+                            <div id="stat-profit" style="font-size: 32px; font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono';">-- €</div>
+                        </div>
+                        <div class="stat-item">
+                            <label style="display: block; font-size: 11px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; letter-spacing: 1px;">Total Pronos</label>
+                            <div id="stat-total" style="font-size: 32px; font-weight: 800; color: var(--accent-indigo); font-family: 'JetBrains Mono';">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pepites-container" class="opportunity-grid">
+                    <!-- JS Skeleton Injection -->
+                    <div class="stat-card skeleton-card"></div>
+                    <div class="stat-card skeleton-card"></div>
+                    <div class="stat-card skeleton-card"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Details -->
+    <div id="modal-details" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+        <div class="stat-card" style="width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+                <h2 style="font-size: 24px; font-weight: 800;">Analyse Profonde</h2>
+                <button onclick="closeModal()" style="background: hsla(0, 0%, 100%, 0.05); border: 1px solid var(--glass-border); color: var(--text-high); padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Override for Pepites page
+        async function refreshData() {
+            const container = document.getElementById('pepites-container');
+            container.innerHTML = `
+                <div class="stat-card skeleton-card"></div>
+                <div class="stat-card skeleton-card"></div>
+                <div class="stat-card skeleton-card"></div>
+            `;
+            await loadPerformance();
+            await loadPepites();
+        }
+
+        async function loadPerformance() {
+            try {
+                const res = await fetch('/api/courses/pepites/performance');
+                const stats = await res.json();
+                
+                document.getElementById('stat-roi').textContent = `${stats.roi}%`;
+                document.getElementById('stat-winrate').textContent = `${stats.winrate}%`;
+                document.getElementById('stat-profit').textContent = `${stats.profit} €`;
+                document.getElementById('stat-total').textContent = stats.totalBets;
+                
+                document.getElementById('performance-banner').style.display = 'block';
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadPepites() {
+            try {
+                const res = await fetch('/api/courses/pepites');
+                const data = await res.json();
+                const container = document.getElementById('pepites-container');
+                container.innerHTML = '';
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-low); font-weight: 700;">Aucune pépite détectée pour le moment.</div>';
+                    return;
+                }
+
+                data.forEach((c, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'opportunity-card';
+                    card.style.animation = `fadeIn 0.6s ease-out ${i * 0.1}s both`;
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                            <span class="badge ${c.confidence === 'MAXIMALE' ? 'confidence-MAXIMALE' : 'confidence-ÉLITE'}">${c.confidence}</span>
+                            <div style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-indigo); font-size: 16px;">${c.heure}</div>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <div class="horse-name">${c.ia_nom}</div>
+                            <div style="color: var(--text-low); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                                <i class="fas fa-map-marker-alt" style="color: var(--accent-indigo)"></i> ${c.hippodrome} • R${c.reunionNum} C${c.courseNum}
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${c.is_smart_money ? '<span class="badge" style="background: hsla(var(--h-gold), 96%, 60%, 0.2); color: var(--accent-gold); border: 1px solid var(--accent-gold-glow); font-size: 9px;"><i class="fas fa-bolt"></i> SMART MONEY</span>' : ''}
+                            ${c.cat_trend === 'DOWN' ? '<span class="badge" style="background: hsla(var(--h-emerald), 84%, 45%, 0.2); color: var(--accent-emerald); border: 1px solid var(--accent-emerald-glow); font-size: 9px;"><i class="fas fa-level-down-alt"></i> DÉCLASSÉ</span>' : ''}
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+                            <div style="background: hsla(0, 0%, 100%, 0.03); padding: 16px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--glass-border);">
+                                <label style="display: block; font-size: 9px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800;">Score IA</label>
+                                <div style="font-size: 20px; font-weight: 800; color: ${c.ia_score >= 75 ? 'var(--accent-emerald)' : 'var(--accent-gold)'}; font-family: 'JetBrains Mono';">${c.ia_score}%</div>
+                            </div>
+                            <div style="background: hsla(0, 0%, 100%, 0.03); padding: 16px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--glass-border);">
+                                <label style="display: block; font-size: 9px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800;">Cote</label>
+                                <div style="font-size: 20px; font-weight: 800; color: var(--text-pure); font-family: 'JetBrains Mono';">${c.fav_cote || '--'}</div>
+                            </div>
+                            <div style="background: hsla(0, 0%, 100%, 0.03); padding: 16px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--glass-border);">
+                                <label style="display: block; font-size: 9px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800;">Edge</label>
+                                <div style="font-size: 20px; font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono';">+${c.edge}%</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); pt-24; margin-top: 8px; padding-top: 24px;">
+                            <div style="font-size: 11px; font-weight: 800; color: var(--accent-gold); letter-spacing: 0.5px;">
+                                <i class="fas fa-terminal"></i> RECOMMENDATION : MISE ${c.recommendation}
+                            </div>
+                            <button onclick="showDetails(${c.id})" class="nav-item" style="padding: 10px 16px; font-size: 11px; background: transparent; border: 1px solid var(--glass-border); border-radius: 8px;">
+                                ANALYSE
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        window.addEventListener('load', refreshData);
+    </script>
+</body>
+
+</html>

@@ -133,6 +133,8 @@ export async function getAllCourses() {
                    (SELECT '#' || numero || ' ' || nom FROM participants WHERE course_id = c.id AND cote_ref > 0 ORDER BY cote_ref ASC LIMIT 1) as fav_nom,
                    (SELECT cote_ref FROM participants WHERE course_id = c.id AND cote_ref > 0 ORDER BY cote_ref ASC LIMIT 1) as fav_cote,
                    (SELECT '#' || numero || ' ' || nom FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_nom,
+                   (SELECT nom FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_nom_brut,
+                   (SELECT musique FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_musique,
                    (SELECT prediction_score FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_score
             FROM courses c
             ORDER BY c.date DESC, c.heure ASC
@@ -145,6 +147,47 @@ export async function getAllCourses() {
             } else {
                 resolve(rows);
             }
+        });
+    });
+}
+
+export async function getCourseById(id) {
+    const db = getDB();
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT c.*, 
+                   (SELECT count(*) FROM participants WHERE course_id = c.id) as nb_participants_stockes,
+                   (SELECT '#' || numero || ' ' || nom FROM participants WHERE course_id = c.id AND cote_ref > 0 ORDER BY cote_ref ASC LIMIT 1) as fav_nom,
+                   (SELECT cote_ref FROM participants WHERE course_id = c.id AND cote_ref > 0 ORDER BY cote_ref ASC LIMIT 1) as fav_cote,
+                   (SELECT '#' || numero || ' ' || nom FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_nom,
+                   (SELECT musique FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_musique,
+                   (SELECT prediction_score FROM participants WHERE course_id = c.id AND prediction_score > 0 ORDER BY prediction_score DESC LIMIT 1) as ia_score
+            FROM courses c
+            WHERE c.id = ?
+        `;
+        db.get(query, [id], (err, row) => {
+            if (err) {
+                logger.error(`Erreur getCourseById ${id}: ${err.message}`);
+                reject(err);
+            } else {
+                resolve(row);
+            }
+        });
+    });
+}
+
+export async function getAllCoursesWithResults() {
+    const db = getDB();
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT * FROM courses 
+            WHERE ordre_arrivee IS NOT NULL 
+              AND ordre_arrivee != ''
+            ORDER BY date DESC
+        `;
+        db.all(query, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
         });
     });
 }
@@ -186,20 +229,28 @@ export async function getCourseQuinte() {
     const db = getDB();
     return new Promise((resolve, reject) => {
         const today = new Date().toISOString().split('T')[0];
+        // Priority to explicit Quinte pari type, fallback to high prize + min partants
         const query = `
             SELECT c.*, COUNT(p.id) as nb_partants
             FROM courses c
             JOIN participants p ON c.id = p.course_id
             WHERE c.date = ? 
             GROUP BY c.id
-            HAVING nb_partants >= 13
-            ORDER BY c.prix DESC, nb_partants DESC
+            ORDER BY 
+                (CASE WHEN c.type_pari LIKE '%QUINTE%' THEN 1 ELSE 0 END) DESC,
+                c.prix DESC, 
+                nb_partants DESC
             LIMIT 1
         `;
 
         db.get(query, [today], (err, row) => {
             if (err) return reject(err);
-            resolve(row || null);
+            // Verify if it's a likely quinte (pari type or min partants)
+            if (row && (row.type_pari?.includes('QUINTE') || row.nb_partants >= 12)) {
+                resolve(row);
+            } else {
+                resolve(null);
+            }
         });
     });
 }
@@ -229,6 +280,39 @@ export async function getParticipantId(date, reunionNum, courseNum, horseNum) {
         db.get(query, [date, reunionNum.toString(), courseNum.toString(), parseInt(horseNum)], (err, row) => {
             if (err) reject(err);
             else resolve(row ? row.id : null);
+        });
+    });
+}
+
+/**
+ * Récupère l'historique des performances d'un cheval depuis la base de données locale.
+ */
+export async function getHorseHistory(horseName, limit = 15) {
+    const db = getDB();
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT 
+                p.classement, 
+                c.date, 
+                c.distance, 
+                c.terrain, 
+                c.discipline,
+                c.prix,
+                p.cote_ref
+            FROM participants p
+            JOIN courses c ON p.course_id = c.id
+            WHERE p.nom = ? 
+              AND c.ordre_arrivee IS NOT NULL
+            ORDER BY c.date DESC
+            LIMIT ?
+        `;
+        db.all(query, [horseName, limit], (err, rows) => {
+            if (err) {
+                logger.error(`Erreur getHorseHistory pour ${horseName}: ${err.message}`);
+                reject(err);
+            } else {
+                resolve(rows || []);
+            }
         });
     });
 }

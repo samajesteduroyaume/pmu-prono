@@ -1,5 +1,6 @@
 import { calculerPredictionHybride } from './hybrid.mjs';
 import { determinerChangementCategorie } from '../utils/engine_utils.mjs';
+import { getHorseHistory } from './db.mjs';
 
 // ============================================================
 // v43: HELPERS EXTRACTION DONNÉES PMU API — TERRAIN & DISTANCE
@@ -38,15 +39,17 @@ function normaliserTerrain(terrainBrut) {
  * Extrait la préférence de terrain du participant depuis les données API PMU.
  * L'API retourne parfois `participant.preferencesTerrain` ou dans les perfs historiques.
  */
-function extraireTerrainPrefere(p) {
+function extraireTerrainPrefere(p, dbHistory = []) {
     // Champ direct (PMU le fournit parfois)
     if (p.preferencesTerrain) return normaliserTerrain(p.preferencesTerrain);
     if (p.terrainPrefere)     return normaliserTerrain(p.terrainPrefere);
     if (p.typeTerrain)        return normaliserTerrain(p.typeTerrain);
 
     // Analyse des performances historiques si disponibles (p.performances[])
-    if (p.performances && Array.isArray(p.performances) && p.performances.length >= 3) {
-        const wins = p.performances.filter(perf => perf.ordreArrivee === 1);
+    const perfs = (p.performances && Array.isArray(p.performances)) ? p.performances : dbHistory;
+    
+    if (perfs && perfs.length >= 2) {
+        const wins = perfs.filter(perf => parseInt(perf.ordreArrivee || perf.classement) === 1);
         if (wins.length > 0) {
             // Prendre le terrain le plus fréquent parmi les victoires
             const terrainCount = {};
@@ -67,16 +70,21 @@ function extraireTerrainPrefere(p) {
  * L'API retourne `participant.performances[]` avec `distance` par course.
  * On retourne un tableau JSON des distances (en mètres) pour les N dernières courses.
  */
-function extraireDistancesHistory(p) {
-    const perfs = p.performances || p.dernieresCourses || [];
+function extraireDistancesHistory(p, dbHistory = []) {
+    const perfs = (p.performances || p.dernieresCourses || (Array.isArray(dbHistory) && dbHistory.length > 0 ? dbHistory : []));
     if (!Array.isArray(perfs) || perfs.length === 0) return null;
 
-    const distances = perfs
-        .slice(0, 12) // 12 dernières courses
-        .map(perf => parseInt(perf.distance || perf.distanceCourse || 0))
-        .filter(d => d > 0);
+    // v43.1: On stocke maintenant des objets {d, p, t} (distance, place, terrain)
+    const structuredHistory = perfs
+        .slice(0, 15)
+        .map(perf => ({
+            d: parseInt(perf.distance || perf.distanceCourse || 0),
+            p: parseInt(perf.ordreArrivee || perf.classement || 0),
+            t: normaliserTerrain(perf.terrain)
+        }))
+        .filter(h => h.d > 0);
 
-    return distances.length > 0 ? JSON.stringify(distances) : null;
+    return structuredHistory.length > 0 ? JSON.stringify(structuredHistory) : null;
 }
 
 
@@ -101,8 +109,17 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
         // Distance de la course (en mètres, entier)
         const distanceCourse = parseInt(race.distance) || 0;
 
+        // v43: Pré-extraction des cotes pour le rang ML (Feature de comparaison relative)
+        const allParticipantsCotes = (race.participants || []).map(p => ({
+            nom: p.nom,
+            cote_ref: p.dernierRapportDirect?.rapport || 0
+        }));
+
         // Extraction Participants
         const participants = await Promise.all((race.participants || []).map(async p => {
+            // v43.1: Récupération de l'historique depuis la DB si l'API est muette
+            const dbHistory = await getHorseHistory(p.nom);
+
             const participantObj = {
                 nom: p.nom || '?',
                 numero: p.numPmu || 0,
@@ -122,11 +139,14 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
                 classement: p.ordreArrivee || null,
                 cote_ref: p.dernierRapportDirect?.rapport || 0,
                 avis: p.avisEntraineur || null,
-                // v43: Signaux Distance & Terrain depuis l'API PMU
+                // v43.2: Nouvelles caractéristiques techniques
+                corde: p.place || 0,        // Corde en PLAT
+                poids: p.poids || 0,        // Poids en PLAT/OBSTACLE
+                recul: p.distance || 0,     // Distance réelle en TROT (recul)
+                // v43.1: Signaux Distance & Terrain (DB Backed)
                 distance_course: distanceCourse,
-                terrain_prefere: extraireTerrainPrefere(p),
-                distances_history: extraireDistancesHistory(p)
-
+                terrain_prefere: extraireTerrainPrefere(p, dbHistory),
+                distances_history: extraireDistancesHistory(p, dbHistory)
             };
 
             // Calcul du changement de catégorie
@@ -140,7 +160,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
                     discipline: race.discipline,
                     distance: distanceCourse,   // v43
                     terrain: terrain             // v43
-                });
+                }, [], allParticipantsCotes);
                 participantObj.prediction_score = result.score;
             } catch (err) {
                 console.error(`[PROCESSOR] Hybridation échouée pour ${participantObj.nom}:`, err.message);
@@ -155,7 +175,8 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
         // AJOUT ORDRE ARRIVÉE GLOBAL
         let ordreArrivee = null;
         if (race.ordreArrivee && Array.isArray(race.ordreArrivee)) {
-            ordreArrivee = race.ordreArrivee.map(o => o.join('-')).join(',');
+            // Aplatir le tableau, prendre les 5 premiers (format PMU classique) et joindre avec des tirets
+            ordreArrivee = race.ordreArrivee.flat().slice(0, 5).join('-');
         }
 
         return {

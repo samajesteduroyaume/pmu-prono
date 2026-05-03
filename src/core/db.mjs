@@ -16,11 +16,14 @@ export { initDB, closeDB };
 export const {
     insertCourses,
     getAllCourses,
+    getAllCoursesWithResults,
     getCourseParticipants,
     getCourseQuinte,
+    getCourseById,
     getDisciplines,
     getParticipantId,
-    getChevauxEnRetardDeGain
+    getChevauxEnRetardDeGain,
+    getHorseHistory
 } = courseRepo;
 
 export const {

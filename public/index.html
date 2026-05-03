@@ -4,304 +4,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PMU PRONO v22 - Terminal de Pari Professionnel Premium">
-    <meta name="theme-color" content="#008a00">
-    <title>PMU PRONO | Terminal Professionnel</title>
-    <link rel="stylesheet" href="css/style.css?v=16.5">
-    <link rel="stylesheet" href="css/extra.css">
+    <meta name="description" content="ARCHITECT v43.3 - Terminal d'Intelligence PMU Élite. Analyse prédictive et gestion de capital professionnelle.">
+    <meta name="theme-color" content="#0a0f14">
+    <title>ARCHITECT | Intelligence PMU Élite</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=43.3.1">
+    
+    <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body class="pro-terminal">
-    <div class="app-container">
-        <!-- SIDE MONITOR (Minimalist) -->
-        <aside class="side-monitor">
-            <div class="terminal-brand">
-                <div class="gold-pulse" style="background:var(--pmu-green); box-shadow: 0 0 10px var(--pmu-green-glow)">
-                </div>
-                <span class="glitch-text" style="color:var(--pmu-green)">PMU PRONO</span>
-                <small>v22.0 Professional</small>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation Rail -->
+        <nav class="nav-rail">
+            <div class="brand">
+                <h2>ARCHITECT</h2>
+                <span>Terminal d'Intelligence</span>
             </div>
 
-            <nav class="terminal-nav">
-                <a href="#" onclick="showPage('dashboard')" class="active" id="nav-dashboard">
-                    <span class="nav-key">F1</span> DASHBOARD
+            <div class="nav-links">
+                <a href="#" onclick="showPage('dashboard')" class="nav-item active" id="nav-dashboard">
+                    <i class="fas fa-crown"></i>
+                    <span>Quinté du Jour</span>
                 </a>
-                <a href="#" onclick="showPage('courses')" id="nav-courses">
-                    <span class="nav-key">F2</span> PRONO
+                <a href="#" onclick="showPage('courses')" class="nav-item" id="nav-courses">
+                    <i class="fas fa-microchip"></i>
+                    <span>Scanner de Marché</span>
                 </a>
-                <a href="palmares.html">
-                    <span class="nav-key">F3</span> PALMARÈS
+                <a href="pepites.html" class="nav-item">
+                    <i class="fas fa-gem"></i>
+                    <span>Pépites IA</span>
                 </a>
-            </nav>
-
-            <div class="bankroll-summary">
-                <div class="bankroll-label">NET PROFIT (L30D)</div>
-                <div class="bankroll-value positive" id="stat-profit-sidebar">+0.00 €</div>
+                <a href="palmares.html" class="nav-item">
+                    <i class="fas fa-trophy"></i>
+                    <span>Palmarès</span>
+                </a>
+                <a href="backtest.html" class="nav-item">
+                    <i class="fas fa-vial"></i>
+                    <span>Laboratoire</span>
+                </a>
             </div>
 
-            <div class="system-status">
-                <div class="status-indicator online"></div>
-                <span>IA ENGINE: ARCHITECT v22</span>
-            </div>
-        </aside>
-
-        <!-- PRIMARY SCREEN -->
-        <main class="primary-screen">
-            <!-- VIEW: DASHBOARD (Overview) -->
-            <div id="view-dashboard" class="view active">
-                <section class="screen-header">
-                    <div class="header-main">
-                        <h1>MONITEUR DE PERFORMANCE</h1>
-                        <p class="header-sub" id="current-date">SÉANCE EN COURS...</p>
-                    </div>
-                </section>
-
-                <!-- Filtres ROI Timeframe -->
-                <div class="roi-filters" style="display:flex; gap:10px; margin-bottom:20px; justify-content:center;">
-                    <button onclick="updateStats(1)" class="terminal-btn-tiny">1J</button>
-                    <button onclick="updateStats(7)" class="terminal-btn-tiny">7J</button>
-                    <button onclick="updateStats(15)" class="terminal-btn-tiny">15J</button>
-                    <button onclick="updateStats(30)" class="terminal-btn-tiny">1M</button>
-                    <button onclick="updateStats(365)" class="terminal-btn-tiny">1AN</button>
-                    <button onclick="updateStats(null)" class="terminal-btn-tiny active"
-                        style="border-color:var(--gold)">MAX</button>
+            <div class="nav-footer">
+                <div class="bankroll-card">
+                    <label>Capital Actuel</label>
+                    <div class="amount" id="stat-bankroll-display">0.00 €</div>
                 </div>
-
-                <div class="screen-header">
-                    <div>
-                        <h1>DASHBOARD</h1>
-                        <div class="header-sub">ANALYSE TEMPS RÉEL</div>
-                    </div>
-                    <div class="live-badge">
-                        <div class="live-dot"></div>
-                        LIVE
-                    </div>
-                </div>
-
-                <!-- V29: PANNEAU D'ALERTES -->
-                <div id="alerts-panel" class="alerts-panel" style="display:none">
-                    <div class="alerts-header">
-                        <div style="display:flex; align-items:center; gap:10px">
-                            <span style="font-size:1.2rem">🔔</span>
-                            <span style="font-weight:800; font-size:0.9rem">ALERTES ACTIVES</span>
-                            <span id="alerts-count" class="alerts-count">0</span>
-                        </div>
-                        <div style="display:flex; gap:10px">
-                            <button onclick="refreshAlerts()" class="terminal-btn-tiny">🔄 Actualiser</button>
-                            <button onclick="dismissAllAlerts()" class="terminal-btn-tiny">✓ Tout Effacer</button>
-                            <button onclick="toggleAlertsPanel()" class="terminal-btn-tiny">✕</button>
-                        </div>
-                    </div>
-                    <div id="alerts-container" class="alerts-container">
-                        <!-- Les alertes seront injectées ici -->
-                    </div>
-                </div>
-
-                <!-- Bouton flottant pour afficher les alertes -->
-                <button id="alerts-toggle-btn" class="alerts-toggle-btn" onclick="toggleAlertsPanel()"
-                    style="display:none">
-                    <span style="font-size:1.2rem">🔔</span>
-                    <span id="alerts-badge" class="alerts-badge">0</span>
-                </button>
-
-                <div class="kpi-monitor">
-                    <div class="kpi-card gold-border">
-                        <div class="kpi-tag">ROI</div>
-                        <div class="kpi-value" id="stat-roi">0%</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-tag">WIN RATE</div>
-                        <div class="kpi-value" id="stat-win-rate">0%</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-tag">COURSES</div>
-                        <div class="kpi-value" id="stat-total-courses">0</div>
-                    </div>
-                </div>
-
-                <!-- GRAPHIQUE ÉVOLUTION -->
-                <div class="glass-card" style="margin-bottom:20px; padding:15px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <span style="color:var(--gold); font-weight:bold;">TENDANCE PROFIT (CUMULÉ)</span>
-                        <div style="display:flex; gap:15px; font-size:0.8rem; color:var(--text-dim);">
-                            <label style="display:flex; align-items:center; cursor:pointer;" title="Lisser la courbe">
-                                <input type="checkbox" id="check-ma" onchange="updateChartVisibility()"
-                                    style="margin-right:5px;">
-                                MOYENNE MOBILE (7J)
-                            </label>
-                            <label style="display:flex; align-items:center; cursor:pointer;" title="Est. Volatilité">
-                                <input type="checkbox" id="check-range" onchange="updateChartVisibility()"
-                                    style="margin-right:5px;">
-                                PLAGE DE GAINS
-                            </label>
-                        </div>
-                    </div>
-                    <div style="position:relative; height:300px; width:100%;">
-                        <canvas id="profitChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- V28: WIDGET DE TENDANCES -->
-                <div class="glass-card" style="margin-bottom:20px; border-left:4px solid var(--gold)">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-                        <div style="display:flex; align-items:center; gap:10px">
-                            <span style="font-size:1.5rem">📈</span>
-                            <span style="color:var(--gold); font-weight:bold; font-size:1.1rem">ANALYSE DE
-                                TENDANCE</span>
-                        </div>
-                        <span id="tendance-label" class="tendance-badge"
-                            style="padding:5px 15px; border-radius:20px; font-weight:800; font-size:0.75rem">CHARGEMENT...</span>
-                    </div>
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px">
-                        <div class="tendance-metric">
-                            <div class="metric-label">MOMENTUM</div>
-                            <div class="metric-value" id="momentum-value">--</div>
-                            <div class="metric-bar">
-                                <div id="momentum-bar" class="metric-bar-fill" style="width:0%"></div>
-                            </div>
-                        </div>
-                        <div class="tendance-metric">
-                            <div class="metric-label">SÉQUENCE ACTUELLE</div>
-                            <div class="metric-value" id="sequence-value">--</div>
-                            <div class="metric-sub" id="sequence-depuis"
-                                style="font-size:0.7rem; color:var(--text-dim)"></div>
-                        </div>
-                        <div class="tendance-metric">
-                            <div class="metric-label">DRAWDOWN</div>
-                            <div class="metric-value" id="drawdown-value">--</div>
-                            <div class="metric-sub" style="font-size:0.7rem; color:var(--text-dim)">Max: <span
-                                    id="drawdown-max">--</span></div>
-                        </div>
-                        <div class="tendance-metric">
-                            <div class="metric-label">RATIO SHARPE</div>
-                            <div class="metric-value" id="sharpe-value">--</div>
-                            <div class="metric-sub" style="font-size:0.7rem; color:var(--text-dim)">Rendement/Risque
-                            </div>
-                        </div>
-                    </div>
-                    <div id="patterns-info"
-                        style="margin-top:15px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; font-size:0.8rem; display:none">
-                        <div style="color:var(--gold); font-weight:bold; margin-bottom:5px">🎯 PATTERNS DÉTECTÉS</div>
-                        <div id="patterns-content"></div>
-                    </div>
-                </div>
-
-                <!-- QUINTE+ PREDICTION SECTION (New) -->
-                <div class="glass-card" style="margin-bottom: 20px; border-left: 4px solid var(--purple);">
-                    <div class="alert-header" style="color:var(--text-primary)">
-                        <span class="pulse-icon" style="color:var(--purple)">🔮</span> PRONOSTIC QUINTÉ+ DU JOUR
-                        <small style="float:right; font-size:0.7rem; color:var(--text-dim)"
-                            id="quinte-info">Recherche...</small>
-                    </div>
-                    <div id="quinte-prediction"
-                        style="padding:15px; display:flex; justify-content:space-around; flex-wrap:wrap; text-align:center">
-                        <div class="loading-inline">Analyse de la course événement...</div>
-                    </div>
-                </div>
-
-                <div class="opportunity-alert glass-card">
-                    <div class="alert-header">
-                        <span class="pulse-icon">🔥</span> DERNIÈRES OPPORTUNITÉS DETECTÉES (VALUE > 10%)
-                    </div>
-                    <div id="latest-opportunities" class="opportunity-list">
-                        <!-- Peupler via JS -->
-                        <div class="loading-inline">Scanning pour des opportunités de value...</div>
-                    </div>
+                <div style="margin-top: 24px; font-size: 10px; color: var(--text-low); text-align: center; font-weight: 800; letter-spacing: 1px;">
+                    SYSTÈME : <span style="color: var(--accent-emerald)">OPÉRATIONNEL</span>
                 </div>
             </div>
+        </nav>
 
-            <!-- VIEW: SCANNER (Market Scanner) -->
-            <div id="view-courses" class="view">
-                <section class="screen-header">
-                    <div class="header-main" style="display:flex; align-items:flex-start; gap:20px">
-                        <div>
-                            <h1>ESPACE PRONO</h1>
-                            <p class="header-sub">SÉLECTION ÉLITE PMU EN TEMPS RÉEL</p>
-                        </div>
-                        <div class="live-badge" id="live-indicator" style="margin-top:10px">
-                            <span class="live-dot"></span> LIVE AUTO-SYNC
-                        </div>
+        <!-- Main Content Stage -->
+        <main class="main-stage">
+            <header class="stage-header">
+                <div class="title-group">
+                    <h1 id="stage-title">Moniteur de Performance</h1>
+                    <div class="meta" id="current-date">
+                        <span class="live-indicator"></span> INITIALISATION DU FLUX...
                     </div>
-                    <div class="market-filters">
-                        <input type="date" id="filter-date" onchange="filterTable()" class="terminal-input">
-                        <select id="filter-discipline" onchange="filterTable()" class="terminal-input">
-                            <option value="">MARKET: ALL</option>
-                            <option value="ATTELE">TROT ATTELE</option>
-                            <option value="PLAT">GALOP PLAT</option>
-                            <option value="MONTE">TROT MONTE</option>
-                        </select>
-                        <button onclick="syncMarket()" class="terminal-btn-gold" id="btn-sync"
-                            title="Sync date choisie">
-                            <span id="sync-icon">🔄</span> SYNC DATE
-                        </button>
-                        <button onclick="syncHistory(7)" class="terminal-btn-gold"
-                            style="background:var(--border-dim); color:var(--gold)" id="btn-sync-7">
-                            🔄 RATTRAPAGE 7J
-                        </button>
-                    </div>
-                </section>
+                </div>
+                <div class="actions" style="display: flex; gap: 12px;">
+                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px;">
+                        <i class="fas fa-history"></i>
+                        <span>Synchro. Étendue</span>
+                    </button>
+                    <button onclick="syncMarket()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px; background: hsla(var(--h-indigo), 84%, 67%, 0.1);">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Sync. Live</span>
+                    </button>
+                </div>
+            </header>
 
-                <div class="market-controls glass-card" style="margin-bottom:20px; border-color:var(--gold-dim)">
-                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap">
-                        <span style="color:var(--gold); font-weight:800; font-size:0.75rem; letter-spacing:1px">SYNC
-                            MASTER :</span>
-                        <button onclick="syncHistory(1)" class="terminal-btn-tiny">1J</button>
-                        <button onclick="syncHistory(2)" class="terminal-btn-tiny">2J</button>
-                        <button onclick="syncHistory(3)" class="terminal-btn-tiny">3J</button>
-                        <button onclick="syncHistory(5)" class="terminal-btn-tiny">5J</button>
-                        <button onclick="syncHistory(7)" class="terminal-btn-tiny">7J</button>
-                        <button onclick="syncHistory(10)" class="terminal-btn-tiny">10J</button>
-                        <button onclick="syncHistory(15)" class="terminal-btn-tiny">15J</button>
-                        <button onclick="syncHistory(30)" class="terminal-btn-tiny" style="border-color:var(--gold)">1
-                            MOIS</button>
-                        <button onclick="syncHistory(180)" class="terminal-btn-tiny"
-                            style="border-color:var(--gold); color:var(--gold)">6 MOIS</button>
-                        <button onclick="syncHistory(365)" class="terminal-btn-tiny"
-                            style="background:var(--gold); color:black; font-weight:800">1 AN</button>
+            <div class="scroll-content">
+                <!-- VIEW: DASHBOARD -->
+                <div id="view-dashboard" class="view active">
+                    <div id="quinte-container">
+                        <!-- JS Skeleton Injection -->
                     </div>
                 </div>
 
-                <div id="sync-status" class="terminal-alert" style="display:none; margin-bottom:20px"></div>
-
-                <div class="scanner-container">
-                    <table class="market-table" id="courses-table">
-                        <thead>
-                            <tr>
-                                <th width="70">HEURE</th>
-                                <th width="70">ID</th>
-                                <th>HIPPODROME</th>
-                                <th>SÉLECTION IA (TOP 1)</th>
-                                <th width="60">CONF.</th>
-                                <th>FAVORI PMU</th>
-                                <th width="60">COTE</th>
-                                <th width="60">DIST.</th>
-                                <th width="60">MET.</th>
-                                <th width="80">ARRIVÉE</th>
-                                <th width="80">ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- JS Inject -->
-                        </tbody>
-                    </table>
-                    <div id="pagination-controls" class="terminal-pagination"></div>
+                <!-- VIEW: SCANNER -->
+                <div id="view-courses" class="view">
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Heure</th>
+                                    <th>Événement</th>
+                                    <th>Top Vecteur</th>
+                                    <th>Score IA</th>
+                                    <th>Cote</th>
+                                    <th>Edge</th>
+                                    <th>Statut</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="courses-table-body">
+                                <!-- JS Skeleton Injection -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- MODAL: BETTING ANALYSIS -->
-    <div id="modal-details" class="terminal-modal">
-        <div class="modal-content glass-card gold-border">
-            <span class="close-modal" onclick="closeModal()">[ESC] CLOSE</span>
-            <div id="modal-body">
-                <!-- Pro Betting Details -->
+    <!-- Modal Details -->
+    <div id="modal-details" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+        <div class="stat-card" style="width: 900px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+                <h2 style="font-size: 24px; font-weight: 800; letter-spacing: -1px;">Analyse de Vecteurs IA</h2>
+                <button onclick="closeModal()" style="background: hsla(0, 0%, 100%, 0.05); border: 1px solid var(--glass-border); color: var(--text-high); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
+            <div id="modal-body"></div>
         </div>
     </div>
 
-    <script src="js/app.js?v=16.2"></script>
+    <script src="js/app.js?v=elite.1.1"></script>
 </body>
 
 </html>

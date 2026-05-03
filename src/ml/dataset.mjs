@@ -12,27 +12,7 @@ function normalizeValue(value, min, max) {
     return (value - min) / (max - min);
 }
 
-import { extractBaseFeatures } from '../core/features.mjs';
-import { calculerPrediction } from '../core/intelligence.mjs';
-
-async function extractFeatures(participant, course) {
-    const expertScore = await calculerPrediction(participant, course);
-    const f = extractBaseFeatures(participant, course, expertScore);
-    return {
-        features: [
-            f.forme,
-            f.classe,
-            f.config,
-            f.entourage,
-            f.regularite,
-            f.confiance,
-            f.isTrot,
-            f.isShielded,
-            f.sentiment,
-            f.expertScore
-        ]
-    };
-}
+import { extractMLFeatures } from '../core/hybrid.mjs';
 
 export async function prepareDataset() {
     logger.header('PRÉPARATION DATASET ML');
@@ -55,40 +35,58 @@ export async function prepareDataset() {
             const dataset = [];
             
             async function processRows() {
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (i % 100 === 0) logger.info(`Traitement participant ${i}/${rows.length}...`);
-                    
-                    const contexts = { discipline: row.discipline, prixCourse: row.prix };
-                    const expertScore = await calculerPrediction(row, contexts);
-                    const f = extractBaseFeatures(row, contexts, expertScore);
+                const coursesMap = new Map();
+                for (const row of rows) {
+                    if (!coursesMap.has(row.course_id)) coursesMap.set(row.course_id, []);
+                    coursesMap.get(row.course_id).push(row);
+                }
 
-                    const featureVector = [
-                        f.forme, f.classe, f.config, f.entourage, f.regularite, 
-                        f.confiance, f.isTrot, f.isShielded, f.sentiment, f.expertScore
-                    ];
+                let processed = 0;
+                for (const [course_id, participants] of coursesMap.entries()) {
+                    for (const row of participants) {
+                        processed++;
+                        if (processed % 100 === 0) logger.info(`Traitement participant ${processed}/${rows.length}...`);
+                        
+                        const contexts = { discipline: row.discipline, prixCourse: row.prix };
+                        
+                        // Use exact same features as inference
+                        const featureVector = await extractMLFeatures(row, contexts, participants);
 
-                    const arrivee = row.ordre_arrivee || '';
-                    const positions = arrivee.split('-').map(n => parseInt(n));
-                    const isWinner = positions[0] === row.numero ? 1 : 0;
+                        const arrivee = row.ordre_arrivee || '';
+                        const positions = arrivee.split('-').map(n => parseInt(n));
+                        
+                        const isWinner = positions[0] === row.numero ? 1 : 0;
 
-                    dataset.push({
-                        features: featureVector,
-                        label: isWinner
-                    });
+                        // Ensure there are no undefined values in the vector
+                        const safeVector = featureVector.map(v => v === undefined || isNaN(v) ? 0.5 : v);
+
+                        dataset.push({
+                            features: safeVector,
+                            label: isWinner
+                        });
+                    }
                 }
             }
 
-            processRows().then(() => {
+                // v43.1: Gestion de l'imbalance (Undersampling des perdants)
+                const winners = dataset.filter(d => d.label === 1);
+                const losers = dataset.filter(d => d.label === 0);
+                
+                logger.info(`Données brutes : ${winners.length} gagnants, ${losers.length} perdants`);
 
-            // Split train/test (80/20)
-            const shuffled = dataset.sort(() => Math.random() - 0.5);
-            const splitIndex = Math.floor(shuffled.length * 0.8);
+                // On prend autant de perdants que de gagnants (Ratio 1:1) pour équilibrer l'apprentissage
+                const balancedLosers = losers.sort(() => Math.random() - 0.5).slice(0, winners.length);
+                const balancedDataset = [...winners, ...balancedLosers];
 
-            const trainData = shuffled.slice(0, splitIndex);
-            const testData = shuffled.slice(splitIndex);
+                // Split train/test (80/20) sur le dataset équilibré
+                const shuffled = balancedDataset.sort(() => Math.random() - 0.5);
+                const splitIndex = Math.floor(shuffled.length * 0.8);
 
-                logger.success(`Dataset préparé : ${trainData.length} train, ${testData.length} test`);
+                const trainData = shuffled.slice(0, splitIndex);
+                const testData = shuffled.slice(splitIndex);
+
+                logger.success(`Dataset équilibré préparé : ${trainData.length} train, ${testData.length} test`);
+                logger.info(`Ratio final : 1 gagnant pour 1 perdant`);
 
                 db.close();
                 resolve({ trainData, testData });

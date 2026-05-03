@@ -1,5 +1,5 @@
 // src/core/engines/distance_terrain.mjs
-// ARCHITECT v43 — Module Distance & Terrain (données réelles API PMU)
+// ARCHITECT v43.1 — Module Distance & Terrain (Performance Data-Driven)
 
 /**
  * Analyse si un cheval a des références à une distance similaire.
@@ -17,7 +17,7 @@ export function analyserDistance(participant, distanceCourse, discipline) {
     const isTrot = discipline && (discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE'));
     const tolerance = isTrot ? 300 : 600;
 
-    // Priorité 1 : Historique réel depuis API PMU (distances_history JSON stocké en DB)
+    // Priorité 1 : Historique réel (distances_history JSON stocké en DB)
     if (participant.distances_history) {
         try {
             const historique = typeof participant.distances_history === 'string'
@@ -25,12 +25,25 @@ export function analyserDistance(participant, distanceCourse, discipline) {
                 : participant.distances_history;
 
             if (Array.isArray(historique) && historique.length > 0) {
-                const refs = historique.filter(d => Math.abs(d - dist) <= tolerance);
-                if (refs.length >= 4) return 15;  // Spécialiste confirmé de la distance
-                if (refs.length >= 2) return 8;   // Références solides
-                if (refs.length >= 1) return 4;   // Quelques refs
+                // v43.1 : Filtrage intelligent (Refs à la distance)
+                const refs = historique.filter(h => {
+                    const hDist = typeof h === 'object' ? h.d : h;
+                    return Math.abs(hDist - dist) <= tolerance;
+                });
+
+                if (refs.length > 0) {
+                    // Calculer le taux de réussite à cette distance (si données dispo)
+                    const winsAtDist = refs.filter(h => typeof h === 'object' && h.p === 1).length;
+                    const placesAtDist = refs.filter(h => typeof h === 'object' && h.p > 1 && h.p <= 3).length;
+
+                    if (winsAtDist >= 1) return 20;   // Déjà gagné sur la distance
+                    if (placesAtDist >= 1) return 12; // Déjà placé sur la distance
+                    if (refs.length >= 3) return 8;   // Spécialiste de la distance (souvent couru)
+                    return 4;                        // Référence neutre
+                }
+
                 // Historique existant mais aucune référence à cette distance
-                if (historique.length >= 3) return -12;
+                if (historique.length >= 4) return -12;
             }
         } catch (e) {
             // JSON invalide, continuer avec fallback

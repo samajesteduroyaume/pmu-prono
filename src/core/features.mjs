@@ -2,7 +2,9 @@ import { checkShieldStatus, calculerRegularite } from '../utils/engine_utils.mjs
 import { 
     analyserFormeProfonde, 
     analyserClasse, 
-    analyserConfig
+    analyserConfig,
+    calculerScoreConfiance,
+    calculerScoreEntourage
 } from './intelligence.mjs';
 import { CONFIG } from '../config/settings.mjs';
 
@@ -10,7 +12,7 @@ import { CONFIG } from '../config/settings.mjs';
  * MOTEUR DE FEATURES IA - UNIFIÉ v30
  */
 
-export function extractBaseFeatures(participant, course) {
+export async function extractBaseFeatures(participant, course) {
     const discipline = (course.discipline || 'PLAT').toUpperCase();
     const isTrot = discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE');
 
@@ -35,32 +37,16 @@ export function extractBaseFeatures(participant, course) {
         }
     }
 
-    // 4. Entourage (Experts v30)
-    const topDrivers = CONFIG.experts.drivers;
-    const topTrainers = CONFIG.experts.trainers;
-    const dr = (participant.driver || '').toUpperCase();
-    const tr = (participant.entraineur || '').toUpperCase();
-    
-    const isTopDriver = topDrivers.some(d => dr.includes(d));
-    const isTopTrainer = topTrainers.some(t => tr.includes(t));
-    
-    const scoreEntourage = (isTopDriver && isTopTrainer) ? 95 : (isTopDriver || isTopTrainer ? 80 : 50);
-    const labelEntourage = (isTopDriver && isTopTrainer) ? "Entourage Elite" : (isTopDriver || isTopTrainer ? "Expert Détecté" : "Entourage Standard");
+    // 4. Entourage (Experts v30 - UNIFIÉ v43.1)
+    const scoreEntourage = await calculerScoreEntourage(participant);
+    const labelEntourage = scoreEntourage >= 90 ? "Entourage Elite" : (scoreEntourage >= 75 ? "Expert Détecté" : "Entourage Standard");
 
     // 5. Régularité
     const scoreReg = calculerRegularite(participant);
     const labelReg = scoreReg >= 50 ? "Trés Régulier" : (scoreReg >= 30 ? "Régulier" : "Irrégulier");
 
-    // 6. Confiance Marché (Cote)
-    const cote = parseFloat(participant.cote_ref);
-    let scoreConfiance = 50;
-    if (!isNaN(cote) && cote > 0) {
-        if (cote < 3) scoreConfiance = 95;
-        else if (cote < 6) scoreConfiance = 80;
-        else if (cote < 12) scoreConfiance = 60;
-        else if (cote < 25) scoreConfiance = 40;
-        else scoreConfiance = 20;
-    }
+    // 6. Confiance Marché (Cote - UNIFIÉ v43.1)
+    const scoreConfiance = calculerScoreConfiance(participant.cote_ref);
     const labelConfiance = scoreConfiance >= 80 ? "Favori Solide" : (scoreConfiance >= 50 ? "Appui Marché" : "Outsider");
 
     const shieldMalus = checkShieldStatus(participant, course);
@@ -71,7 +57,7 @@ export function extractBaseFeatures(participant, course) {
     const sentimentScore = avis === 'POSITIF' ? 1.0 : (avis === 'NEGATIF' ? 0.0 : 0.5);
 
     // V30: Calcul d'influence XAI (basé sur les poids de la discipline)
-    const weights = CONFIG.weights[discipline] || CONFIG.weights.DEFAULT;
+    const weights = CONFIG.weights[discipline] || CONFIG.weights.DEFAULT || { FORME: 0.2, ENTOURAGE: 0.2, CONFIANCE: 0.2, CONFIGURATION: 0.2, APTITUDE: 0.1, EXPERT: 0.1 };
     const rawScores = {
         forme: scoreForme,
         entourage: scoreEntourage,

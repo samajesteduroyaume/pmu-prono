@@ -2,19 +2,28 @@ import { CONFIG } from '../../config/settings.mjs';
 import { checkShieldStatus } from '../../utils/engine_utils.mjs';
 import { calculerBonusDistanceTerrain } from './distance_terrain.mjs';
 
-const WEIGHTS = CONFIG.weights.OBSTACLE;
 const SETTINGS = CONFIG.engine_settings.obstacle;
+
+// Poids dynamiques selon la discipline réelle
+function getWeights(discipline) {
+    const disc = (discipline || '').toUpperCase();
+    if (disc.includes('HAIE'))  return CONFIG.weights.HAIE || CONFIG.weights.OBSTACLE;
+    if (disc.includes('STEEPLE')) return CONFIG.weights.STEEPLECHASE || CONFIG.weights.OBSTACLE;
+    if (disc.includes('CROSS'))  return CONFIG.weights.CROSS || CONFIG.weights.OBSTACLE;
+    return CONFIG.weights.OBSTACLE;
+}
 
 export async function processObstacle(participant, contexte, baseScores) {
     let expertise = 50;
     const discipline = (contexte.discipline || '').toUpperCase();
+    const WEIGHTS = getWeights(discipline);
 
     // 1. ANALYSE DES FAUTES (Musique)
     const musique = participant.musique || '';
     const falls = (musique.match(/Ts|As|Ts|Th|Ah/g) || []).length;
     if (falls > 0) expertise -= (falls * SETTINGS.fall_malus);
 
-    // 2. FRAÎCHEUR
+    // 2. FRAîCHEUR
     if (participant.nb_courses < 5) expertise += SETTINGS.freshness_bonus;
 
     // 3. SPÉCIALITÉ CROSS/STEEPLE
@@ -32,7 +41,7 @@ export async function processObstacle(participant, contexte, baseScores) {
     expertise += dtBonus;
 
     return {
-        engine: 'ARCHITECT-OBSTACLE v27.1',
+        engine: `ARCHITECT-OBSTACLE v27.1 (${discipline})`,
         weights: WEIGHTS,
         expertiseBonus: expertise - 50,
         finalScore: Math.round(

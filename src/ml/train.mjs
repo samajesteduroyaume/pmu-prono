@@ -27,15 +27,16 @@ async function trainModel() {
             tf.layers.dense({
                 units: 128,
                 activation: 'relu',
-                inputShape: [10],
+                inputShape: [15],
                 kernelInitializer: 'heNormal'
             }),
+            tf.layers.batchNormalization(),
             tf.layers.dropout({ rate: 0.2 }),
             tf.layers.dense({
                 units: 64,
-                activation: 'relu',
-                kernelInitializer: 'heNormal'
+                activation: 'relu'
             }),
+            tf.layers.batchNormalization(),
             tf.layers.dropout({ rate: 0.1 }),
             tf.layers.dense({
                 units: 32,
@@ -62,13 +63,13 @@ async function trainModel() {
     logger.info('Début de l\'entraînement (30 epochs)...');
 
     const history = await model.fit(trainFeatures, trainLabels, {
-        epochs: 30,
+        epochs: 100,
         batchSize: 32,
         validationSplit: 0.2,
         callbacks: {
             onEpochEnd: (epoch, logs) => {
                 if (epoch % 5 === 0) {
-                    logger.info(`Epoch ${epoch + 1}/30 - Loss: ${logs.loss.toFixed(4)}, Acc: ${(logs.acc * 100).toFixed(2)}%`);
+                    logger.info(`Epoch ${epoch + 1} - Loss: ${logs.loss.toFixed(4)}, Val_Loss: ${logs.val_loss.toFixed(4)}, Acc: ${(logs.acc * 100).toFixed(2)}%`);
                 }
             }
         }
@@ -82,6 +83,32 @@ async function trainModel() {
 
     logger.success(`Test Loss: ${testLoss[0].toFixed(4)}`);
     logger.success(`Test Accuracy: ${(testAcc[0] * 100).toFixed(2)}%`);
+
+    // v43.1: Calcul manuel de la précision/rappel sur le test set
+    const predictions = model.predict(testFeatures);
+    const predData = await predictions.data();
+    const labelData = await testLabels.data();
+
+    let tp = 0, fp = 0, fn = 0, tn = 0;
+    for (let i = 0; i < predData.length; i++) {
+        const p = predData[i] >= 0.5 ? 1 : 0;
+        const l = labelData[i];
+        if (p === 1 && l === 1) tp++;
+        else if (p === 1 && l === 0) fp++;
+        else if (p === 0 && l === 1) fn++;
+        else if (p === 0 && l === 0) tn++;
+    }
+
+    const precision = tp / (tp + fp) || 0;
+    const recall = tp / (tp + fn) || 0;
+    const f1 = 2 * (precision * recall) / (precision + recall) || 0;
+
+    logger.info(`Confusion Matrix: TP=${tp}, FP=${fp}, FN=${fn}, TN=${tn}`);
+    logger.success(`Precision: ${(precision * 100).toFixed(2)}%`);
+    logger.success(`Recall: ${(recall * 100).toFixed(2)}%`);
+    logger.success(`F1-Score: ${f1.toFixed(4)}`);
+
+    predictions.dispose();
 
     // 7. Sauvegarde
     if (!fs.existsSync(MODEL_PATH)) {

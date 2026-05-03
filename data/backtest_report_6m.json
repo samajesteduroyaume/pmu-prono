@@ -1,94 +1,389 @@
 {
-  "generatedAt": "2026-04-11T10:49:21.245Z",
+  "generatedAt": "2026-04-27T07:29:30.367Z",
   "period": {
-    "start": "2025-10-11",
-    "end": "2026-04-11"
+    "start": "2025-10-27",
+    "end": "2026-04-27"
   },
   "standard": {
-    "total": 247,
-    "wins": 76,
-    "winRate": "30.77",
-    "investment": 247,
-    "returns": 193.50000000000009,
-    "profit": "-53.50",
-    "roi": "-21.66"
+    "total": 3446,
+    "wins": 1156,
+    "winRate": "33.55",
+    "investment": 3446,
+    "returns": 3174.800000000006,
+    "profit": "-271.20",
+    "roi": "-7.87"
   },
   "kelly": {
     "Kelly 25%": {
-      "finalBankroll": 995,
-      "profit": -5,
-      "roi": -0.5,
-      "totalBets": 1,
-      "wins": 1,
-      "losses": 0,
-      "winRate": 100,
-      "maxDrawdown": 0,
-      "maxDrawdownPercent": 0,
-      "sharpe": 0,
+      "finalBankroll": 967.2,
+      "profit": -32.8,
+      "roi": -3.28,
+      "totalBets": 11,
+      "wins": 3,
+      "losses": 8,
+      "winRate": 27.27,
+      "maxDrawdown": 49.9,
+      "maxDrawdownPercent": 4.99,
+      "sharpe": -0.39,
       "history": [
         {
-          "date": "2026-04-06",
+          "date": "2026-04-26",
           "mise": 50,
           "resultat": "WIN",
-          "gain": -4.999999999999999,
-          "bankroll": 995
+          "gain": -9.999999999999998,
+          "bankroll": 990
+        },
+        {
+          "date": "2026-04-12",
+          "mise": 2,
+          "resultat": "LOSS",
+          "gain": -2,
+          "bankroll": 988
+        },
+        {
+          "date": "2026-04-06",
+          "mise": 49,
+          "resultat": "WIN",
+          "gain": -4.899999999999999,
+          "bankroll": 983.1
+        },
+        {
+          "date": "2026-04-05",
+          "mise": 1,
+          "resultat": "LOSS",
+          "gain": -1,
+          "bankroll": 982.1
+        },
+        {
+          "date": "2026-03-23",
+          "mise": 2,
+          "resultat": "LOSS",
+          "gain": -2,
+          "bankroll": 980.1
+        },
+        {
+          "date": "2026-03-20",
+          "mise": 10,
+          "resultat": "LOSS",
+          "gain": -10,
+          "bankroll": 970.1
+        },
+        {
+          "date": "2026-03-17",
+          "mise": 14,
+          "resultat": "LOSS",
+          "gain": -14,
+          "bankroll": 956.1
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 2,
+          "resultat": "LOSS",
+          "gain": -2,
+          "bankroll": 954.1
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 2,
+          "resultat": "LOSS",
+          "gain": -2,
+          "bankroll": 952.1
+        },
+        {
+          "date": "2026-03-06",
+          "mise": 2,
+          "resultat": "LOSS",
+          "gain": -2,
+          "bankroll": 950.1
+        },
+        {
+          "date": "2026-02-27",
+          "mise": 3,
+          "resultat": "WIN",
+          "gain": 17.1,
+          "bankroll": 967.2
         }
       ]
     },
     "Kelly 50%": {
-      "finalBankroll": 995,
-      "profit": -5,
-      "roi": -0.5,
-      "totalBets": 1,
-      "wins": 1,
-      "losses": 0,
-      "winRate": 100,
-      "maxDrawdown": 0,
-      "maxDrawdownPercent": 0,
-      "sharpe": 0,
+      "finalBankroll": 941.6,
+      "profit": -58.4,
+      "roi": -5.84,
+      "totalBets": 12,
+      "wins": 3,
+      "losses": 9,
+      "winRate": 25,
+      "maxDrawdown": 86.9,
+      "maxDrawdownPercent": 8.69,
+      "sharpe": -0.38,
       "history": [
         {
-          "date": "2026-04-06",
+          "date": "2026-04-26",
           "mise": 50,
           "resultat": "WIN",
-          "gain": -4.999999999999999,
-          "bankroll": 995
+          "gain": -9.999999999999998,
+          "bankroll": 990
+        },
+        {
+          "date": "2026-04-12",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 986
+        },
+        {
+          "date": "2026-04-06",
+          "mise": 49,
+          "resultat": "WIN",
+          "gain": -4.899999999999999,
+          "bankroll": 981.1
+        },
+        {
+          "date": "2026-04-05",
+          "mise": 2,
+          "resultat": "LOSS",
+          "gain": -2,
+          "bankroll": 979.1
+        },
+        {
+          "date": "2026-03-23",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 975.1
+        },
+        {
+          "date": "2026-03-20",
+          "mise": 21,
+          "resultat": "LOSS",
+          "gain": -21,
+          "bankroll": 954.1
+        },
+        {
+          "date": "2026-03-17",
+          "mise": 28,
+          "resultat": "LOSS",
+          "gain": -28,
+          "bankroll": 926.1
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 922.1
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 918.1
+        },
+        {
+          "date": "2026-03-06",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 914.1
+        },
+        {
+          "date": "2026-03-01",
+          "mise": 1,
+          "resultat": "LOSS",
+          "gain": -1,
+          "bankroll": 913.1
+        },
+        {
+          "date": "2026-02-27",
+          "mise": 5,
+          "resultat": "WIN",
+          "gain": 28.5,
+          "bankroll": 941.6
         }
       ]
     },
     "Kelly 75%": {
-      "finalBankroll": 995,
-      "profit": -5,
-      "roi": -0.5,
-      "totalBets": 1,
-      "wins": 1,
-      "losses": 0,
-      "winRate": 100,
-      "maxDrawdown": 0,
-      "maxDrawdownPercent": 0,
-      "sharpe": 0,
+      "finalBankroll": 922.7,
+      "profit": -77.3,
+      "roi": -7.73,
+      "totalBets": 12,
+      "wins": 3,
+      "losses": 9,
+      "winRate": 25,
+      "maxDrawdown": 122.9,
+      "maxDrawdownPercent": 12.29,
+      "sharpe": -0.33,
       "history": [
         {
-          "date": "2026-04-06",
+          "date": "2026-04-26",
           "mise": 50,
           "resultat": "WIN",
-          "gain": -4.999999999999999,
-          "bankroll": 995
+          "gain": -9.999999999999998,
+          "bankroll": 990
+        },
+        {
+          "date": "2026-04-12",
+          "mise": 7,
+          "resultat": "LOSS",
+          "gain": -7,
+          "bankroll": 983
+        },
+        {
+          "date": "2026-04-06",
+          "mise": 49,
+          "resultat": "WIN",
+          "gain": -4.899999999999999,
+          "bankroll": 978.1
+        },
+        {
+          "date": "2026-04-05",
+          "mise": 3,
+          "resultat": "LOSS",
+          "gain": -3,
+          "bankroll": 975.1
+        },
+        {
+          "date": "2026-03-23",
+          "mise": 7,
+          "resultat": "LOSS",
+          "gain": -7,
+          "bankroll": 968.1
+        },
+        {
+          "date": "2026-03-20",
+          "mise": 31,
+          "resultat": "LOSS",
+          "gain": -31,
+          "bankroll": 937.1
+        },
+        {
+          "date": "2026-03-17",
+          "mise": 41,
+          "resultat": "LOSS",
+          "gain": -41,
+          "bankroll": 896.1
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 6,
+          "resultat": "LOSS",
+          "gain": -6,
+          "bankroll": 890.1
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 6,
+          "resultat": "LOSS",
+          "gain": -6,
+          "bankroll": 884.1
+        },
+        {
+          "date": "2026-03-06",
+          "mise": 6,
+          "resultat": "LOSS",
+          "gain": -6,
+          "bankroll": 878.1
+        },
+        {
+          "date": "2026-03-01",
+          "mise": 1,
+          "resultat": "LOSS",
+          "gain": -1,
+          "bankroll": 877.1
+        },
+        {
+          "date": "2026-02-27",
+          "mise": 8,
+          "resultat": "WIN",
+          "gain": 45.6,
+          "bankroll": 922.7
         }
       ]
     },
     "Kelly Adaptatif": {
-      "finalBankroll": 1000,
-      "profit": 0,
-      "roi": 0,
-      "totalBets": 0,
-      "wins": 0,
-      "losses": 0,
-      "winRate": 0,
-      "maxDrawdown": 0,
-      "maxDrawdownPercent": 0,
-      "sharpe": 0,
-      "history": []
+      "finalBankroll": 985.8,
+      "profit": -14.2,
+      "roi": -1.42,
+      "totalBets": 10,
+      "wins": 1,
+      "losses": 9,
+      "winRate": 10,
+      "maxDrawdown": 37,
+      "maxDrawdownPercent": 3.7,
+      "sharpe": -0.18,
+      "history": [
+        {
+          "date": "2026-04-12",
+          "mise": 5,
+          "resultat": "LOSS",
+          "gain": -5,
+          "bankroll": 995
+        },
+        {
+          "date": "2026-04-05",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 991
+        },
+        {
+          "date": "2026-03-23",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 987
+        },
+        {
+          "date": "2026-03-20",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 983
+        },
+        {
+          "date": "2026-03-17",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 979
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 975
+        },
+        {
+          "date": "2026-03-12",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 971
+        },
+        {
+          "date": "2026-03-06",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 967
+        },
+        {
+          "date": "2026-03-01",
+          "mise": 4,
+          "resultat": "LOSS",
+          "gain": -4,
+          "bankroll": 963
+        },
+        {
+          "date": "2026-02-27",
+          "mise": 4,
+          "resultat": "WIN",
+          "gain": 22.8,
+          "bankroll": 985.8
+        }
+      ]
     }
   }
 }

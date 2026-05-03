@@ -4,121 +4,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backtesting Avancé - PMU Elite Punter</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="description" content="ARCHITECT v43.3 - Laboratoire de Backtesting Stratégique.">
+    <meta name="theme-color" content="#0a0f14">
+    <title>ARCHITECT | Laboratoire</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=43.3.1">
+    
+    <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <div class="terminal-container">
-        <div class="terminal-header">
-            <div class="terminal-title">PMU ELITE PUNTER - BACKTESTING V29</div>
-            <div class="terminal-controls">
-                <a href="/" class="terminal-btn-tiny">← Dashboard</a>
-            </div>
-        </div>
-
-        <div class="terminal-screen">
-            <div class="screen-header">
-                <div>
-                    <h1>BACKTESTING AVANCÉ</h1>
-                    <div class="header-sub">COMPARAISON DE STRATÉGIES</div>
-                </div>
+    <div class="app-shell">
+        <!-- Sidebar Navigation Rail -->
+        <nav class="nav-rail">
+            <div class="brand">
+                <h2>ARCHITECT</h2>
+                <span>Terminal d'Intelligence</span>
             </div>
 
-            <!-- Formulaire de configuration -->
-            <div class="widget" style="margin-bottom: 20px;">
-                <div class="widget-header">
-                    <span style="font-weight: 900">⚙️ CONFIGURATION</span>
+            <div class="nav-links">
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-crown"></i>
+                    <span>Quinté du Jour</span>
+                </a>
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-microchip"></i>
+                    <span>Scanner Exhaustif</span>
+                </a>
+                <a href="pepites.html" class="nav-item">
+                    <i class="fas fa-gem"></i>
+                    <span>Pépites IA</span>
+                </a>
+                <a href="palmares.html" class="nav-item">
+                    <i class="fas fa-trophy"></i>
+                    <span>Palmarès</span>
+                </a>
+                <a href="#" class="nav-item active">
+                    <i class="fas fa-vial"></i>
+                    <span>Laboratoire</span>
+                </a>
+            </div>
+
+            <div class="nav-footer">
+                <div style="margin-top: 16px; font-size: 10px; color: var(--text-low); text-align: center; font-weight: 800;">
+                    SYSTÈME : <span style="color: var(--accent-emerald)">EN LIGNE</span>
                 </div>
-                <div class="widget-content">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                        <div>
-                            <label
-                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">DATE
-                                DÉBUT</label>
-                            <input type="date" id="startDate" value="2026-01-01"
-                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label
-                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">DATE
-                                FIN</label>
-                            <input type="date" id="endDate" value="2026-02-09"
-                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label
-                                style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim)">BANKROLL
-                                INITIAL (€)</label>
-                            <input type="number" id="initialBankroll" value="1000"
-                                style="width: 100%; padding: 8px; background: var(--bg-terminal); border: 1px solid var(--border-dim); color: white; border-radius: 4px;">
-                        </div>
-                    </div>
-                    <button onclick="runComparison()" class="terminal-btn" style="width: 100%">
-                        🚀 LANCER COMPARAISON
+            </div>
+        </nav>
+
+        <!-- Main Content Stage -->
+        <main class="main-stage">
+            <header class="stage-header">
+                <div class="title-group">
+                    <h1>Laboratoire Élite</h1>
+                    <div class="meta"><span class="live-indicator"></span> BACKTESTING ET OPTIMISATION DE STRATÉGIES</div>
+                </div>
+                <div class="actions" style="display: flex; gap: 12px;">
+                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
+                        <i class="fas fa-history"></i>
+                        <span>Synchro. Étendue</span>
+                    </button>
+                    <button onclick="syncMarket()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; background: hsla(var(--h-indigo), 84%, 67%, 0.1);">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Sync. Directe</span>
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <!-- Loader -->
-            <div id="loader" style="display: none; text-align: center; padding: 40px;">
-                <div style="font-size: 2rem; margin-bottom: 10px;">⏳</div>
-                <div style="color: var(--pmu-green)">Analyse en cours...</div>
-            </div>
-
-            <!-- Résultats -->
-            <div id="results" style="display: none;">
-                <!-- Tableau comparatif -->
-                <div class="widget" style="margin-bottom: 20px;">
-                    <div class="widget-header">
-                        <span style="font-weight: 900">📊 COMPARAISON DES STRATÉGIES</span>
+            <div class="scroll-content">
+                <!-- Configuration Section -->
+                <div class="stat-card" style="margin-bottom: 40px; background: hsla(var(--h-indigo), 84%, 67%, 0.02);">
+                    <label>Paramètres de Simulation</label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-top: 20px;">
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-low); text-transform: uppercase; font-weight: 800;">Date de Début</span>
+                            <input type="date" id="startDate" value="2026-01-01" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-low); text-transform: uppercase; font-weight: 800;">Date de Fin</span>
+                            <input type="date" id="endDate" value="2026-05-01" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-low); text-transform: uppercase; font-weight: 800;">Capital Initial</span>
+                            <input type="number" id="initialBankroll" value="1000" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
+                        </div>
                     </div>
-                    <div class="widget-content">
-                        <table id="comparison-table" style="width: 100%; border-collapse: collapse;">
+                    <button onclick="runComparison()" style="margin-top: 32px; width: 100%; padding: 20px; background: var(--accent-indigo); border: none; border-radius: 12px; color: white; font-weight: 800; cursor: pointer; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 20px hsla(var(--h-indigo), 84%, 67%, 0.3);">
+                        <i class="fas fa-play" style="margin-right: 12px;"></i> LANCER LA SIMULATION COMPLÈTE
+                    </button>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results" style="display: none;">
+                    <div class="data-table-container" style="margin-bottom: 40px;">
+                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-gold); font-size: 13px; letter-spacing: 1px;">
+                            <i class="fas fa-chart-line"></i> RÉSULTATS COMPARATIFS
+                        </div>
+                        <table class="data-table" id="comparison-table">
                             <thead>
-                                <tr style="border-bottom: 2px solid var(--pmu-green);">
-                                    <th
-                                        style="text-align: left; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        STRATÉGIE</th>
-                                    <th
-                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        BANKROLL FINAL</th>
-                                    <th
-                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        PROFIT</th>
-                                    <th
-                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        ROI</th>
-                                    <th
-                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        WIN RATE</th>
-                                    <th
-                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        SHARPE</th>
-                                    <th
-                                        style="text-align: right; padding: 10px; font-size: 0.75rem; color: var(--text-dim)">
-                                        MAX DD</th>
+                                <tr>
+                                    <th>Stratégie</th>
+                                    <th style="text-align: right;">Capital Final</th>
+                                    <th style="text-align: right;">Profit</th>
+                                    <th style="text-align: right;">ROI</th>
+                                    <th style="text-align: right;">WinRate</th>
+                                    <th style="text-align: right;">Sharpe</th>
+                                    <th style="text-align: right;">Max DD</th>
                                 </tr>
                             </thead>
-                            <tbody id="comparison-body">
-                                <!-- Rempli dynamiquement -->
-                            </tbody>
+                            <tbody id="comparison-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="stat-card" style="height: 500px; margin-bottom: 40px; background: hsla(0,0%,0%,0.2);">
+                        <label>Équité Comparative</label>
+                        <canvas id="bankroll-chart"></canvas>
+                    </div>
+
+                    <div class="data-table-container">
+                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-indigo); display: flex; justify-content: space-between; align-items: center; font-size: 13px; letter-spacing: 1px;">
+                            <span><i class="fas fa-history"></i> HISTORIQUE DÉTAILLÉ (DERNIÈRE STRATÉGIE)</span>
+                            <span style="font-size: 10px; color: var(--text-low); font-weight: 700;">ALGORITHME V43.3 • XAI ENABLED</span>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Course</th>
+                                    <th>Sélection</th>
+                                    <th style="text-align: right;">Cote</th>
+                                    <th style="text-align: right;">Mise</th>
+                                    <th style="text-align: right;">Résultat</th>
+                                    <th style="text-align: right;">Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Graphique d'évolution -->
-                <div class="widget">
-                    <div class="widget-header">
-                        <span style="font-weight: 900">📈 ÉVOLUTION DU BANKROLL</span>
-                    </div>
-                    <div class="widget-content">
-                        <canvas id="bankroll-chart"></canvas>
-                    </div>
+                <!-- Loader -->
+                <div id="loader" style="display: none; text-align: center; padding: 120px;">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 48px; color: var(--accent-indigo); text-shadow: 0 0 20px var(--accent-indigo-glow);"></i>
+                    <div style="margin-top: 24px; font-weight: 800; color: var(--text-med); letter-spacing: 2px;">ANALYSE DES VECTEURS HISTORIQUES...</div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
@@ -129,7 +163,6 @@
             const endDate = document.getElementById('endDate').value;
             const initialBankroll = parseInt(document.getElementById('initialBankroll').value);
 
-            // Afficher loader
             document.getElementById('loader').style.display = 'block';
             document.getElementById('results').style.display = 'none';
 
@@ -141,91 +174,85 @@
                 });
 
                 const data = await res.json();
-
-                // Masquer loader, afficher résultats
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('results').style.display = 'block';
 
-                // Remplir le tableau
                 renderComparisonTable(data.strategies);
-
-                // Afficher le graphique
                 renderBankrollChart(data.strategies);
 
             } catch (e) {
                 console.error('Erreur backtesting:', e);
                 document.getElementById('loader').style.display = 'none';
-                alert('Erreur lors du backtesting: ' + e.message);
+                alert('Erreur: ' + e.message);
             }
         }
 
         function renderComparisonTable(strategies) {
             const tbody = document.getElementById('comparison-body');
+            const historyBody = document.getElementById('history-body');
             tbody.innerHTML = '';
+            historyBody.innerHTML = '';
 
-            // Trouver la meilleure stratégie (ROI max)
-            let bestROI = -Infinity;
-            let bestStrategy = '';
-            for (const [name, metrics] of Object.entries(strategies)) {
-                if (metrics.roi > bestROI) {
-                    bestROI = metrics.roi;
-                    bestStrategy = name;
-                }
-            }
+            let lastStratHistory = [];
 
             for (const [name, metrics] of Object.entries(strategies)) {
-                const isBest = name === bestStrategy;
                 const row = document.createElement('tr');
-                row.style.borderBottom = '1px solid var(--border-dim)';
-                if (isBest) {
-                    row.style.background = 'rgba(0, 255, 136, 0.05)';
-                }
-
-                const profitColor = metrics.profit >= 0 ? 'var(--pmu-green)' : '#ff4444';
-                const roiColor = metrics.roi >= 0 ? 'var(--pmu-green)' : '#ff4444';
+                row.style.animation = 'fadeIn 0.5s ease-out both';
+                const profitColor = metrics.profit >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)';
 
                 row.innerHTML = `
-                    <td style="padding: 12px; font-weight: 800;">${name} ${isBest ? '🏆' : ''}</td>
-                    <td style="padding: 12px; text-align: right;">${metrics.finalBankroll}€</td>
-                    <td style="padding: 12px; text-align: right; color: ${profitColor}; font-weight: 800;">${metrics.profit >= 0 ? '+' : ''}${metrics.profit}€</td>
-                    <td style="padding: 12px; text-align: right; color: ${roiColor}; font-weight: 800;">${metrics.roi >= 0 ? '+' : ''}${metrics.roi}%</td>
-                    <td style="padding: 12px; text-align: right;">${metrics.winRate}%</td>
-                    <td style="padding: 12px; text-align: right;">${metrics.sharpe}</td>
-                    <td style="padding: 12px; text-align: right;">${metrics.maxDrawdown}€ (${metrics.maxDrawdownPercent}%)</td>
+                    <td style="font-weight: 800; color: var(--text-pure);">${name}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${metrics.finalBankroll} €</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; color: ${profitColor}; font-weight: 800;">${metrics.profit >= 0 ? '+' : ''}${metrics.profit} €</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; color: ${profitColor}; font-weight: 800;">${metrics.roi}%</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${metrics.winRate}%</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${metrics.sharpe}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; color: var(--accent-crimson); font-weight: 700;">${metrics.maxDrawdownPercent}%</td>
                 `;
-
                 tbody.appendChild(row);
+                lastStratHistory = metrics.history;
             }
+
+            historyBody.innerHTML = lastStratHistory.slice(-50).reverse().map((h, i) => `
+                <tr style="animation: fadeIn 0.4s ease-out ${i * 0.02}s both">
+                    <td style="font-size: 11px; font-family: 'JetBrains Mono';">${h.date}</td>
+                    <td style="font-size: 12px; color: var(--text-med); font-weight: 600;">${h.course || ''}</td>
+                    <td style="font-weight: 800; color: var(--text-pure);">${h.selection || ''}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 700; color: var(--accent-gold);">${h.cote || ''}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${h.mise} €</td>
+                    <td style="text-align: right;">
+                        <span class="badge ${h.resultat === 'WIN' ? 'badge-success' : 'badge-warning'}">
+                            ${h.resultat}
+                        </span>
+                    </td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 800; color: ${h.gain >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)'};">
+                        ${h.gain >= 0 ? '+' : ''}${h.gain.toFixed(2)} €
+                    </td>
+                </tr>
+            `).join('');
         }
 
         function renderBankrollChart(strategies) {
             const ctx = document.getElementById('bankroll-chart').getContext('2d');
-
-            // Préparer les datasets
             const datasets = [];
-            const colors = {
-                'Kelly 25%': '#00aaff',
-                'Kelly 50%': '#ffaa00',
-                'Kelly 75%': '#ff4444',
-                'Kelly Adaptatif': '#00ff88'
-            };
+            const palette = ['#6366f1', '#fbbf24', '#10b981', '#ef4444', '#a855f7'];
 
+            let colorIdx = 0;
             for (const [name, metrics] of Object.entries(strategies)) {
-                const data = metrics.history.map(h => h.bankroll);
                 datasets.push({
                     label: name,
-                    data: data,
-                    borderColor: colors[name] || '#ffffff',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.1,
-                    pointRadius: 0
+                    data: metrics.history.map(h => h.bankroll),
+                    borderColor: palette[colorIdx % palette.length],
+                    borderWidth: 3,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    fill: false
                 });
+                colorIdx++;
             }
 
-            if (comparisonChart) {
-                comparisonChart.destroy();
-            }
+            if (comparisonChart) comparisonChart.destroy();
 
             comparisonChart = new Chart(ctx, {
                 type: 'line',
@@ -237,24 +264,20 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: { color: '#ffffff', font: { family: 'Courier New', size: 11 } }
-                        }
+                        legend: { display: true, position: 'top', labels: { color: '#94a3b8', font: { family: 'Outfit', weight: 600, size: 12 } } }
                     },
                     scales: {
-                        x: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#888', font: { family: 'Courier New', size: 10 } }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#888', font: { family: 'Courier New', size: 10 } }
-                        }
+                        x: { grid: { display: false }, ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 } } },
+                        y: { grid: { color: 'hsla(0,0%,100%,0.03)' }, ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 } } }
                     }
                 }
             });
+        }
+    </script>
+    <script src="js/app.js"></script>
+    <script>
+        async function refreshData() {
+            // Optional: Auto-run on load
         }
     </script>
 </body>

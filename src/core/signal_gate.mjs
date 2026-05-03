@@ -29,7 +29,8 @@ export function evaluerSignalGate(participant, contexte, predictionScore) {
         market_range: false,
         no_inconsistency: false,
         regularite: false,
-        entourage: false
+        entourage: false,
+        momentum: false
     };
 
     // Signal 1 — Score IA ≥ 65
@@ -65,14 +66,21 @@ export function evaluerSignalGate(participant, contexte, predictionScore) {
         signals.entourage = true;
     }
 
+    // Signal 6 — Momentum (v43.1 : Victoire ou Place très récente)
+    const musique = (participant.musique || '').trim();
+    if (musique.startsWith('1') || musique.startsWith('2')) {
+        signals.momentum = true;
+    }
+
     // Calcul du score total de confirmation
     const signalCount = Object.values(signals).filter(Boolean).length;
     const minRequired = VH_CONFIG.min_signals || 3;
     const go = signalCount >= minRequired;
 
-    // Recommandation lisible
+    // Recommandation lisible (Adaptée pour 6 signaux)
     let recommendation;
-    if (signalCount >= 5) recommendation = '🔥 ULTRA-CONFIANCE';
+    if (signalCount >= 6) recommendation = '💎 PÉPITE RARE';
+    else if (signalCount >= 5) recommendation = '🔥 ULTRA-CONFIANCE';
     else if (signalCount >= 4) recommendation = '✅ JOUER';
     else if (signalCount >= 3) recommendation = '✅ JOUER (prudence)';
     else if (signalCount === 2) recommendation = '⚠️ ATTENDRE';

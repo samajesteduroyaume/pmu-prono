@@ -19,11 +19,11 @@ const MAX_BET_PERCENT = FINANCE.max_bet_percent;
 const MIN_EDGE_THRESHOLD = FINANCE.min_edge_threshold;
 
 /**
- * CALIBRATION DES PROBABILITÉS IA (v43 — Empirique)
+ * CALIBRATION DES PROBABILITÉS IA (v43.3 — Basée sur win rates réels)
  * Basée sur la table de calibration centralisée dans CONFIG.calibration.
- * Alignée sur le win rate réel observé en backtest (30.77%).
- * L'ancienne version sous-estimait systématiquement les hauts scores,
- * rendant Kelly quasi-nul et bloquant toute prise de position.
+ * Alignée sur le win rate réel observé en backtest (39% global, 25% value hunter).
+ * Le score IA représente toujours LE meilleur cheval sélectionné dans une course.
+ * Ces probabilités sont utilisées pour calculer l'Edge vs le marché (cote).
  */
 export function calibrateProbability(score) {
     const table = CONFIG.calibration;
@@ -46,9 +46,16 @@ export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKR
     // f = (bp - q) / b
     let f = ((b * p) - q) / b;
 
-    // 3. Filtrage "Value Bet" (Espérance positive)
-    // Si f <= 0, ça veut dire que l'espérance est négative => Ne pas parier
-    if (f <= 0) return { mise: 0, advice: 'NO VALUE', explanation: 'Cote trop faible pour le risque' };
+    // 3. Filtrage "Value Bet" (Espérance positive & Edge)
+    // Si f <= 0, l'espérance est négative => Ne pas parier
+    if (f <= 0) return { mise: 0, advice: 'NO VALUE', explanation: 'Espérance mathématique négative' };
+
+    // Filtrage strict par Edge (Value Hunter)
+    const marketProb = 1 / cote;
+    const edge = p - marketProb;
+    if (edge < MIN_EDGE_THRESHOLD) {
+        return { mise: 0, advice: 'NO VALUE', explanation: `Edge insuffisant (${(edge * 100).toFixed(1)}% < ${MIN_EDGE_THRESHOLD * 100}%)` };
+    }
 
     // 4. Sécurisation (Kelly Fractionné) & Plafond
     let fractionReelle = f * KELLY_FRACTION;
@@ -155,7 +162,8 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
     if (currentPatterns && currentPatterns.length > 0) {
         currentPatterns.forEach(p => {
             if (p.type === 'GOLDEN_PATTERN') {
-                const bonus = 1 + (p.roi / 200); // 1.1 si ROI 20%, 1.2 si ROI 40%
+                let bonus = 1 + (p.roi / 200); // Base: 1.1 si ROI 20%
+                if (p.roi > 30) bonus *= 1.25; // Booster v43.1 pour les patterns très rentables
                 fractionAdaptee *= bonus;
                 adjustments.push(`Golden Pattern: ${p.pattern} (+${Math.round((bonus - 1) * 100)}%)`);
             } else if (p.type === 'DANGER_PATTERN') {
@@ -166,13 +174,12 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
         });
     }
 
-    // 7. FILTRAGE PAR EDGE (V40)
+    // 7. FILTRAGE PAR EDGE (V40 / V43.3)
     const marketProb = 1 / cote;
     const edge = p - marketProb;
     
     if (edge < MIN_EDGE_THRESHOLD) {
-        fractionAdaptee *= 0.5; // Réduire de moitié si l'edge est trop fin
-        adjustments.push(`Edge faible (${(edge * 100).toFixed(1)}%) - Sécurité (-50%)`);
+        return { mise: 0, advice: 'NO VALUE', explanation: `Edge insuffisant (${(edge * 100).toFixed(1)}% < ${MIN_EDGE_THRESHOLD * 100}%)` };
     }
 
     // Appliquer la fraction adaptée

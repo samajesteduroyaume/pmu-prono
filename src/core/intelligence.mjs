@@ -19,21 +19,26 @@ import { evaluerSignalGate } from './signal_gate.mjs';
  */
 
 
-export function analyserFormeProfonde(musique, discipline = 'INCONNUE') {
+export function analyserFormeProfonde(musique, discipline = 'INCONNUE', avgHistoryPrix = 0) {
     if (!musique) return 20;
 
     // 1. Détection de "Rentrée" (Absence prolongée)
     let rentreeMalus = 0;
     const currentYear = new Date().getFullYear();
     const currentYearShort = currentYear % 100;
-    const years = musique.match(/\((\d+)\)/g);
-    if (years && years.length > 0) {
-        const lastYear = parseInt(years[years.length - 1].replace(/[()]/g, ''));
-        // Gestion robuste du changement de siècle (même si lointain)
-        const diff = (currentYearShort < lastYear) ? (currentYearShort + 100 - lastYear) : (currentYearShort - lastYear);
-        
-        if (diff > 1) rentreeMalus = CONFIG.architect.malus.rentreeLongue; 
-        else if (diff === 1) rentreeMalus = CONFIG.architect.malus.rentreeSaisonniere;
+    
+    const trimmedMusique = musique.trim();
+    // Si la musique commence par une année entre parenthèses, le cheval n'a pas couru cette année
+    if (trimmedMusique.startsWith('(')) {
+        const firstYearMatch = trimmedMusique.match(/^\((\d+)\)/);
+        if (firstYearMatch) {
+            const lastRunYear = parseInt(firstYearMatch[1]);
+            // Gestion robuste du changement de siècle
+            const diff = (currentYearShort < lastRunYear) ? (currentYearShort + 100 - lastRunYear) : (currentYearShort - lastRunYear);
+            
+            if (diff > 1) rentreeMalus = CONFIG.architect.malus.rentreeLongue; 
+            else if (diff === 1) rentreeMalus = CONFIG.architect.malus.rentreeSaisonniere;
+        }
     }
 
     // 2. Analyse Séquentielle Profonde
@@ -95,8 +100,28 @@ export function analyserFormeProfonde(musique, discipline = 'INCONNUE') {
         totalWeight += weight;
     }
 
+    // 3. Détection d'Irrégularité (v43.1)
+    let irregularityMalus = 0;
+    const recentRanks = perfs.slice(0, 3).map(p => {
+        const val = p.slice(0, -1).toUpperCase();
+        return isNaN(val) ? 10 : parseInt(val);
+    });
+    if (recentRanks.includes(1) && (recentRanks.includes(0) || recentRanks.some(r => r > 8))) {
+        irregularityMalus = 15; // Cheval "Tout ou Rien"
+    }
+
     const finalFormeScore = Math.round(score / totalWeight) + recentWinBonus;
-    return Math.max(0, Math.min(100, finalFormeScore - rentreeMalus));
+    let baseResult = finalFormeScore - rentreeMalus - irregularityMalus;
+
+    // V43.3: MULTIPLICATEUR DE CLASSE (Indice de Forme Dynamique)
+    // On valorise la forme si elle a été acquise dans des courses à forte allocation
+    if (avgHistoryPrix > 0) {
+        const disciplineAvg = isTrot ? 25000 : 35000; // Moyennes estimées par discipline
+        const classMultiplier = Math.min(1.3, Math.max(0.8, avgHistoryPrix / disciplineAvg));
+        baseResult *= classMultiplier;
+    }
+
+    return Math.max(0, Math.min(100, Math.round(baseResult)));
 }
 
 export function analyserClasse(participant) {
@@ -125,28 +150,21 @@ export function analyserConfig(participant, discipline = '') {
 
 // Les fonctions determinerChangementCategorie et calculerRegularite ont été déplacées dans src/utils/engine_utils.mjs
 
-export function calculerExpertImpact(p, contexte) {
-    let bonus = 0;
-    const prix = contexte.prixCourse || 20000;
-    const cat = determinerChangementCategorie(p, prix);
-    if (cat === 'DESCENTE') bonus += 25; // V27: Bonus Descente renforcé
-    else if (cat === 'MONTEE') bonus -= 15;
-
-    const reg = calculerRegularite(p);
-    if (reg > 50) bonus += 20; // V27: Prime à la régularité
-
-    if (p.oeilleres && p.oeilleres !== 'SANS_OEILLERES') bonus += 10;
-
-    return Math.max(0, Math.min(100, 50 + bonus));
+export function calculerScoreConfiance(cote) {
+    let scoreConfiance = 50;
+    const c = parseFloat(cote);
+    if (!isNaN(c) && c > 0) {
+        if (c < 2.0) scoreConfiance = 95;
+        else if (c < 3.5) scoreConfiance = 85;
+        else if (c < 7.0) scoreConfiance = 70;
+        else if (c < 15.0) scoreConfiance = 45;
+        else if (c < 30.0) scoreConfiance = 25;
+        else scoreConfiance = 10;
+    }
+    return scoreConfiance;
 }
 
-export async function preparerBaseScores(participant, contexteCourse) {
-    const disc = (contexteCourse.discipline || 'PLAT').toUpperCase();
-    
-    const scoreForme = analyserFormeProfonde(participant.musique, disc);
-    const scoreClasse = analyserClasse(participant);
-    const scoreConfig = analyserConfig(participant, disc);
-
+export async function calculerScoreEntourage(participant) {
     const topDrivers = CONFIG.experts.drivers;
     const topTrainers = CONFIG.experts.trainers;
     
@@ -177,23 +195,26 @@ export async function preparerBaseScores(participant, contexteCourse) {
         }
     }
 
-    const cote = parseFloat(participant.cote_ref);
-    let scoreConfiance = 50;
-    if (!isNaN(cote) && cote > 0) {
-        if (cote < 2.0) scoreConfiance = 95;
-        else if (cote < 3.5) scoreConfiance = 85;
-        else if (cote < 7.0) scoreConfiance = 70;
-        else if (cote < 15.0) scoreConfiance = 45;
-        else if (cote < 30.0) scoreConfiance = 25;
-        else scoreConfiance = 10;
-    }
+    return Math.max(0, Math.min(100, scoreEntourage));
+}
+
+export async function preparerBaseScores(participant, contexteCourse, avgHistoryPrix = 0) {
+    const disc = (contexteCourse.discipline || 'PLAT').toUpperCase();
+    
+    const scoreForme = analyserFormeProfonde(participant.musique, disc, avgHistoryPrix);
+    const scoreClasse = analyserClasse(participant);
+    const scoreConfig = analyserConfig(participant, disc);
+
+    const scoreEntourage = await calculerScoreEntourage(participant);
+    const scoreConfiance = calculerScoreConfiance(participant.cote_ref);
 
     return {
         forme: scoreForme,
         entourage: scoreEntourage,
         confiance: scoreConfiance,
         config: scoreConfig,
-        aptitude: scoreClasse
+        aptitude: scoreClasse,
+        avgPrix: (avgHistoryPrix / 1000).toFixed(1)
     };
 }
 
@@ -219,7 +240,7 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
             let discKey = 'DEFAULT';
             if (disc.includes('TROT') || disc.includes('ATTELE') || disc.includes('MONTE')) discKey = 'TROT';
             else if (disc.includes('PLAT')) discKey = 'PLAT';
-            else if (disc.includes('OBSTACLE') || disc.includes('HAIE') || disc.includes('STEEPLE')) discKey = 'OBSTACLE';
+            else if (disc.includes('OBSTACLE') || disc.includes('HAIE') || disc.includes('STEEPLE') || disc.includes('CROSS')) discKey = 'OBSTACLE';
             
             const weights = CONFIG.weights[discKey];
             engineResult = {
@@ -309,6 +330,38 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
         logger.error(`IA Architecture v40 Error: ${e.message}`);
         return 50;
     }
+}
+
+/**
+ * V43.3: GÉNÉRATEUR D'ARGUMENTS XAI
+ * Produit des justifications textuelles basées sur les vecteurs de performance
+ */
+export function genererArgumentsXAI(participant, baseScores, cat_trend) {
+    const arguments_ia = [];
+    
+    // Analyse de la Forme
+    if (baseScores.forme >= 85) arguments_ia.push("Forme étincelante (série de performances elite)");
+    else if (baseScores.forme >= 70) arguments_ia.push("En condition ascendante (forme solide)");
+    
+    // Analyse de l'Entourage
+    if (baseScores.entourage >= 95) arguments_ia.push("Duo Driver/Entraîneur au sommet (synergie maximale)");
+    else if (participant.has_synergy) arguments_ia.push("Excellente synergie historique entre l'entourage");
+    
+    // Analyse de la Catégorie
+    if (cat_trend === 'DOWN') arguments_ia.push("Engagement visé : descend de catégorie (lot abordable)");
+    else if (cat_trend === 'UP' && baseScores.forme >= 80) arguments_ia.push("Tente sa chance au niveau supérieur (confiance entourage)");
+    
+    // Analyse de la Configuration
+    if (baseScores.config >= 90) arguments_ia.push("Configuration de ferrage optimale (déferré des 4)");
+    
+    // Analyse du Sentiment
+    const avis = (participant.avis || '').toUpperCase();
+    if (avis === 'POSITIF') arguments_ia.push("Sentiment de l'entourage très favorable");
+
+    // Fallback si pas assez d'arguments
+    if (arguments_ia.length === 0) arguments_ia.push("Profil équilibré et régulier pour ce lot");
+    
+    return arguments_ia.slice(0, 3); // Top 3 arguments
 }
 
 /**

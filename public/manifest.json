@@ -1,6 +1,6 @@
 {
-    "name": "PMU Elite Punter - IA v15",
-    "short_name": "Elite Punter",
+    "name": "PMU Parieur Élite - IA v15",
+    "short_name": "Parieur Élite",
     "description": "Pronostics PMU avec Intelligence Artificielle v15 (Machine Learning + Heuristiques)",
     "start_url": "/",
     "display": "standalone",

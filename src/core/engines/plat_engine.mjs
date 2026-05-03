@@ -8,14 +8,16 @@ const SETTINGS = CONFIG.engine_settings.plat;
 export async function processPlat(participant, contexte, baseScores) {
     let expertise = 50;
 
-    // 1. VALEUR HANDICAP & CLASSE BRUTE
+    // 1. VALEUR HANDICAP & CLASSE BRUTE (Plus granulaire v43.1)
     const gains = parseFloat(participant.gains) || 0;
     if (gains > SETTINGS.elite_gains_threshold) expertise += 20;
+    else if (gains > SETTINGS.elite_gains_threshold / 2) expertise += 10;
+    else if (gains < 10000 && participant.age >= 4) expertise -= 10;
 
-    // 2. CORDE
+    // 2. CORDE (Impact renforcé en Plat)
     const corde = parseInt(contexte.corde);
-    if (corde && corde <= 5) expertise += SETTINGS.corde_bonus; 
-    else if (corde && corde >= 15) expertise -= SETTINGS.corde_bonus;
+    if (corde && corde <= 4) expertise += (SETTINGS.corde_bonus + 5); 
+    else if (corde && corde >= 14) expertise -= (SETTINGS.corde_bonus + 5);
 
     // 3. APTITUDE AU TERRAIN
     const hippodrome = (contexte.hippodrome || '').toUpperCase();

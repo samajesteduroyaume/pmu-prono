@@ -1,4 +1,7 @@
 import { calculerPrediction } from './src/core/intelligence.mjs';
+import { initDB } from './src/core/db.mjs';
+
+await initDB();
 
 console.log("--- TEST PREDICTION V30 ELITE ---");
 

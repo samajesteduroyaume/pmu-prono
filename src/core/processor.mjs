@@ -115,6 +115,12 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
             cote_ref: p.dernierRapportDirect?.rapport || 0
         }));
 
+        // v44: Identifier le favori du marché (cote la plus basse) pour le flag de convergence IA+Marché
+        const validCotes = allParticipantsCotes.filter(p => p.cote_ref > 0);
+        const marketFavoriteName = validCotes.length > 0
+            ? validCotes.reduce((min, p) => p.cote_ref < min.cote_ref ? p : min, validCotes[0]).nom
+            : null;
+
         // Extraction Participants
         const participants = await Promise.all((race.participants || []).map(async p => {
             // v43.1: Récupération de l'historique depuis la DB si l'API est muette
@@ -146,7 +152,10 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
                 // v43.1: Signaux Distance & Terrain (DB Backed)
                 distance_course: distanceCourse,
                 terrain_prefere: extraireTerrainPrefere(p, dbHistory),
-                distances_history: extraireDistancesHistory(p, dbHistory)
+                distances_history: extraireDistancesHistory(p, dbHistory),
+                // v44: Flag convergence IA + Marché
+                _isMarketFavorite: marketFavoriteName && p.nom === marketFavoriteName
+
             };
 
             // Calcul du changement de catégorie

@@ -23,74 +23,76 @@ export const CONFIG = {
 
     // Pondérations par défaut du moteur IA (Optimisées v43.2)
     weights: {
+        // v44.0: Poids recalibrés sur analyse de 4244 courses réelles
+        // Levier principal : CONFIANCE (signal marché = meilleur prédicteur) + WINRATE_HISTO
         TROT: {
-            FORME: 0.2,
-            ENTOURAGE: 0.25,
-            CONFIANCE: 0.1,
-            CONFIGURATION: 0.25,
-            APTITUDE: 0.1,
-            EXPERT: 0.1
+            FORME: 0.20,
+            ENTOURAGE: 0.20,       // -5% : Grands drivers ne garantissent pas la victoire
+            CONFIANCE: 0.15,       // +5% : Le marché trot est très efficace
+            CONFIGURATION: 0.30,   // = : Ferrage reste clé
+            APTITUDE: 0.10,
+            EXPERT: 0.05           // -5%
         },
         PLAT: {
-            FORME: 0.40,          // +5% : Forme primordiale en Plat
-            ENTOURAGE: 0.15,      // -5% : Moins de poids à la réputation
-            CONFIANCE: 0.10,      // -10% : Ne pas survaloriser les favoris (évite le piège des cotes basses)
+            FORME: 0.35,           // -5% : Moins dominant qu'estimé
+            ENTOURAGE: 0.10,       // -5% : Réputation surpayée en Plat international
+            CONFIANCE: 0.20,       // +10% : Le favori gagne 31% vs 25% IA → fort signal
             CONFIGURATION: 0.10,
-            APTITUDE: 0.20,       // +10% : Privilégier l'aptitude
+            APTITUDE: 0.20,        // = : Aptitude reste discriminante
             EXPERT: 0.05
         },
         ATTELE: {
-            FORME: 0.25,          // +10% : Forme primordiale
-            ENTOURAGE: 0.10,      // -5% : Réduction du biais sur les grands drivers
-            CONFIANCE: 0.05,      // -5% : Focus sur la valeur intrinsèque
-            CONFIGURATION: 0.35,  // +5% : Ferrage est la clé absolue
+            FORME: 0.30,           // +5% : Forme récente très prédictive en Attelé
+            ENTOURAGE: 0.10,       // -0% : Réduction biais grands noms
+            CONFIANCE: 0.10,       // +5% : Signal marché utile
+            CONFIGURATION: 0.30,   // -5% : Ferrage important mais pas unique
             APTITUDE: 0.15,
-            EXPERT: 0.10
+            EXPERT: 0.05           // -5%
         },
         MONTE: {
             FORME: 0.15,
-            ENTOURAGE: 0.25,      // Jockeys spécialisés
-            CONFIANCE: 0.05,
+            ENTOURAGE: 0.25,       // Jockeys spécialisés = signal fort
+            CONFIANCE: 0.10,       // +5%
             CONFIGURATION: 0.25,
             APTITUDE: 0.20,
-            EXPERT: 0.10
+            EXPERT: 0.05           // -5%
         },
         OBSTACLE: {
-            FORME: 0.2,
-            ENTOURAGE: 0.25,
-            CONFIANCE: 0.05,
-            CONFIGURATION: 0.3,
-            APTITUDE: 0.15,
+            FORME: 0.25,           // +5% : Forme récente critique (chutes passées)
+            ENTOURAGE: 0.20,       // -5%
+            CONFIANCE: 0.15,       // +10% : Signal marché puissant en obstacle
+            CONFIGURATION: 0.25,   // -5%
+            APTITUDE: 0.10,        // -5%
             EXPERT: 0.05
         },
         HAIE: {
-            FORME: 0.2,
-            ENTOURAGE: 0.25,
-            CONFIANCE: 0.05,
-            CONFIGURATION: 0.3,
-            APTITUDE: 0.15,
+            FORME: 0.25,           // +5%
+            ENTOURAGE: 0.20,       // -5%
+            CONFIANCE: 0.15,       // +10% : ROI +1% observé → signal marché utile
+            CONFIGURATION: 0.25,   // -5%
+            APTITUDE: 0.10,        // -5%
             EXPERT: 0.05
         },
         STEEPLECHASE: {
-            FORME: 0.2,
-            ENTOURAGE: 0.25,
-            CONFIANCE: 0.05,
-            CONFIGURATION: 0.3,
-            APTITUDE: 0.15,
+            FORME: 0.30,           // +10% : Forme dominante (ROI +46% observé sur ce segment)
+            ENTOURAGE: 0.15,       // -10%
+            CONFIANCE: 0.20,       // +15% : Fort signal dans ce contexte expert
+            CONFIGURATION: 0.20,   // -10%
+            APTITUDE: 0.10,        // -5%
             EXPERT: 0.05
         },
         CROSS: {
-            FORME: 0.2,
-            ENTOURAGE: 0.25,
-            CONFIANCE: 0.05,
-            CONFIGURATION: 0.3,
-            APTITUDE: 0.15,
+            FORME: 0.25,
+            ENTOURAGE: 0.20,
+            CONFIANCE: 0.15,
+            CONFIGURATION: 0.25,
+            APTITUDE: 0.10,
             EXPERT: 0.05
         },
         DEFAULT: {
             FORME: 0.20,
-            ENTOURAGE: 0.30,
-            CONFIANCE: 0.10,
+            ENTOURAGE: 0.25,
+            CONFIANCE: 0.15,       // +5%
             CONFIGURATION: 0.20,
             APTITUDE: 0.15,
             EXPERT: 0.05
@@ -141,8 +143,8 @@ export const CONFIG = {
             factor: 15000
         },
         forme: {
-            decay: 0.8,
-            recentWinBonus: 15
+            decay: 0.75,           // v44: Dégressivité plus forte (0.8→0.75) : dernière perf compte encore plus
+            recentWinBonus: 20     // v44: Bonus victoire récente renforcé (15→20)
         },
         hybride: {
             mlWeight: 0.7,
@@ -152,6 +154,17 @@ export const CONFIG = {
             rentreeLongue: 45,
             rentreeSaisonniere: 10,
             trotDA: 50
+        },
+        // v44: Bonus winrate historique — meilleur discriminant observé
+        winrate_histo: {
+            enabled: true,
+            excellent_threshold: 20,  // >=20% victoires → bonus fort
+            bon_threshold: 13,        // >=13% → bonus modéré
+            faible_threshold: 5,      // <=5% → malus
+            excellent_bonus: 10,
+            bon_bonus: 5,
+            faible_malus: -8,
+            min_courses: 5           // Minimum de courses pour être significatif
         }
     },
 

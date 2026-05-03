@@ -154,12 +154,15 @@ export function calculerScoreConfiance(cote) {
     let scoreConfiance = 50;
     const c = parseFloat(cote);
     if (!isNaN(c) && c > 0) {
-        if (c < 2.0) scoreConfiance = 95;
-        else if (c < 3.5) scoreConfiance = 85;
-        else if (c < 7.0) scoreConfiance = 70;
-        else if (c < 15.0) scoreConfiance = 45;
-        else if (c < 30.0) scoreConfiance = 25;
-        else scoreConfiance = 10;
+        // v44: Recalibré sur données réelles — la cote est le meilleur prédicteur externe
+        // Gagnants réels : cote moyenne 8,29 | Non-gagnants : 23,95
+        if (c < 2.0)  scoreConfiance = 90;  // Gros favori (-5 : trop souvent surpayé)
+        else if (c < 3.5)  scoreConfiance = 88;  // Favori
+        else if (c < 6.0)  scoreConfiance = 78;  // Zone valeur idéale (+8)
+        else if (c < 10.0) scoreConfiance = 65;  // Outsider potentiel (+20 vs avant)
+        else if (c < 20.0) scoreConfiance = 40;  // Longshot (+15)
+        else if (c < 50.0) scoreConfiance = 20;  // Très longshot
+        else scoreConfiance = 5;                 // Cote aberrante → plancher
     }
     return scoreConfiance;
 }
@@ -324,10 +327,37 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
         const gate = evaluerSignalGate(participant, contexteCourse, predictionScore);
         participant.signal_gate = gate; // Pour affichage UI et Value Hunter
 
+        // V44: BONUS WINRATE HISTORIQUE DU CHEVAL
+        // Meilleur discriminant trouvé : gagnants réels ont 15.35% de win rate historique vs 10.97% non-gagnants
+        const wrhConf = CONFIG.architect.winrate_histo;
+        if (wrhConf.enabled && participant.nb_courses >= wrhConf.min_courses) {
+            const nbCourses = parseInt(participant.nb_courses) || 0;
+            const nbVictoires = parseInt(participant.nb_victoires) || 0;
+            if (nbCourses > 0) {
+                const winRatePct = (nbVictoires / nbCourses) * 100;
+                if (winRatePct >= wrhConf.excellent_threshold) {
+                    predictionScore += wrhConf.excellent_bonus;
+                    logger.debug(`[IA-v44] WinRate Histo EXCELLENT (${winRatePct.toFixed(1)}%): +${wrhConf.excellent_bonus} pts pour ${participant.nom}`);
+                } else if (winRatePct >= wrhConf.bon_threshold) {
+                    predictionScore += wrhConf.bon_bonus;
+                } else if (winRatePct <= wrhConf.faible_threshold && nbCourses >= 10) {
+                    predictionScore += wrhConf.faible_malus;
+                    logger.debug(`[IA-v44] WinRate Histo FAIBLE (${winRatePct.toFixed(1)}%): ${wrhConf.faible_malus} pts pour ${participant.nom}`);
+                }
+            }
+        }
+
+        // V44: BOOST CONFIANCE MARCHÉ si accord fort IA + Marché
+        // Si le cheval a la plus haute prédiction ET la cote la plus basse du lot → signal convergent fort
+        if (participant._isMarketFavorite && predictionScore > 60) {
+            predictionScore += 5;
+            logger.debug(`[IA-v44] ACCORD IA+MARCHÉ: +5 pts pour ${participant.nom}`);
+        }
+
         return Math.round(Math.max(0, Math.min(100, predictionScore)));
 
     } catch (e) {
-        logger.error(`IA Architecture v40 Error: ${e.message}`);
+        logger.error(`IA Architecture v44 Error: ${e.message}`);
         return 50;
     }
 }

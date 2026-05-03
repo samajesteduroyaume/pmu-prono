@@ -19,6 +19,7 @@ import tuningRoutes from './routes/tuning.mjs';
 import * as statController from './controllers/statController.mjs';
 import * as mlController from './controllers/mlController.mjs';
 import * as financeController from './controllers/financeController.mjs';
+import * as winrateController from './controllers/winrateController.mjs';
 
 // Middlewares
 import { errorHandler } from './middleware/errorHandler.mjs';
@@ -78,6 +79,7 @@ app.use('/api/tuning', tuningRoutes);
 // Legacy/Compatibility Routes (Mapped to new controllers)
 app.get('/api/performance', statController.getPerformance);
 app.get('/api/performance/advanced', statController.getAdvanced);
+app.get('/api/performance/winrate', winrateController.getWinRateStats); // v44: Win Rate Reporting
 app.get('/api/performance/shadow', financeController.getShadowPerformanceStats);
 app.get('/api/palmares', statController.getPalmares);
 app.get('/api/tendances', mlController.getTendances);

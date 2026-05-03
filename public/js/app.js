@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initUI();
     refreshData();
+    renderNavStats();
 
     // Live Sync Polling (Every 60s)
     setInterval(() => {
@@ -35,6 +36,27 @@ async function refreshData() {
 
     await loadData();
     updateUI();
+    renderNavStats();
+}
+
+async function renderNavStats() {
+    try {
+        const res = await fetch('/api/performance/winrate?days=7');
+        const data = await res.json();
+        
+        const winrateEl = document.getElementById('stat-winrate-display');
+        if (winrateEl && data.windows && data.windows['7j']) {
+            const winPct = data.windows['7j'].win_pct;
+            animateValue('stat-winrate-display', winPct.toFixed(1) + '%');
+            
+            // Color based on performance
+            if (winPct >= 30) winrateEl.style.color = 'var(--accent-emerald)';
+            else if (winPct >= 25) winrateEl.style.color = 'var(--accent-gold)';
+            else winrateEl.style.color = 'var(--accent-crimson)';
+        }
+    } catch (e) {
+        console.error("Nav Stats Render Error:", e);
+    }
 }
 
 async function loadData(page = 1, filters = {}) {

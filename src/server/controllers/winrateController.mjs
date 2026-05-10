@@ -50,7 +50,7 @@ export async function getWinRateStats(req, res) {
             FROM courses c
             JOIN participants p ON p.course_id = c.id
             WHERE c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-            AND p.prediction_score IS NOT NULL AND p.cote_ref > 0 AND p.cote_ref < 100
+            AND p.prediction_score >= 80 AND p.cote_ref > 0 AND p.cote_ref < 100
             AND c.statut IN ('FIN_COURSE', 'ARRIVEE_DEFINITIVE_COMPLETE', 'ARRIVEE_PROVISOIRE_NON_VALIDEE')
             AND p.prediction_score = (SELECT MAX(p2.prediction_score) FROM participants p2 WHERE p2.course_id = c.id)
         `);
@@ -71,7 +71,7 @@ export async function getWinRateStats(req, res) {
                 FROM courses c
                 JOIN participants p ON p.course_id = c.id
                 WHERE c.date >= ? AND c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-                AND p.prediction_score IS NOT NULL AND p.cote_ref > 0 AND p.cote_ref < 100
+                AND p.prediction_score >= 80 AND p.cote_ref > 0 AND p.cote_ref < 100
                 AND c.statut IN ('FIN_COURSE', 'ARRIVEE_DEFINITIVE_COMPLETE', 'ARRIVEE_PROVISOIRE_NON_VALIDEE')
                 AND p.prediction_score = (SELECT MAX(p2.prediction_score) FROM participants p2 WHERE p2.course_id = c.id)
             `, [dStr]);
@@ -91,7 +91,7 @@ export async function getWinRateStats(req, res) {
             JOIN participants p ON p.course_id = c.id
             WHERE c.date >= ?
             AND c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-            AND p.prediction_score IS NOT NULL AND p.cote_ref > 0 AND p.cote_ref < 100
+            AND p.prediction_score >= 80 AND p.cote_ref > 0 AND p.cote_ref < 100
             AND c.statut IN ('FIN_COURSE', 'ARRIVEE_DEFINITIVE_COMPLETE', 'ARRIVEE_PROVISOIRE_NON_VALIDEE')
             AND p.prediction_score = (SELECT MAX(p2.prediction_score) FROM participants p2 WHERE p2.course_id = c.id)
             GROUP BY c.discipline
@@ -110,7 +110,7 @@ export async function getWinRateStats(req, res) {
             JOIN participants p ON p.course_id = c.id
             WHERE c.date >= ?
             AND c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-            AND p.prediction_score IS NOT NULL AND p.cote_ref > 0 AND p.cote_ref < 100
+            AND p.prediction_score >= 80 AND p.cote_ref > 0 AND p.cote_ref < 100
             AND c.statut IN ('FIN_COURSE', 'ARRIVEE_DEFINITIVE_COMPLETE', 'ARRIVEE_PROVISOIRE_NON_VALIDEE')
             AND p.prediction_score = (SELECT MAX(p2.prediction_score) FROM participants p2 WHERE p2.course_id = c.id)
             GROUP BY c.date
@@ -148,7 +148,7 @@ export async function getWinRateStats(req, res) {
             JOIN participants p ON p.course_id = c.id
             WHERE c.date >= ?
             AND c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-            AND p.prediction_score IS NOT NULL AND p.cote_ref > 0 AND p.cote_ref < 100
+            AND p.prediction_score >= 80 AND p.cote_ref > 0 AND p.cote_ref < 100
             AND c.statut IN ('FIN_COURSE', 'ARRIVEE_DEFINITIVE_COMPLETE', 'ARRIVEE_PROVISOIRE_NON_VALIDEE')
             AND p.prediction_score = (SELECT MAX(p2.prediction_score) FROM participants p2 WHERE p2.course_id = c.id)
             GROUP BY c.discipline, tranche
@@ -171,7 +171,7 @@ export async function getWinRateStats(req, res) {
             ) mkt ON mkt.course_id = c.id
             WHERE c.date >= ?
             AND c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-            AND p.prediction_score IS NOT NULL AND p.cote_ref > 0 AND p.cote_ref < 100
+            AND p.prediction_score >= 80 AND p.cote_ref > 0 AND p.cote_ref < 100
             AND c.statut IN ('FIN_COURSE', 'ARRIVEE_DEFINITIVE_COMPLETE', 'ARRIVEE_PROVISOIRE_NON_VALIDEE')
             AND p.prediction_score = (SELECT MAX(p2.prediction_score) FROM participants p2 WHERE p2.course_id = c.id)
         `, [sinceStr]);

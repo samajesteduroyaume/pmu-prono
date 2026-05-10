@@ -13,6 +13,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "node-cache": "^5.1.2",
+    "socket.io": "^4.8.3",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "zod": "^4.3.6"

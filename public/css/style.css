@@ -6,6 +6,8 @@
     --h-gold: 45;
     --h-emerald: 161;
     --h-crimson: 0;
+    --h-purple: 270;
+    --h-blue: 210;
     
     --bg-deep: hsl(210, 40%, 2%);
     --bg-surface: hsl(210, 30%, 4%);
@@ -20,6 +22,8 @@
     --accent-emerald-glow: hsla(var(--h-emerald), 84%, 45%, 0.4);
     
     --accent-crimson: hsl(var(--h-crimson), 84%, 60%);
+    --accent-purple: hsl(var(--h-purple), 84%, 67%);
+    --accent-blue: hsl(var(--h-blue), 84%, 60%);
     
     /* Text Colors */
     --text-pure: hsl(0, 0%, 100%);
@@ -339,18 +343,19 @@ body::before {
     background: var(--glass-bg);
     border: var(--border-light);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    overflow-x: auto;
     backdrop-filter: var(--glass-blur);
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 1100px;
 }
 
 .data-table th {
     background: hsla(0, 0%, 100%, 0.03);
-    padding: 20px 32px;
+    padding: 20px 24px;
     text-align: left;
     font-size: 11px;
     font-weight: 800;
@@ -360,9 +365,9 @@ body::before {
 }
 
 .data-table td {
-    padding: 24px 32px;
+    padding: 20px 24px;
     border-bottom: var(--border-light);
-    font-size: 15px;
+    font-size: 14px;
     color: var(--text-high);
 }
 

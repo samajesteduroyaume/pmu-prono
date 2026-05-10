@@ -12,6 +12,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css?v=43.3.1">
     
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -72,7 +76,11 @@
                         <span class="live-indicator"></span> INITIALISATION DU FLUX...
                     </div>
                 </div>
-                <div class="actions" style="display: flex; gap: 12px;">
+                <div class="actions" style="display: flex; gap: 12px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px; background: hsla(0,0%,100%,0.05); border: 1px solid var(--glass-border); padding: 4px 12px; border-radius: 8px;">
+                        <i class="fas fa-calendar-alt" style="color: var(--accent-gold); font-size: 14px;"></i>
+                        <input type="date" id="calendar-filter" onchange="refreshData()" style="background: transparent; border: none; color: var(--text-pure); font-family: 'JetBrains Mono'; font-size: 13px; outline: none; cursor: pointer;">
+                    </div>
                     <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px;">
                         <i class="fas fa-history"></i>
                         <span>Synchro. Étendue</span>
@@ -100,10 +108,11 @@
                                 <tr>
                                     <th>Heure</th>
                                     <th>Événement</th>
+                                    <th>Contexte</th>
                                     <th>Top Vecteur</th>
                                     <th>Score IA</th>
                                     <th>Cote</th>
-                                    <th>Edge</th>
+                                    <th>Allocation</th>
                                     <th>Statut</th>
                                     <th>Action</th>
                                 </tr>
@@ -120,7 +129,7 @@
 
     <!-- Modal Details -->
     <div id="modal-details" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
-        <div class="stat-card" style="width: 900px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo);">
+        <div class="stat-card" style="width: 1400px; max-width: 95vw; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
                 <h2 style="font-size: 24px; font-weight: 800; letter-spacing: -1px;">Analyse de Vecteurs IA</h2>
                 <button onclick="closeModal()" style="background: hsla(0, 0%, 100%, 0.05); border: 1px solid var(--glass-border); color: var(--text-high); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">

@@ -48,16 +48,8 @@ export async function extractMLFeatures(participant, course, allParticipants = [
         if (idx !== -1) rangCoteNorm = idx / Math.max(1, sorted.length - 1);
     }
 
-    // v43.1: Normalisation de la distance (Base 2000m)
-    const distanceNorm = Math.min(1.5, (participant.distance_course || 2000) / 2000);
-    
     // v43.1: Aptitude terrain (0=Inconnu/Douteux, 1=Préféré)
     const aptitudeTerrain = (participant.terrain_prefere === course.terrain) ? 1.0 : 0.5;
-
-    // v43.2: Normalisation des nouvelles caractéristiques
-    const cordeNorm = (participant.corde || 0) / 20; // Corde 1-20
-    const poidsNorm = ((participant.poids || 60) - 50) / 20; // Poids 50-70kg
-    const reculNorm = ((participant.recul || 0)) / 100; // Recul (25m = 0.25)
 
     return [
         f.forme,
@@ -69,12 +61,12 @@ export async function extractMLFeatures(participant, course, allParticipants = [
         f.isTrot,
         f.isShielded,
         f.sentiment,
-        distanceNorm,
+        f.distanceNorm,
         aptitudeTerrain,
         rangCoteNorm,
-        cordeNorm,
-        poidsNorm,
-        reculNorm
+        f.cordeNorm,
+        f.poidsNorm,
+        f.reculNorm
     ];
 }
 
@@ -95,14 +87,14 @@ async function predictML(participant, contexteCourse, allParticipants = []) {
 
         // Convertir probabilité (0-1) en score (0-100)
         let prob = probability[0];
-        
+
         // v43.3: Platt Scaling pour corriger le biais d'undersampling (ratio 1:1 vs réalité ~1:13)
         // Ratio d'undersampling = 1 gagnant / 13 perdants approx = 0.075
         const undersampling_ratio = 0.075;
         prob = prob / (prob + (1 - prob) / undersampling_ratio);
-        
+
         let scoreML = 0;
-        
+
         // v43.1: Courbe de calibration lissée pour éviter les effets de seuil
         if (prob >= 0.45) {
             scoreML = 90 + ((prob - 0.45) / 0.55) * 10;
@@ -117,7 +109,7 @@ async function predictML(participant, contexteCourse, allParticipants = []) {
         } else {
             scoreML = (prob / 0.08) * 35;
         }
-        
+
         return Math.min(100, Math.max(0, Math.round(scoreML)));
     } catch (error) {
         console.error('[ML] Erreur prédiction:', error.message);
@@ -130,11 +122,11 @@ async function predictML(participant, contexteCourse, allParticipants = []) {
  */
 export async function calculerPredictionHybride(participant, contexteCourse, activePatterns = [], tousParticipants = [], preCalculatedBaseScores = null) {
     const { preparerBaseScores } = await import('./intelligence.mjs');
-    
+
     // Utiliser les scores pré-calculés si disponibles (Elite v43.3)
-    const baseScores = preCalculatedBaseScores || await preparerBaseScores(participant, contexteCourse, activePatterns);
-    
-    const f = extractBaseFeatures(participant, contexteCourse);
+    const baseScores = preCalculatedBaseScores || await preparerBaseScores(participant, contexteCourse);
+
+    const f = await extractBaseFeatures(participant, contexteCourse);
     const scoreV14 = await calculerPredictionV14(participant, contexteCourse, activePatterns);
 
     // Si modèle ML non disponible, fallback sur v14
@@ -148,7 +140,7 @@ export async function calculerPredictionHybride(participant, contexteCourse, act
         return { score: scoreV14, xai: f.xai };
     }
 
-    // Hybride v27.1 : Poids paramétrables (70% ML + 30% Heuristiques par défaut)
+    // fix v48.1: Poids paramétrables configés en 50% ML + 50% Heuristiques (v48, réduit depuis 70/30)
     const { mlWeight, heuristicWeight } = CONFIG.architect.hybride;
     const scoreHybride = Math.round((scoreML * mlWeight) + (scoreV14 * heuristicWeight));
 

@@ -54,7 +54,7 @@ export async function getIAPerformanceStats(days = null) {
                     ROW_NUMBER() OVER(PARTITION BY p.course_id ORDER BY p.prediction_score DESC) as rank_ia
                 FROM participants p
                 JOIN courses c ON p.course_id = c.id
-                WHERE p.prediction_score > 0 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
+                WHERE p.prediction_score >= 80 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
             ),
             BestBets AS (
                 SELECT * FROM TopProne WHERE rank_ia = 1
@@ -354,7 +354,7 @@ export async function getPerformanceParDiscipline(days = null) {
                     ROW_NUMBER() OVER(PARTITION BY p.course_id ORDER BY p.prediction_score DESC) as rank_ia
                 FROM participants p
                 JOIN courses c ON p.course_id = c.id
-                WHERE p.prediction_score > 0 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
+                WHERE p.prediction_score >= 80 AND c.ordre_arrivee IS NOT NULL ${dateFilter}
             )
             SELECT 
                 discipline,

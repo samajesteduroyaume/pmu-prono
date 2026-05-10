@@ -14,9 +14,15 @@ export function calculerRegularite(p) {
  */
 export function determinerChangementCategorie(p, prixCourse) {
     if (!p.nb_courses || p.nb_courses < 3) return 'STABLE';
-    const gainMoyen = p.gains / p.nb_courses;
+    
+    // v47: Plafond dynamique sur nb_courses pour éviter la dilution excessive des gains (biais chevaux d'âge)
+    // On considère que le niveau réel est mieux représenté par les ~20-25 dernières courses max
+    const effectiveNbCourses = Math.min(p.nb_courses, 15 + (parseInt(p.age) || 5));
+    
+    const gainMoyen = p.gains / effectiveNbCourses;
+    
     if (gainMoyen > prixCourse * 0.8) return 'DESCENTE';
-    if (gainMoyen < (prixCourse / 10)) return 'MONTEE';
+    if (gainMoyen < (prixCourse / 12)) return 'MONTEE'; // v47: Seuil monté légèrement abaissé (10 -> 12) pour être plus sélectif
     return 'STABLE';
 }
 

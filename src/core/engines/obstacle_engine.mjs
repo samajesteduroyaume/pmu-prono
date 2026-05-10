@@ -19,8 +19,16 @@ export async function processObstacle(participant, contexte, baseScores) {
     const WEIGHTS = getWeights(discipline);
 
     // 1. ANALYSE DES FAUTES (Musique)
+    // fix v48.1: Lookbehind négatif (?<![0-9]) pour ne capter T/A qu'en position autonome,
+    // pas comme suffixe de discipline après un chiffre (ex: "2a" → 'a' est la discipline, pas une faute).
     const musique = participant.musique || '';
-    const falls = (musique.match(/Ts|As|Ts|Th|Ah/g) || []).length;
+    const cleanMusicObs = musique.replace(/\(\d+\)/g, '');
+    const DISCIPLINE_LETTERS_OBS = new Set(['a', 'p', 'm', 'h', 's', 'c']);
+    const fallTokens = cleanMusicObs.match(/(?<![0-9])[TA][a-zA-Z]*/g) || [];
+    const falls = fallTokens.filter(tok => {
+        if (tok.length === 1 && DISCIPLINE_LETTERS_OBS.has(tok.toLowerCase())) return false;
+        return true;
+    }).length;
     if (falls > 0) expertise -= (falls * SETTINGS.fall_malus);
 
     // 2. FRAîCHEUR

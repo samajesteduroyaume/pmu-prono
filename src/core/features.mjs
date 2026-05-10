@@ -57,7 +57,14 @@ export async function extractBaseFeatures(participant, course) {
     const sentimentScore = avis === 'POSITIF' ? 1.0 : (avis === 'NEGATIF' ? 0.0 : 0.5);
 
     // V30: Calcul d'influence XAI (basé sur les poids de la discipline)
-    const weights = CONFIG.weights[discipline] || CONFIG.weights.DEFAULT || { FORME: 0.2, ENTOURAGE: 0.2, CONFIANCE: 0.2, CONFIGURATION: 0.2, APTITUDE: 0.1, EXPERT: 0.1 };
+    // v48: Normalisation de la discipline pour le lookup des poids
+    let weightKey = discipline;
+    if (discipline.includes('TROT') || discipline.includes('ATTELE')) weightKey = 'ATTELE';
+    else if (discipline.includes('MONTE')) weightKey = 'MONTE';
+    else if (discipline.includes('PLAT')) weightKey = 'PLAT';
+    else if (discipline.includes('OBSTACLE') || discipline.includes('HAIE') || discipline.includes('STEEPLE') || discipline.includes('CROSS')) weightKey = 'OBSTACLE';
+    
+    const weights = CONFIG.weights[weightKey] || CONFIG.weights.DEFAULT || { FORME: 0.2, ENTOURAGE: 0.2, CONFIANCE: 0.2, CONFIGURATION: 0.2, APTITUDE: 0.1, EXPERT: 0.1 };
     const rawScores = {
         forme: scoreForme,
         entourage: scoreEntourage,
@@ -99,6 +106,27 @@ export async function extractBaseFeatures(participant, course) {
         isTrot: isTrot ? 1 : 0,
         isShielded: Math.min(shieldMalus, 100) / 100,
         sentiment: sentimentScore,
+        // v48.2: Caractéristiques techniques critiques avec normalisation contextuelle
+        distanceNorm: (() => {
+            let baseDist = 2700;
+            if (discipline.includes('PLAT')) baseDist = 1600;
+            else if (discipline.includes('OBSTACLE') || discipline.includes('HAIE')) baseDist = 3800;
+            return Math.max(0, Math.min(1.0, (participant.distance_course || baseDist) / (baseDist * 1.5)));
+        })(),
+        cordeNorm: (() => {
+            if (isTrot || !participant.corde) return 0.5;
+            return Math.max(0, Math.min(1.0, parseInt(participant.corde) / 20));
+        })(),
+        poidsNorm: (() => {
+            if (!participant.poids) return 0.5;
+            const p = parseFloat(participant.poids);
+            let norm = 0.5;
+            if (discipline.includes('PLAT')) norm = (p - 50) / 12;
+            else if (discipline.includes('OBSTACLE') || discipline.includes('HAIE')) norm = (p - 62) / 10;
+            else norm = (p - 50) / 20;
+            return Math.max(0, Math.min(1.0, norm));
+        })(),
+        reculNorm: Math.max(0, Math.min(1.0, (participant.recul || 0) / 100)),
         // Labels XAI Enrichis v30
         xai: {
             labels: {

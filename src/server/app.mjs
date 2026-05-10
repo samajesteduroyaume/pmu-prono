@@ -8,6 +8,7 @@ import logger from '../utils/logger.mjs';
 // Import Database
 import { initDB } from '../db/db.mjs';
 import { loadMLModel } from '../core/hybrid.mjs';
+import { syncLive } from '../core/sync_manager.mjs';
 
 // Import Routes
 import courseRoutes from './routes/courses.mjs';
@@ -56,7 +57,7 @@ export async function getOrUpdatePatterns() {
 
 // Branding Console
 console.log("\x1b[32m%s\x1b[0m", "------------------------------------------------------------");
-console.log("\x1b[32m%s\x1b[0m", "         ARCHITECT v27.1 - ELITE PUNTER SYSTEM             ");
+console.log("\x1b[32m%s\x1b[0m", "         ARCHITECT v43.3 - ELITE PUNTER SYSTEM             ");
 console.log("\x1b[32m%s\x1b[0m", "------------------------------------------------------------");
 
 // Global Middlewares
@@ -101,14 +102,45 @@ app.get('/', (req, res) => {
 // Error Handling
 app.use(errorHandler);
 
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
+const server = createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+app.set('io', io);
+
 // Start Server
 async function startServer() {
     try {
         await initDB();
         await loadMLModel();
-        app.listen(PORT, () => {
+        
+        // V46: Background Auto-Sync (Every 5 minutes)
+        // Fetches new races and updates arrivals/results automatically
+        setInterval(async () => {
+            try {
+                logger.info('[V46] Auto-Sync: Déclenchement de la synchronisation live...');
+                const results = await syncLive();
+                if (results.totalCourses > 0) {
+                    logger.success(`[V46] Auto-Sync: ${results.totalCourses} courses mises à jour.`);
+                    io.emit('sync_update', { count: results.totalCourses, timestamp: new Date() });
+                }
+            } catch (e) {
+                logger.error(`[V46] Auto-Sync Error: ${e.message}`);
+            }
+        }, 300000); // 300,000ms = 5 minutes
+        
+        io.on('connection', (socket) => {
+            logger.info(`[Socket] Nouveau client connecté: ${socket.id}`);
+            socket.on('disconnect', () => {
+                logger.info(`[Socket] Client déconnecté: ${socket.id}`);
+            });
+        });
+
+        server.listen(PORT, () => {
             logger.header(`SERVEUR MODULARISÉ LANCÉ (Port: ${PORT})`);
             logger.info(`Dashboard accessible sur: http://localhost:${PORT}`);
+            logger.info(`[Socket.io] Serveur WebSocket prêt`);
         });
     } catch (e) {
         logger.error(`Erreur démarrage serveur: ${e.message}`);

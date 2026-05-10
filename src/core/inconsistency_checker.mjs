@@ -44,8 +44,8 @@ export function detectInconsistencies(participant, contexte, baseScores, finalSc
     if (disc.includes('MONTE') && !musique.includes('m') && finalScore > 70) {
         alerts.push({
             type: 'DISCIPLINE_VIRGIN',
-            severity: 'HIGH',
-            message: 'Zéro référence en Monté pour un favori IA. Incohérence majeure.'
+            severity: 'MEDIUM',
+            message: 'Zéro référence en Monté pour un favori IA. Prudence conseillée.'
         });
     }
 
@@ -53,10 +53,13 @@ export function detectInconsistencies(participant, contexte, baseScores, finalSc
     // IA donne un score énorme mais la cote est délaissée (> 40).
     const cote = parseFloat(participant.cote_ref);
     if (cote > 40 && finalScore > 80) {
+        const isExtreme = (cote > 60 && finalScore > 90);
         alerts.push({
             type: 'NEGLECTED_POWER',
-            severity: 'MEDIUM',
-            message: 'Cote abandonnée par le marché malgré un score IA d\'élite. Suspicion d\'info manquante.'
+            severity: isExtreme ? 'HIGH' : 'MEDIUM',
+            message: isExtreme 
+                ? `Incohérence MAJEURE : Score IA d'élite (${finalScore}) sur un délaissé total (${cote}).` 
+                : 'Cote abandonnée par le marché malgré un score IA d\'élite. Suspicion d\'info manquante.'
         });
     }
 
@@ -86,13 +89,22 @@ export function detectInconsistencies(participant, contexte, baseScores, finalSc
 
 /**
  * Applique une correction dynamique au score final basée sur les incohérences
+ * v47: Ajout de l'objet participant pour éviter la double peine (is_trap)
  */
-export function applyCorrection(score, alerts) {
+export function applyCorrection(score, alerts, participant = {}) {
     let correctedScore = score;
     
     alerts.forEach(alert => {
-        if (alert.severity === 'HIGH') correctedScore -= 25; // v43.2: Pénalité augmentée pour plus de réalisme
-        if (alert.severity === 'MEDIUM') correctedScore -= 15; // v43.2: Pénalité augmentée pour plus de réalisme
+        let penalty = 0;
+        if (alert.severity === 'HIGH') penalty = 25;
+        if (alert.severity === 'MEDIUM') penalty = 15;
+
+        // v47: Éviter la double peine si is_trap est déjà actif pour des signaux similaires
+        if (participant.is_trap && (alert.type === 'FAKE_INTENT' || alert.type === 'CATEGORY_GAP')) {
+            penalty = Math.round(penalty / 2); // On réduit la pénalité de moitié
+        }
+
+        correctedScore -= penalty;
     });
 
     return Math.round(Math.max(0, Math.min(100, correctedScore)));

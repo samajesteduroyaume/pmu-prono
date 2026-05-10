@@ -26,11 +26,22 @@ const MIN_EDGE_THRESHOLD = FINANCE.min_edge_threshold;
  * Ces probabilités sont utilisées pour calculer l'Edge vs le marché (cote).
  */
 export function calibrateProbability(score) {
-    const table = CONFIG.calibration;
-    for (const entry of table) {
-        if (score >= entry.minScore) return entry.prob;
+    const table = CONFIG.calibration; // v48: Interpolation linéaire pour éviter les effets de seuil
+    
+    if (score >= table[0].minScore) return table[0].prob;
+    
+    for (let i = 0; i < table.length - 1; i++) {
+        const upper = table[i];
+        const lower = table[i + 1];
+        
+        if (score >= lower.minScore && score <= upper.minScore) {
+            const range = upper.minScore - lower.minScore;
+            if (range === 0) return upper.prob;
+            const factor = (score - lower.minScore) / range;
+            return lower.prob + factor * (upper.prob - lower.prob);
+        }
     }
-    return 0.05; // Plancher de sécurité
+    return table[table.length - 1].prob;
 }
 
 
@@ -64,7 +75,8 @@ export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKR
     if (fractionReelle > MAX_BET_PERCENT) fractionReelle = MAX_BET_PERCENT;
 
     // 5. Calcul Mise Euro
-    const miseConseillee = Math.floor(currentBankroll * fractionReelle);
+    let miseConseillee = Math.floor(currentBankroll * fractionReelle);
+    if (miseConseillee < 1 && fractionReelle > 0) miseConseillee = 1; // v48: Plancher 1€ pour les petites bankrolls
 
     return {
         mise: miseConseillee,
@@ -82,14 +94,18 @@ export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKR
  * - Drawdown (réduit drastiquement si drawdown > 15%)
  * - Séquence de défaites (réduit après 3+ défaites consécutives)
  * 
- * @param {number} cote - Cote du cheval
- * @param {number} winProbPercent - Probabilité de victoire (0-100)
- * @param {number} currentBankroll - Bankroll actuelle
- * @param {Object} tendances - Objet tendances depuis getTendancesCumulees()
- * @param {Array} currentPatterns - Liste des patterns actifs pour le contexte actuel
- * @returns {Object} Suggestion de mise adaptée
  */
-export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankroll = 'shadow', tendances = null, currentPatterns = []) {
+export async function calculateKellyAdaptatif(participantOrCote, winProbPercent, currentBankroll = 'shadow', tendances = null, currentPatterns = []) {
+    let cote = 0;
+    let participant = null;
+    
+    if (typeof participantOrCote === 'number') {
+        cote = participantOrCote;
+    } else if (participantOrCote) {
+        cote = parseFloat(participantOrCote.cote_ref || participantOrCote.fav_cote || 0);
+        participant = participantOrCote;
+    }
+
     // Résoudre la Bankroll V42 si une clé de portfolio est fournie (au lieu d'un nombre)
     let bankrollValue = BANKROLL_DEFAULT;
     if (typeof currentBankroll === 'string') {
@@ -109,6 +125,11 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
 
     if (!cote || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
 
+    // --- V45.1 : BOUCLIER ANTI-PIÈGES ---
+    if (participant && participant.is_trap) {
+        return { mise: 0, advice: 'TRAP DETECTED', explanation: 'Faux favori détecté. Capital protégé.' };
+    }
+
     const b = cote - 1;
     const p = calibrateProbability(winProbPercent);
     const q = 1 - p;
@@ -120,6 +141,22 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
     // ADAPTATION SELON TENDANCES
     let fractionAdaptee = KELLY_FRACTION;
     let adjustments = [];
+
+    // --- V45.1 : RADARS D'OPPORTUNITÉS ---
+    if (participant) {
+        if (participant.is_smart_money_alert) {
+            fractionAdaptee *= 1.25;
+            adjustments.push('Smart Money Velocity (+25%)');
+        }
+        if (participant.is_swimmer) {
+            fractionAdaptee *= 1.15;
+            adjustments.push('Spécialiste Terrain (+15%)');
+        }
+        if (participant.is_bad_draw) {
+            fractionAdaptee *= 0.5;
+            adjustments.push('Mauvais Tirage Balistique (-50%)');
+        }
+    }
 
     // 1. MOMENTUM
     if (tendances.momentum >= 70) {
@@ -160,16 +197,16 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
 
     // 6. PATTERNS OPTIMISÉS (V29)
     if (currentPatterns && currentPatterns.length > 0) {
-        currentPatterns.forEach(p => {
-            if (p.type === 'GOLDEN_PATTERN') {
-                let bonus = 1 + (p.roi / 200); // Base: 1.1 si ROI 20%
-                if (p.roi > 30) bonus *= 1.25; // Booster v43.1 pour les patterns très rentables
+        currentPatterns.forEach(pat => {
+            if (pat.type === 'GOLDEN_PATTERN') {
+                let bonus = 1 + (pat.roi / 200); // Base: 1.1 si ROI 20%
+                if (pat.roi > 30) bonus *= 1.25; // Booster v43.1 pour les patterns très rentables
                 fractionAdaptee *= bonus;
-                adjustments.push(`Golden Pattern: ${p.pattern} (+${Math.round((bonus - 1) * 100)}%)`);
-            } else if (p.type === 'DANGER_PATTERN') {
+                adjustments.push(`Golden Pattern: ${pat.pattern} (+${Math.round((bonus - 1) * 100)}%)`);
+            } else if (pat.type === 'DANGER_PATTERN') {
                 const malus = 0.5; // Réduire de moitié par défaut pour un pattern dangereux
                 fractionAdaptee *= malus;
-                adjustments.push(`Danger Pattern: ${p.pattern} (-50%)`);
+                adjustments.push(`Danger Pattern: ${pat.pattern} (-50%)`);
             }
         });
     }
@@ -185,13 +222,14 @@ export async function calculateKellyAdaptatif(cote, winProbPercent, currentBankr
     // Appliquer la fraction adaptée
     let fractionReelleFinal = f * fractionAdaptee;
 
-    // Plafond de sécurité
+    // Plancher de sécurité
     if (fractionReelleFinal > MAX_BET_PERCENT) fractionReelleFinal = MAX_BET_PERCENT;
 
-    // Plancher minimum (ne pas descendre en dessous de 0.5%)
+    // Plancher minimum (ne pas descendre en dessous de 0.5% si avantage détecté)
     if (fractionReelleFinal < 0.005) fractionReelleFinal = 0.005;
 
-    const miseConseillee = Math.floor(bankrollValue * fractionReelleFinal);
+    let miseConseillee = Math.floor(bankrollValue * fractionReelleFinal);
+    if (miseConseillee < 1 && fractionReelleFinal > 0) miseConseillee = 1; // v48: Plancher 1€
 
     return {
         mise: miseConseillee,

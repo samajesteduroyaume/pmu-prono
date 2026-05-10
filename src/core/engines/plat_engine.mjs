@@ -14,12 +14,24 @@ export async function processPlat(participant, contexte, baseScores) {
     else if (gains > SETTINGS.elite_gains_threshold / 2) expertise += 10;
     else if (gains < 10000 && participant.age >= 4) expertise -= 10;
 
-    // 2. CORDE (Impact renforcé en Plat)
-    const corde = parseInt(contexte.corde);
-    if (corde && corde <= 4) expertise += (SETTINGS.corde_bonus + 5); 
-    else if (corde && corde >= 14) expertise -= (SETTINGS.corde_bonus + 5);
+    // 2. CORDE (Impact renforcé v48.2)
+    const corde = parseInt(participant.corde);
+    if (corde) {
+        if (corde <= 4) expertise += 15;
+        else if (corde >= 14) {
+            expertise -= 25; // Malus expert
+            participant.is_bad_draw = true;
+        } else if (corde >= 11) {
+            expertise -= 10;
+        }
+    }
 
-    // 3. APTITUDE AU TERRAIN
+    // 3. RÉGULARITÉ & CATÉGORIE (v48.2)
+    const cat = determinerChangementCategorie(participant, contexte.prixCourse || 20000);
+    if (cat === 'MONTEE') expertise -= 15;
+    else if (cat === 'DESCENTE') expertise += 10;
+
+    // 4. APTITUDE AU TERRAIN & HIPPO
     const hippodrome = (contexte.hippodrome || '').toUpperCase();
     if (hippodrome.includes('LONGCHAMP') || hippodrome.includes('CHANTILLY') || hippodrome.includes('DEAUVILLE')) {
         expertise += SETTINGS.hippo_bonus;

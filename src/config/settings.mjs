@@ -23,79 +23,73 @@ export const CONFIG = {
 
     // Pondérations par défaut du moteur IA (Optimisées v43.2)
     weights: {
-        // v44.0: Poids recalibrés sur analyse de 4244 courses réelles
-        // Levier principal : CONFIANCE (signal marché = meilleur prédicteur) + WINRATE_HISTO
-        TROT: {
-            FORME: 0.20,
-            ENTOURAGE: 0.20,       // -5% : Grands drivers ne garantissent pas la victoire
-            CONFIANCE: 0.15,       // +5% : Le marché trot est très efficace
-            CONFIGURATION: 0.30,   // = : Ferrage reste clé
-            APTITUDE: 0.10,
-            EXPERT: 0.05           // -5%
-        },
+        // TROT : Alias vers ATTELE — ne pas dupliquer ici (fix v48.1: CONTRA1)
+        // Utiliser CONFIG.weights.ATTELE pour toute discipline Trot/Attelé sans moteur spécifique
         PLAT: {
-            FORME: 0.35,           // -5% : Moins dominant qu'estimé
-            ENTOURAGE: 0.10,       // -5% : Réputation surpayée en Plat international
-            CONFIANCE: 0.20,       // +10% : Le favori gagne 31% vs 25% IA → fort signal
-            CONFIGURATION: 0.10,
-            APTITUDE: 0.20,        // = : Aptitude reste discriminante
-            EXPERT: 0.05
+            FORME: 0.25,
+            ENTOURAGE: 0.15,
+            CONFIANCE: 0.05,
+            CONFIGURATION: 0.15,
+            APTITUDE: 0.25,
+            EXPERT: 0.15
         },
         ATTELE: {
-            FORME: 0.30,           // +5% : Forme récente très prédictive en Attelé
-            ENTOURAGE: 0.10,       // -0% : Réduction biais grands noms
-            CONFIANCE: 0.10,       // +5% : Signal marché utile
-            CONFIGURATION: 0.30,   // -5% : Ferrage important mais pas unique
-            APTITUDE: 0.15,
-            EXPERT: 0.05           // -5%
-        },
-        MONTE: {
-            FORME: 0.15,
-            ENTOURAGE: 0.25,       // Jockeys spécialisés = signal fort
-            CONFIANCE: 0.10,       // +5%
-            CONFIGURATION: 0.25,
-            APTITUDE: 0.20,
-            EXPERT: 0.05           // -5%
-        },
-        OBSTACLE: {
-            FORME: 0.25,           // +5% : Forme récente critique (chutes passées)
-            ENTOURAGE: 0.20,       // -5%
-            CONFIANCE: 0.15,       // +10% : Signal marché puissant en obstacle
-            CONFIGURATION: 0.25,   // -5%
-            APTITUDE: 0.10,        // -5%
+            FORME: 0.25,      // v48: Réduit (0.35 -> 0.25) pour rééquilibrer
+            ENTOURAGE: 0.15,  // v48: Augmenté (0.05 -> 0.15) - Crucial en Attelé
+            CONFIANCE: 0.15,
+            CONFIGURATION: 0.2,
+            APTITUDE: 0.2,
             EXPERT: 0.05
         },
+        MONTE: {
+            FORME: 0.2,
+            ENTOURAGE: 0.2,
+            CONFIANCE: 0.15,
+            CONFIGURATION: 0.2,
+            APTITUDE: 0.2,
+            EXPERT: 0.05
+        },
+        OBSTACLE: {
+            FORME: 0.25,
+            ENTOURAGE: 0.4,
+            CONFIANCE: 0.1,
+            CONFIGURATION: 0.11,
+            APTITUDE: 0.11,
+            EXPERT: 0.03
+        },
         HAIE: {
-            FORME: 0.25,           // +5%
-            ENTOURAGE: 0.20,       // -5%
-            CONFIANCE: 0.15,       // +10% : ROI +1% observé → signal marché utile
-            CONFIGURATION: 0.25,   // -5%
-            APTITUDE: 0.10,        // -5%
+            FORME: 0.2,
+            ENTOURAGE: 0.15,
+            CONFIANCE: 0.15,
+            CONFIGURATION: 0.2,
+            APTITUDE: 0.25,
             EXPERT: 0.05
         },
         STEEPLECHASE: {
-            FORME: 0.30,           // +10% : Forme dominante (ROI +46% observé sur ce segment)
-            ENTOURAGE: 0.15,       // -10%
-            CONFIANCE: 0.20,       // +15% : Fort signal dans ce contexte expert
-            CONFIGURATION: 0.20,   // -10%
-            APTITUDE: 0.10,        // -5%
-            EXPERT: 0.05
+            FORME: 0.1,
+            ENTOURAGE: 0.25,
+            CONFIANCE: 0.05,
+            CONFIGURATION: 0.27,
+            APTITUDE: 0.27,
+            EXPERT: 0.06
         },
         CROSS: {
-            FORME: 0.25,
-            ENTOURAGE: 0.20,
-            CONFIANCE: 0.15,
-            CONFIGURATION: 0.25,
-            APTITUDE: 0.10,
-            EXPERT: 0.05
+            FORME: 0.05,
+            ENTOURAGE: 0.05,
+            CONFIANCE: 0.1,
+            CONFIGURATION: 0.36,
+            APTITUDE: 0.36,
+            EXPERT: 0.08
         },
+        // DEFAULT : Poids neutres équilibrés (fix v48.1: CONTRA2 — différencié d'OBSTACLE)
+        // Utilisé pour les disciplines non reconnues. 6 critères à poids égaux (≈1/6).
         DEFAULT: {
-            FORME: 0.20,
-            ENTOURAGE: 0.25,
-            CONFIANCE: 0.15,       // +5%
-            CONFIGURATION: 0.20,
-            APTITUDE: 0.15,
-            EXPERT: 0.05
+            FORME: 0.17,
+            ENTOURAGE: 0.17,
+            CONFIANCE: 0.17,
+            CONFIGURATION: 0.17,
+            APTITUDE: 0.17,
+            EXPERT: 0.15
         }
     },
 
@@ -147,13 +141,13 @@ export const CONFIG = {
             recentWinBonus: 20     // v44: Bonus victoire récente renforcé (15→20)
         },
         hybride: {
-            mlWeight: 0.7,
-            heuristicWeight: 0.3
+            mlWeight: 0.5,         // v48: Réduit (0.7 -> 0.5) pour assainissement
+            heuristicWeight: 0.5   // v48: Augmenté (0.3 -> 0.5)
         },
         malus: {
             rentreeLongue: 45,
             rentreeSaisonniere: 10,
-            trotDA: 50
+            trotDA: 30             // v48: Réduit (50 -> 30) pour mieux pénaliser l'instabilité
         },
         // v44: Bonus winrate historique — meilleur discriminant observé
         winrate_histo: {
@@ -196,7 +190,14 @@ export const CONFIG = {
             shield_malus_max: 25,
             shield_malus_med: 15,
             shield_malus_min: 10,
-            red_flag_malus: 20
+            red_flag_malus: 25,
+            max_cumulative_bonus: 25,  // v48: Plafond global pour éviter l'inflation
+            market: {
+                smart_money_fav_threshold: 0.10, // 10% pour favoris
+                smart_money_std_threshold: 0.20, // 20% standard
+                momentum_malus_soft: 1.30,       // +30% cote
+                momentum_malus_hard: 1.50        // +50% cote
+            }
         },
         finance: {
             kelly_fraction: 0.25,

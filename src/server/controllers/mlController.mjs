@@ -52,6 +52,16 @@ export async function valueHunter(req, res) {
         const { date } = req.query;
         const { detectOpportunities } = await import('../../core/value_hunter.mjs');
         const opportunities = await detectOpportunities(date);
+        
+        // Broadcast via Websocket si Smart Money détecté
+        const smartMoneys = opportunities.filter(o => o.is_smart_money || o.is_smart_money_alert);
+        if (smartMoneys.length > 0) {
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('smart_money_alert', smartMoneys);
+            }
+        }
+
         res.json(opportunities);
     } catch (error) {
         logger.error(`API Value Hunter Error: ${error.message}`);

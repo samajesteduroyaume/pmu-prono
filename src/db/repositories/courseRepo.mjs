@@ -67,8 +67,8 @@ export async function insertCourses(courses) {
                 course_id, nom, numero, sexe, age, musique, gains, 
                 driver, entraineur, proprietaire, ferrage, oeilleres, nb_courses, nb_victoires, nb_places, 
                 cat_statut, cote_ref, statut, prediction_score, classement, avis,
-                distance_course, distances_history, terrain_prefere
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                distance_course, distances_history, terrain_prefere, corde, poids
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(course_id, numero) DO UPDATE SET
                 cote_ref = excluded.cote_ref,
                 statut = excluded.statut,
@@ -79,7 +79,10 @@ export async function insertCourses(courses) {
                 avis = excluded.avis,
                 distance_course = excluded.distance_course,
                 distances_history = COALESCE(excluded.distances_history, distances_history),
-                terrain_prefere = COALESCE(excluded.terrain_prefere, terrain_prefere)
+                terrain_prefere = COALESCE(excluded.terrain_prefere, terrain_prefere),
+                corde = excluded.corde,
+                poids = excluded.poids,
+                prediction_score = excluded.prediction_score
         `;
 
         for (const c of courses) {
@@ -98,7 +101,7 @@ export async function insertCourses(courses) {
                         row.id, p.nom, p.numero, p.sexe, p.age, p.musique, p.gains,
                         p.driver, p.entraineur, p.proprietaire, p.ferrage, p.oeilleres, p.nb_courses, p.nb_victoires, p.nb_places,
                         p.cat_statut || 'STABLE', p.cote_ref, p.statut, p.prediction_score || 0, p.classement || null, p.avis || null,
-                        p.distance_course || null, p.distances_history || null, p.terrain_prefere || null
+                        p.distance_course || null, p.distances_history || null, p.terrain_prefere || null, p.corde || 0, p.poids || 0
                     ]);
                 }
             }
@@ -225,10 +228,10 @@ export async function getCourseParticipants(courseId) {
 }
 
 
-export async function getCourseQuinte() {
+export async function getCourseQuinte(targetDate = null) {
     const db = getDB();
     return new Promise((resolve, reject) => {
-        const today = new Date().toISOString().split('T')[0];
+        const dateToUse = targetDate || new Date().toISOString().split('T')[0];
         // Priority to explicit Quinte pari type, fallback to high prize + min partants
         const query = `
             SELECT c.*, COUNT(p.id) as nb_partants
@@ -243,7 +246,7 @@ export async function getCourseQuinte() {
             LIMIT 1
         `;
 
-        db.get(query, [today], (err, row) => {
+        db.get(query, [dateToUse], (err, row) => {
             if (err) return reject(err);
             // Verify if it's a likely quinte (pari type or min partants)
             if (row && (row.type_pari?.includes('QUINTE') || row.nb_partants >= 12)) {

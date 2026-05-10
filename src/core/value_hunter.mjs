@@ -9,7 +9,8 @@ const FINANCE = CONFIG.engine_settings.finance;
 
 /**
  * VALUE HUNTER v43
- * Filtre strict : Edge > 8%, cote 2.5-12, zéro incohérence, Signal Gate ≥ 3/5
+ * Filtre strict : Edge > 5% (min_edge_value), cote 2.5-15, zéro incohérence, Signal Gate ≥ 3/6
+ * fix v48.1: commentaire corrigé (Edge > 8% était inexact, le seuil réel est min_edge_value = 0.05 = 5%)
  */
 export async function detectOpportunities(date = new Date().toISOString().split('T')[0]) {
     logger.header(`--- VALUE HUNTER v43 : RECHERCHE DU ${date} ---`);
@@ -60,7 +61,7 @@ export async function detectOpportunities(date = new Date().toISOString().split(
             // Détection Smart Money (baisse de cote > 20%)
             const isSmartMoney = edge > 0.15 || (prediction.score > 70 && cote < 4.0);
 
-            const kelly = await calculateKellyAdaptatif(cote, prediction.score, FINANCE.bankroll_default);
+            const kelly = await calculateKellyAdaptatif(p, prediction.score, FINANCE.bankroll_default);
             if (kelly.mise <= 0) continue;
 
             const opp = {

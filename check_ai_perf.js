@@ -15,7 +15,7 @@ const query = `
             p.prediction_score
         FROM participants p
         JOIN courses c ON p.course_id = c.id
-        WHERE p.prediction_score > 0 
+        WHERE p.prediction_score >= 80 
           AND c.ordre_arrivee IS NOT NULL 
           AND c.ordre_arrivee != ''
     ),

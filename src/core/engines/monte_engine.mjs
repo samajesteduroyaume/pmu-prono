@@ -14,7 +14,7 @@ export async function processMonté(participant, contexte, baseScores) {
 
     // 2. APTITUDE DISCIPLINE (m)
     const musique = participant.musique || '';
-    const hasMonteWins = (musique.match(/1m|2m|3m/g) || []).length > 0;
+    const hasMonteWins = (musique.match(/[123]m/gi) || []).length > 0; // v47.1: Correction regex (insensible casse pour attraper 1M, 2M, 3M)
     if (hasMonteWins) expertise += SETTINGS.win_bonus;
 
     // 3. AGE & RÉSISTANCE

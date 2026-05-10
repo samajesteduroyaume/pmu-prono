@@ -5,6 +5,7 @@ import { processAttelé } from '../core/engines/attele_engine.mjs';
 import { processMonté } from '../core/engines/monte_engine.mjs';
 import { processPlat } from '../core/engines/plat_engine.mjs';
 import { processObstacle } from '../core/engines/obstacle_engine.mjs';
+import logger from '../utils/logger.mjs';
 import fs from 'fs';
 import path from 'path';
 
@@ -18,6 +19,9 @@ async function getEnrichedSample(discipline, limit) {
     const enriched = [];
 
     console.log(`  [INFO] Pré-traitement de ${rawSample.length} participants...`);
+    
+    // On met le logger en mode silencieux pour éviter les milliers de lignes de logs IA
+    logger.setSilent(true);
     
     for (const p of rawSample) {
         const contexts = {
@@ -48,15 +52,25 @@ async function getEnrichedSample(discipline, limit) {
             expertise = 50 + (engineResult.expertiseBonus || 0);
         }
 
+        // V45: Run hybrid prediction to set radar flags
+        const { calculerPredictionHybride } = await import('../core/hybrid.mjs');
+        await calculerPredictionHybride(p, contexts, [], [], base);
+
         enriched.push({
             course_id: p.course_id,
             numero: p.numero,
             classement: parseInt(p.classement),
             cote: parseFloat(p.cote_ref),
-            scores: { ...base, expertise }
+            scores: { ...base, expertise },
+            is_trap: p.is_trap,
+            is_bad_draw: p.is_bad_draw,
+            is_swimmer: p.is_swimmer,
+            is_hot_trainer: p.is_hot_trainer,
+            is_smart_money_alert: p.is_smart_money_alert || (p.cote_direct > 0 && p.cote_direct < p.cote_ref * 0.75)
         });
     }
 
+    logger.setSilent(false);
     return enriched;
 }
 
@@ -78,12 +92,20 @@ function evaluateWeights(sample, weights) {
         const participants = races[id];
         const scored = participants.map(p => {
             const s = p.scores;
-            const finalScore = (s.forme * weights.FORME) +
+            let finalScore = (s.forme * weights.FORME) +
                                (s.entourage * weights.ENTOURAGE) +
                                (s.confiance * weights.CONFIANCE) +
                                (s.config * weights.CONFIGURATION) +
                                (s.aptitude * weights.APTITUDE) +
                                (s.expertise * weights.EXPERT);
+            
+            // V45 AI Radars Application
+            if (p.is_trap) finalScore -= 25;
+            if (p.is_bad_draw) finalScore -= 10;
+            if (p.is_smart_money_alert) finalScore += 15;
+            if (p.is_swimmer) finalScore += 8;
+            if (p.is_hot_trainer) finalScore += 12;
+
             return { ...p, finalScore };
         });
 
@@ -209,11 +231,14 @@ async function runOptimization() {
         for (const disc in results) {
             // Mapper les noms de disciplines aux clés de settings.mjs
             let key = 'DEFAULT';
-            if (disc.includes('TROT')) key = 'TROT';
-            else if (disc.includes('PLAT')) key = 'PLAT';
-            else if (disc.includes('OBSTACLE')) key = 'OBSTACLE';
-            else if (disc.includes('ATTELE')) key = 'ATTELE';
-            else if (disc.includes('MONTE')) key = 'MONTE';
+            const discUpper = disc.toUpperCase();
+            if (discUpper.includes('TROT')) key = 'TROT';
+            else if (discUpper.includes('PLAT')) key = 'PLAT';
+            else if (discUpper.includes('STEEPLECHASE')) key = 'STEEPLECHASE';
+            else if (discUpper.includes('HAIE') || discUpper.includes('OBSTACLE')) key = 'OBSTACLE';
+            else if (discUpper.includes('ATTELE')) key = 'ATTELE';
+            else if (discUpper.includes('MONTE')) key = 'MONTE';
+            else if (discUpper.includes('CROSS')) key = 'CROSS';
             
             finalWeights[key] = results[disc];
         }

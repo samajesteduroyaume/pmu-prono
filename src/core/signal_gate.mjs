@@ -12,15 +12,17 @@ const VH_CONFIG = CONFIG.engine_settings.value_hunter;
  * Anti-faux-positifs : évite de jouer un cheval juste parce qu'il a un bon driver
  * ou une belle côte sans convergence des indicateurs.
  *
- * Signaux évalués (chacun vaut 1 point) :
+ * Signaux évalués (chacun vaut 1 point) — fix v48.1: 6 signaux (pas 5) :
  * 1. Score IA ≥ 65 (confiance algorithmique)
- * 2. Marché confirme : cote entre 2.5 et 12 (éviter les extrêmes)
+ * 2. Marché confirme : cote entre 2.5 et 15 (zone de valeur)
  * 3. Aucune alerte d'incohérence (is_inconsistent !== true)
  * 4. Régularité ≥ 40% (cheval constant)
  * 5. Entourage Top (driver OU entraîneur Elite) OU synergie détectée
+ * 6. Momentum : dernière course = victoire ou place (musique commence par 1 ou 2)
  *
  * @param {object} participant - Le participant enrichi (avec score, edge_stat, etc.)
  * @param {object} contexte - Contexte de la course
+ * @param {number} predictionScore - Score IA final
  * @returns {{go: boolean, score: number, signals: object, recommendation: string}}
  */
 export function evaluerSignalGate(participant, contexte, predictionScore) {
@@ -66,10 +68,17 @@ export function evaluerSignalGate(participant, contexte, predictionScore) {
         signals.entourage = true;
     }
 
-    // Signal 6 — Momentum (v43.1 : Victoire ou Place très récente)
+    // Signal 6 — Momentum (v48.2 : Victoire ou Place très récente)
+    // On extrait le premier token de la musique (dernière course)
     const musique = (participant.musique || '').trim();
-    if (musique.startsWith('1') || musique.startsWith('2')) {
-        signals.momentum = true;
+    const cleanMusic = musique.replace(/\(\d+\)/g, '');
+    const firstPerf = cleanMusic.match(/([0-9]+|DA|DAI|DIST|T|A|ARR|R|RET|D)[a-zA-Z]?/i);
+    if (firstPerf) {
+        const val = firstPerf[1].toUpperCase();
+        const rank = parseInt(val);
+        if (!isNaN(rank) && (rank === 1 || rank === 2)) {
+            signals.momentum = true;
+        }
     }
 
     // Calcul du score total de confirmation

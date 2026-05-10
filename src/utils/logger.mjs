@@ -3,21 +3,33 @@
 export class Logger {
     constructor(prefix = 'PMU API') {
         this.prefix = prefix;
+        this.isSilent = false;
+    }
+    
+    setSilent(val) { this.isSilent = val; }
+    
+    debug(message) {
+        if (this.isSilent) return;
+        console.log(`[${this.prefix}] 🔍 ${message}`);
     }
     
     info(message) {
+        if (this.isSilent) return;
         console.log(`[${this.prefix}] ℹ️  ${message}`);
     }
     
     success(message) {
+        if (this.isSilent) return;
         console.log(`[${this.prefix}] ✅ ${message}`);
     }
     
     warning(message) {
+        if (this.isSilent) return;
         console.log(`[${this.prefix}] ⚠️  ${message}`);
     }
     
     error(message) {
+        if (this.isSilent) return;
         console.error(`[${this.prefix}] ❌ ${message}`);
     }
     

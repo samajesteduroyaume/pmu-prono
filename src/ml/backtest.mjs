@@ -223,7 +223,8 @@ export async function compareKellyStrategies(startDate, endDate, initialBankroll
                 // Pour simplifier, on utilise les 30 derniers jours
                 try {
                     const tendances = await getTendancesCumulees(30);
-                    const kellyResult = await calculateKellyAdaptatif(rapport, top1.score, strat.bankroll, tendances);
+                    top1.cote_ref = rapport;
+                    const kellyResult = await calculateKellyAdaptatif(top1, top1.score, strat.bankroll, tendances);
                     mise = kellyResult.mise || 0;
                 } catch (e) {
                     logger.warn(`[Backtest] Kelly Adaptatif erreur: ${e.message} - Fallback sur Kelly Classique`);

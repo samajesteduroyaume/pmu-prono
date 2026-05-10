@@ -16,12 +16,21 @@ export async function processAttelé(participant, contexte, baseScores) {
         expertise -= SETTINGS.vincennes_ferrage_malus;
     }
 
-    // 2. RÉGULARITÉ & CATÉGORIE
+    // 2. RÉGULARITÉ & CATÉGORIE (v48.2)
     const cat = determinerChangementCategorie(participant, contexte.prixCourse || 20000);
     if (cat === 'DESCENTE') expertise += SETTINGS.desc_bonus;
+    else if (cat === 'MONTEE') expertise -= 10;
 
     const reg = calculerRegularite(participant);
     if (reg > 50) expertise += SETTINGS.reg_bonus;
+
+    // 2.bis: RECUL (Handicap distance v48.2)
+    const recul = parseInt(participant.recul || 0);
+    const dist = parseInt(contexte.distance || 0);
+    if (recul > 0 && dist > 0 && dist < 2850) {
+        expertise -= 20;
+        participant.is_bad_draw = true;
+    }
 
     // 3. THE SHIELD (V33)
     const shieldMalus = checkShieldStatus(participant, contexte);

@@ -97,8 +97,15 @@ export function analyserTerrain(participant, terrain) {
     }
 
     // Heuristique musique : fautes sur obstacle en terrain lourd
+    // fix v48.1: Lookbehind négatif pour ne capturer T/A qu'en position autonome
     if (famillesLourd.some(f => terrainNorm.includes(f))) {
-        const falls = (musique.match(/Ts|As|Th|Ah/g) || []).length;
+        const DISCIPLINE_LETTERS_DT = new Set(['a', 'p', 'm', 'h', 's', 'c']);
+        const cleanMusicDT = musique.replace(/\(\d+\)/g, '');
+        const fallTokensDT = cleanMusicDT.match(/(?<![0-9])[TA][a-zA-Z]*/g) || [];
+        const falls = fallTokensDT.filter(tok => {
+            if (tok.length === 1 && DISCIPLINE_LETTERS_DT.has(tok.toLowerCase())) return false;
+            return true;
+        }).length;
         if (falls >= 2) return -10;
         if (falls >= 1) return -5;
     }

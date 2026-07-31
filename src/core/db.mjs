@@ -34,7 +34,8 @@ export const {
     getDriverStats,
     getSynergyScore,
     getOptimizationSample,
-    getTendancesCumulees
+    getTendancesCumulees,
+    getEcuriesForm
 } = statRepo;
 
 export const {

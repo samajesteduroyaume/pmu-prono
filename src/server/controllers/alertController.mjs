@@ -81,3 +81,40 @@ export async function generate(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+
+export async function getTelegramStatus(req, res) {
+    try {
+        const { getTelegramConfig } = await import('../../utils/telegram.mjs');
+        const config = getTelegramConfig();
+        res.json({
+            success: true,
+            enabled: config.enabled,
+            hasToken: Boolean(config.botToken),
+            hasChatId: Boolean(config.chatId)
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+export async function configureTelegram(req, res) {
+    try {
+        const { botToken, chatId, enabled } = req.body;
+        const { setTelegramConfig } = await import('../../utils/telegram.mjs');
+        const updated = setTelegramConfig({ botToken, chatId, enabled });
+        res.json({ success: true, config: { enabled: updated.enabled, hasToken: Boolean(updated.botToken), hasChatId: Boolean(updated.chatId) } });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+export async function testTelegram(req, res) {
+    try {
+        const { sendTelegramMessage } = await import('../../utils/telegram.mjs');
+        const text = req.body.message || `🔔 <b>TEST TELEGRAM PMU-PRONO</b>\nConnexion établie avec succès avec l'Agent IA !`;
+        const result = await sendTelegramMessage(text);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}

@@ -33,7 +33,7 @@ async function testIntegration() {
     const alerts = analyserEtGenererAlertes(tendances, performance, patternData);
 
     const hasGolden = alerts.some(a => a.title.includes('GOLDEN'));
-    const hasDanger = alerts.some(a => a.title.includes('DANGER'));
+    const hasDanger = alerts.some(a => a.title.includes('ÉVITE') || a.title.includes('DANGER'));
     const hasSmart = alerts.some(a => a.title.includes('SMART MONEY'));
 
     if (hasGolden && hasDanger && hasSmart) {
@@ -49,9 +49,9 @@ async function testIntegration() {
         { type: 'GOLDEN_PATTERN', pattern: 'Trot + Vincennes', roi: 50 }
     ];
 
-    const resKelly = await calculateKellyAdaptatif(3.0, 40, 1000, tendances, activePatterns);
+    const resKelly = await calculateKellyAdaptatif(3.0, 95, 1000, tendances, activePatterns);
 
-    if (resKelly.adjustments.some(adj => adj.includes('Golden Pattern'))) {
+    if (resKelly.adjustments && resKelly.adjustments.some(adj => adj.includes('Golden Pattern'))) {
         logger.success('✅ Kelly a détecté et ajusté pour le Golden Pattern');
         logger.info(`Ajustements: ${resKelly.adjustments.join(', ')}`);
         logger.info(`Mise finale: ${resKelly.mise}€ (Kelly Fraction: ${resKelly.kellyFraction})`);

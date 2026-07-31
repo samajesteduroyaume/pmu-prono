@@ -4,10 +4,12 @@
     "start": "node src/server/app.mjs",
     "sync": "node src/pipelines/sync.mjs",
     "sync:year": "node src/pipelines/sync.mjs 365",
-    "sync:month": "node src/pipelines/sync.mjs 30"
+    "sync:month": "node src/pipelines/sync.mjs 30",
+    "sync:3m": "node src/pipelines/sync.mjs 90",
+    "sync:6m": "node src/pipelines/sync.mjs 180"
   },
   "dependencies": {
-    "@tensorflow/tfjs-node": "^4.22.0",
+    "@tensorflow/tfjs": "^4.22.0",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",

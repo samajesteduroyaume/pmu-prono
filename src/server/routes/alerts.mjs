@@ -23,4 +23,8 @@ router.post('/broadcast', (req, res) => {
     }
 });
 
+router.get('/telegram/status', alertController.getTelegramStatus);
+router.post('/telegram/config', alertController.configureTelegram);
+router.post('/telegram/test', alertController.testTelegram);
+
 export default router;

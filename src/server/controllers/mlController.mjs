@@ -133,3 +133,20 @@ export async function getRecommendations(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+
+export async function reloadMLModelController(req, res) {
+    try {
+        const { loadMLModel } = await import('../../core/hybrid.mjs');
+        const success = await loadMLModel();
+        if (success) {
+            logger.success('[API] Modèle ML rechargé en mémoire avec succès !');
+            res.json({ success: true, message: 'Modèle ML rechargé en mémoire avec succès !' });
+        } else {
+            res.status(500).json({ success: false, message: 'Échec du rechargement du modèle ML' });
+        }
+    } catch (error) {
+        logger.error(`API Reload ML Error: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+}
+

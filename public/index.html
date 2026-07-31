@@ -11,19 +11,22 @@
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css?v=43.3.1">
+    <link rel="stylesheet" href="css/extra.css">
     
-    <link rel="stylesheet" href="/css/style.css">
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-nav-toggle" onclick="toggleNavRail()" aria-label="Menu Navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="nav-overlay" onclick="toggleNavRail()"></div>
+
     <div class="app-shell">
         <!-- Sidebar Navigation Rail -->
-        <nav class="nav-rail">
+        <nav class="nav-rail" id="nav-rail-sidebar">
             <div class="brand">
                 <h2>ARCHITECT</h2>
                 <span>Terminal d'Intelligence</span>
@@ -38,17 +41,29 @@
                     <i class="fas fa-microchip"></i>
                     <span>Scanner de Marché</span>
                 </a>
-                <a href="pepites.html" class="nav-item">
+                <a href="pepites.html" class="nav-item" id="nav-pepites">
                     <i class="fas fa-gem"></i>
                     <span>Pépites IA</span>
                 </a>
-                <a href="palmares.html" class="nav-item">
+                <a href="palmares.html" class="nav-item" id="nav-palmares">
                     <i class="fas fa-trophy"></i>
                     <span>Palmarès</span>
                 </a>
-                <a href="backtest.html" class="nav-item">
+                <a href="patterns.html" class="nav-item" id="nav-patterns">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Modèles</span>
+                </a>
+                <a href="backtest.html" class="nav-item" id="nav-backtest">
                     <i class="fas fa-vial"></i>
                     <span>Laboratoire</span>
+                </a>
+                <a href="api.html" class="nav-item" id="nav-api">
+                    <i class="fas fa-code"></i>
+                    <span>Console API</span>
+                </a>
+                <a href="#" onclick="showPage('todo')" class="nav-item" id="nav-todo">
+                    <i class="fas fa-tasks"></i>
+                    <span>Feuille de Route</span>
                 </a>
             </div>
 
@@ -80,6 +95,7 @@
                     <div style="display: flex; align-items: center; gap: 8px; background: hsla(0,0%,100%,0.05); border: 1px solid var(--glass-border); padding: 4px 12px; border-radius: 8px;">
                         <i class="fas fa-calendar-alt" style="color: var(--accent-gold); font-size: 14px;"></i>
                         <input type="date" id="calendar-filter" onchange="refreshData()" style="background: transparent; border: none; color: var(--text-pure); font-family: 'JetBrains Mono'; font-size: 13px; outline: none; cursor: pointer;">
+                        <button onclick="document.getElementById('calendar-filter').value=''; refreshData();" title="Voir toutes les dates" style="background: transparent; border: none; color: var(--accent-gold); cursor: pointer; font-size: 11px; font-weight: 700; padding: 2px 6px;">TOUT</button>
                     </div>
                     <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px;">
                         <i class="fas fa-history"></i>
@@ -102,10 +118,71 @@
 
                 <!-- VIEW: SCANNER -->
                 <div id="view-courses" class="view">
+                    <!-- PMU Control Toolbar -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; background: hsla(142, 60%, 15%, 0.2); border: 1px solid var(--glass-border); padding: 16px 20px; border-radius: var(--radius-md); backdrop-filter: blur(10px);">
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; flex: 1;">
+                             <!-- Search -->
+                             <div style="position: relative; min-width: 260px; display: flex; align-items: center;">
+                                 <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--accent-pmu-green-bright); font-size: 13px;"></i>
+                                 <input type="text" id="scanner-search" oninput="filterScanner()" placeholder="Rechercher cheval, hippodrome..." style="width: 100%; background: hsla(0,0%,0%,0.4); border: 1px solid var(--glass-border); color: var(--text-pure); padding: 9px 36px 9px 36px; border-radius: 8px; font-size: 13px; outline: none; font-family: 'Outfit';">
+                                 <button id="voice-search-btn" onclick="startVoiceSearch('scanner-search')" title="Assistant Vocal - Dictée Vocale" style="position: absolute; right: 8px; background: transparent; border: none; color: var(--accent-gold); cursor: pointer; padding: 4px 8px;">
+                                     <i class="fas fa-microphone"></i>
+                                 </button>
+                             </div>
+
+                            <!-- Discipline Filter -->
+                            <div style="display: flex; align-items: center; gap: 6px; background: hsla(0,0%,0%,0.3); border: 1px solid var(--glass-border); padding: 4px 10px; border-radius: 8px;">
+                                <i class="fas fa-horse-head" style="color: var(--accent-gold); font-size: 13px;"></i>
+                                <select id="filter-discipline" onchange="filterScanner()" style="background: transparent; border: none; color: var(--text-high); font-size: 13px; font-weight: 600; outline: none; cursor: pointer;">
+                                    <option value="ALL" style="background: #0d1712;">Toutes Disciplines</option>
+                                    <option value="ATTELE" style="background: #0d1712;">Trot Attelé</option>
+                                    <option value="MONTE" style="background: #0d1712;">Trot Monté</option>
+                                    <option value="PLAT" style="background: #0d1712;">Galop / Plat</option>
+                                    <option value="OBSTACLE" style="background: #0d1712;">Obstacle / Haies</option>
+                                </select>
+                            </div>
+
+                            <!-- Min Score Filter -->
+                            <div style="display: flex; align-items: center; gap: 6px; background: hsla(0,0%,0%,0.3); border: 1px solid var(--glass-border); padding: 4px 10px; border-radius: 8px;">
+                                <i class="fas fa-chart-line" style="color: var(--accent-pmu-green-bright); font-size: 13px;"></i>
+                                <select id="filter-min-score" onchange="filterScanner()" style="background: transparent; border: none; color: var(--text-high); font-size: 13px; font-weight: 600; outline: none; cursor: pointer;">
+                                    <option value="0" style="background: #0d1712;">Tous les scores IA</option>
+                                    <option value="50" style="background: #0d1712;">Score ≥ 50%</option>
+                                    <option value="65" style="background: #0d1712;">Score ≥ 65%</option>
+                                    <option value="75" style="background: #0d1712;">Score ≥ 75% (Élite)</option>
+                                </select>
+                            </div>
+
+                            <!-- Refresh Rate Selector -->
+                            <div style="display: flex; align-items: center; gap: 6px; background: hsla(0,0%,0%,0.3); border: 1px solid var(--glass-border); padding: 4px 10px; border-radius: 8px;">
+                                <i class="fas fa-clock" style="color: var(--text-med); font-size: 13px;"></i>
+                                <select id="refresh-rate-select" onchange="updateRefreshRate()" style="background: transparent; border: none; color: var(--text-high); font-size: 13px; font-weight: 600; outline: none; cursor: pointer;">
+                                    <option value="15000" style="background: #0d1712;">Auto-Sync : 15s</option>
+                                    <option value="30000" style="background: #0d1712;">Auto-Sync : 30s</option>
+                                    <option value="60000" selected style="background: #0d1712;">Auto-Sync : 60s</option>
+                                    <option value="0" style="background: #0d1712;">Auto-Sync : Désactivé</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Export Buttons -->
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="exportQuintePDF()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 8px 16px; font-size: 12px; background: hsla(var(--h-indigo), 84%, 67%, 0.15); color: var(--accent-indigo);">
+                                <i class="fas fa-file-pdf"></i>
+                                <span>Fiche PDF</span>
+                            </button>
+                            <button onclick="exportScannerCSV()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 8px 16px; font-size: 12px; background: hsla(var(--h-gold), 100%, 50%, 0.1); color: var(--accent-gold);">
+                                <i class="fas fa-file-csv"></i>
+                                <span>Exporter CSV</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="data-table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th>Détails</th>
                                     <th>Heure</th>
                                     <th>Événement</th>
                                     <th>Contexte</th>
@@ -114,7 +191,6 @@
                                     <th>Cote</th>
                                     <th>Allocation</th>
                                     <th>Statut</th>
-                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="courses-table-body">
@@ -123,13 +199,98 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- VIEW: TODO / ROADMAP -->
+                <div id="view-todo" class="view">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; margin-bottom: 30px;">
+                        <!-- Accomplished -->
+                        <div class="stat-card" style="border-left: 4px solid var(--accent-emerald);">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                                <h3 style="font-size: 18px; font-weight: 800; color: var(--text-pure);"><i class="fas fa-check-circle" style="color: var(--accent-emerald); margin-right: 8px;"></i> Améliorations Traitées</h3>
+                                <span class="badge badge-success">V43.3 VALIDÉ</span>
+                            </div>
+                            <ul style="list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 14px;">
+                                <li style="display: flex; align-items: flex-start; gap: 10px; color: var(--text-high);">
+                                    <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                    <div><strong>API & SDK Agent IA à distance</strong> (Module complet Node.js & Python généré sur le Bureau <code>Desktop/api-pmu-prono</code>)</div>
+                                </li>
+                                <li style="display: flex; align-items: flex-start; gap: 10px; color: var(--text-high);">
+                                    <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                    <div><strong>Design Obsidian Navy & PMU Émeraude/Or</strong> (Interface moderne haute lisibilité sans voile sombre)</div>
+                                </li>
+                                <li style="display: flex; align-items: flex-start; gap: 10px; color: var(--text-high);">
+                                    <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                    <div><strong>Barre de Contrôles Scanner</strong> (Recherche en direct, filtre par discipline, score min, fréquence d'auto-sync)</div>
+                                </li>
+                                <li style="display: flex; align-items: flex-start; gap: 10px; color: var(--text-high);">
+                                    <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                    <div><strong>Exportation CSV</strong> (Téléchargement direct des pronostics)</div>
+                                </li>
+                                <li style="display: flex; align-items: flex-start; gap: 10px; color: var(--text-high);">
+                                    <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                    <div><strong>Défloutage & Fermeture Modale</strong> (Clic extérieur + Touche Échap)</div>
+                                </li>
+                                <li style="display: flex; align-items: flex-start; gap: 10px; color: var(--text-high);">
+                                    <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                    <div><strong>Adaptabilité 100% Réactive</strong> (Optimisé pour Smartphones, Tablettes et PC)</div>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Backlog / TODO -->
+                        <div class="stat-card" style="border-left: 4px solid var(--accent-emerald);">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                                <h3 style="font-size: 18px; font-weight: 800; color: var(--text-pure);"><i class="fas fa-check-circle" style="color: var(--accent-emerald); margin-right: 8px;"></i> Améliorations TODO Traitées & Intégrées</h3>
+                                <span class="badge badge-success">100% VALIDÉ</span>
+                            </div>
+                            <ul style="list-style: none; display: flex; flex-direction: column; gap: 16px; font-size: 14px;">
+                                <li style="display: flex; align-items: center; justify-content: space-between; color: var(--text-high);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                        <div><strong>Alertes Telegram Automatisées</strong> (Notifications push instantanées Smart Money & Quinté)</div>
+                                    </div>
+                                    <button onclick="testTelegramPrompt()" class="nav-item" style="padding: 4px 12px; font-size: 11px; border: 1px solid var(--glass-border); color: var(--accent-gold);">
+                                        <i class="fab fa-telegram-plane"></i> Tester
+                                    </button>
+                                </li>
+                                <li style="display: flex; align-items: center; justify-content: space-between; color: var(--text-high);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                        <div><strong>Exportation Synthétique PDF</strong> (Fiches de presse hippodrome prêtes à l'impression)</div>
+                                    </div>
+                                    <button onclick="exportQuintePDF()" class="nav-item" style="padding: 4px 12px; font-size: 11px; border: 1px solid var(--glass-border); color: var(--accent-indigo);">
+                                        <i class="fas fa-file-pdf"></i> Imprimer
+                                    </button>
+                                </li>
+                                <li style="display: flex; align-items: center; justify-content: space-between; color: var(--text-high);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                        <div><strong>Assistant Vocal Intégré</strong> (Dictée vocale et recherche interactive de chevaux)</div>
+                                    </div>
+                                    <button onclick="startVoiceSearch('scanner-search')" class="nav-item" style="padding: 4px 12px; font-size: 11px; border: 1px solid var(--glass-border); color: var(--accent-emerald-bright);">
+                                        <i class="fas fa-microphone"></i> Parler
+                                    </button>
+                                </li>
+                                <li style="display: flex; align-items: center; justify-content: space-between; color: var(--text-high);">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <i class="fas fa-check" style="color: var(--accent-emerald); margin-top: 3px;"></i>
+                                        <div><strong>Mode Comparatif de Forme Écuries</strong> (Analyse de la réussite des entraîneurs)</div>
+                                    </div>
+                                    <button onclick="openEcuriesModal()" class="nav-item" style="padding: 4px 12px; font-size: 11px; border: 1px solid var(--glass-border); color: var(--accent-purple);">
+                                        <i class="fas fa-chart-pie"></i> Comparer
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
     <!-- Modal Details -->
-    <div id="modal-details" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
-        <div class="stat-card" style="width: 1400px; max-width: 95vw; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo);">
+    <div id="modal-details" onclick="if (event.target === this) closeModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer;">
+        <div class="stat-card" style="width: 1400px; max-width: 95vw; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo); cursor: default;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
                 <h2 style="font-size: 24px; font-weight: 800; letter-spacing: -1px;">Analyse de Vecteurs IA</h2>
                 <button onclick="closeModal()" style="background: hsla(0, 0%, 100%, 0.05); border: 1px solid var(--glass-border); color: var(--text-high); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">

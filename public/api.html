@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ARCHITECT API Explorer & Documentation Interactive. Spécifications complètes des endpoints REST, WebSocket et Agent IA.">
+    <meta name="theme-color" content="#0b0f19">
+    <title>ARCHITECT | Documentation & Console API</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/extra.css">
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/app.js"></script>
+
+    <style>
+        .api-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+        }
+        .method-get { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .method-post { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        
+        .endpoint-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+        .endpoint-card:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            cursor: pointer;
+        }
+        .endpoint-path {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-pure);
+        }
+        .endpoint-desc {
+            font-size: 13px;
+            color: var(--text-med);
+            margin-top: 6px;
+        }
+        .code-preview {
+            background: #070a12;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #e2e8f0;
+            max-height: 280px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 12px;
+        }
+        .try-btn {
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .try-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+        .param-table th, .param-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .param-table th {
+            color: var(--text-med);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-nav-toggle" onclick="toggleNavRail()" aria-label="Menu Navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="nav-overlay" onclick="toggleNavRail()"></div>
+
+    <div class="app-shell">
+        <!-- Sidebar Navigation Rail -->
+        <nav class="nav-rail" id="nav-rail-sidebar">
+            <div class="brand">
+                <h2>ARCHITECT</h2>
+                <span>Terminal d'Intelligence</span>
+            </div>
+
+            <div class="nav-links">
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-crown"></i>
+                    <span>Quinté du Jour</span>
+                </a>
+                <a href="index.html?view=courses" class="nav-item">
+                    <i class="fas fa-microchip"></i>
+                    <span>Scanner de Marché</span>
+                </a>
+                <a href="pepites.html" class="nav-item">
+                    <i class="fas fa-gem"></i>
+                    <span>Pépites IA</span>
+                </a>
+                <a href="palmares.html" class="nav-item">
+                    <i class="fas fa-trophy"></i>
+                    <span>Palmarès</span>
+                </a>
+                <a href="patterns.html" class="nav-item">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Modèles</span>
+                </a>
+                <a href="backtest.html" class="nav-item">
+                    <i class="fas fa-vial"></i>
+                    <span>Laboratoire</span>
+                </a>
+                <a href="api.html" class="nav-item active">
+                    <i class="fas fa-code"></i>
+                    <span>Console API</span>
+                </a>
+            </div>
+
+            <div class="nav-footer">
+                <div style="margin-top: 16px; font-size: 10px; color: var(--text-low); text-align: center; font-weight: 800;">
+                    API SYSTÈME : <span style="color: var(--accent-emerald)">ACTIVE v43.4</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Stage -->
+        <main class="main-stage">
+            <header class="stage-header">
+                <div class="title-group">
+                    <h1>Console & Documentation API</h1>
+                    <div class="meta"><span class="live-indicator"></span> EXPLORATEUR DE REQUÊTES, AGENT IA ET FONCTIONS DU SERVEUR</div>
+                </div>
+                <div class="actions" style="display: flex; gap: 12px;">
+                    <button onclick="checkApiStatus()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
+                        <i class="fas fa-heartbeat" style="color: var(--accent-emerald);"></i>
+                        <span>Tester Statut API</span>
+                    </button>
+                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; background: hsla(var(--h-indigo), 84%, 67%, 0.1);">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Synchro 6 Mois</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="dashboard-grid" style="margin-top: 24px;">
+                <!-- Status Panel -->
+                <div class="glass-panel" style="padding: 20px; grid-column: span 12;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <h3 style="margin: 0; color: var(--text-pure); font-size: 16px;"><i class="fas fa-server" style="color: var(--accent-blue); margin-right: 8px;"></i> État de l'API & Base de Données</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-med);">Serveur Express REST + WebSocket Socket.io + AI Agent Protocol</p>
+                        </div>
+                        <div id="status-cards-container" style="display: flex; gap: 12px;">
+                            <div style="background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--glass-border); text-align: center;">
+                                <div style="font-size: 10px; color: var(--text-low);">STATUT BD</div>
+                                <div id="stat-db-status" style="font-weight: 800; color: var(--accent-emerald); font-size: 14px;">CONNECTÉ</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--glass-border); text-align: center;">
+                                <div style="font-size: 10px; color: var(--text-low);">COURSES</div>
+                                <div id="stat-total-courses" style="font-weight: 800; color: var(--accent-gold); font-size: 14px;">--</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--glass-border); text-align: center;">
+                                <div style="font-size: 10px; color: var(--text-low);">DERNIÈRE DATE</div>
+                                <div id="stat-latest-date" style="font-weight: 800; color: var(--accent-blue); font-size: 14px;">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Categories Tabs -->
+                <div style="grid-column: span 12;">
+                    <!-- Section: Courses & Quinté -->
+                    <h2 style="font-size: 16px; color: var(--accent-blue); margin: 24px 0 16px 0;"><i class="fas fa-horse-head"></i> Endpoints Courses & Prédictions</h2>
+                    
+                    <!-- Endpoint: GET /api/courses -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-get">GET</span>
+                                <span class="endpoint-path">/api/courses</span>
+                                <div class="endpoint-desc">Liste paginée des courses avec filtres par date, discipline et hippodrome</div>
+                            </div>
+                            <button class="try-btn" onclick="testEndpoint('/api/courses?page=1&limit=5', 'GET_COURSES')"><i class="fas fa-play"></i> Tester</button>
+                        </div>
+                        <table class="param-table">
+                            <thead>
+                                <tr><th>Paramètre</th><th>Type</th><th>Requis</th><th>Description</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>date</code></td><td>String</td><td>Non</td><td>Format YYYY-MM-DD ou 'all' (par défaut : aujourd'hui)</td></tr>
+                                <tr><td><code>discipline</code></td><td>String</td><td>Non</td><td>Filtre discipline (TROT ATTELE, PLAT, OBSTACLE...)</td></tr>
+                                <tr><td><code>page</code> / <code>limit</code></td><td>Number</td><td>Non</td><td>Pagination (défaut : page 1, 50 par page)</td></tr>
+                            </tbody>
+                        </table>
+                        <div id="res-GET_COURSES" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                    <!-- Endpoint: GET /api/courses/quinte/prediction -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-get">GET</span>
+                                <span class="endpoint-path">/api/courses/quinte/prediction</span>
+                                <div class="endpoint-desc">Prédiction complète IA du Quinté+ (Top 8 chevaux + Tocard IA)</div>
+                            </div>
+                            <button class="try-btn" onclick="testEndpoint('/api/courses/quinte/prediction', 'GET_QUINTE_PRED')"><i class="fas fa-play"></i> Tester</button>
+                        </div>
+                        <div id="res-GET_QUINTE_PRED" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                    <!-- Endpoint: GET /api/courses/pepites -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-get">GET</span>
+                                <span class="endpoint-path">/api/courses/pepites</span>
+                                <div class="endpoint-desc">Pépites IA détectées (chevaux à fort potentiel et cotes avantageuses)</div>
+                            </div>
+                            <button class="try-btn" onclick="testEndpoint('/api/courses/pepites', 'GET_PEPITES')"><i class="fas fa-play"></i> Tester</button>
+                        </div>
+                        <div id="res-GET_PEPITES" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                    <!-- Section: Synchronisation -->
+                    <h2 style="font-size: 16px; color: var(--accent-emerald); margin: 32px 0 16px 0;"><i class="fas fa-sync-alt"></i> Endpoints de Synchronisation</h2>
+
+                    <!-- Endpoint: POST /api/sync -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-post">POST</span>
+                                <span class="endpoint-path">/api/sync</span>
+                                <div class="endpoint-desc">Synchronisation historique asynchrone (1 à 180 jours / 6 mois avec suivi WebSocket)</div>
+                            </div>
+                            <button class="try-btn" style="background: linear-gradient(135deg, var(--accent-emerald), #059669);" onclick="testSyncPost(7)"><i class="fas fa-play"></i> Tester (7 jours)</button>
+                        </div>
+                        <table class="param-table">
+                            <thead>
+                                <tr><th>Body JSON</th><th>Type</th><th>Description</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>days</code></td><td>Number</td><td>Nombre de jours de recul à synchroniser (jusqu'à 180 jours)</td></tr>
+                                <tr><td><code>date</code></td><td>String</td><td>Date de départ optionnelle (YYYY-MM-DD)</td></tr>
+                            </tbody>
+                        </table>
+                        <div id="res-POST_SYNC" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                    <!-- Section: Agent IA Remote Control -->
+                    <h2 style="font-size: 16px; color: var(--accent-purple); margin: 32px 0 16px 0;"><i class="fas fa-robot"></i> Endpoints Agent IA (LLM Protocol)</h2>
+
+                    <!-- Endpoint: GET /api/agent/status -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-get">GET</span>
+                                <span class="endpoint-path">/api/agent/status</span>
+                                <div class="endpoint-desc">État du système, mémoire, capacites et statut de la base SQLite pour les agents IA</div>
+                            </div>
+                            <button class="try-btn" style="background: linear-gradient(135deg, var(--accent-purple), #7c3aed);" onclick="testEndpoint('/api/agent/status', 'GET_AGENT_STATUS')"><i class="fas fa-play"></i> Tester</button>
+                        </div>
+                        <div id="res-GET_AGENT_STATUS" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                    <!-- Endpoint: GET /api/agent/schema -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-get">GET</span>
+                                <span class="endpoint-path">/api/agent/schema</span>
+                                <div class="endpoint-desc">Schéma OpenAPI / Function Calling complet pour l'intégration Mistral, OpenAI, Claude</div>
+                            </div>
+                            <button class="try-btn" style="background: linear-gradient(135deg, var(--accent-purple), #7c3aed);" onclick="testEndpoint('/api/agent/schema', 'GET_AGENT_SCHEMA')"><i class="fas fa-play"></i> Tester</button>
+                        </div>
+                        <div id="res-GET_AGENT_SCHEMA" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                    <!-- Endpoint: POST /api/agent/command -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div>
+                                <span class="api-badge method-post">POST</span>
+                                <span class="endpoint-path">/api/agent/command</span>
+                                <div class="endpoint-desc">Exécution de commandes système à distance par l'IA (Quinté, SQL SELECT, Sync, Historique)</div>
+                            </div>
+                            <button class="try-btn" style="background: linear-gradient(135deg, var(--accent-purple), #7c3aed);" onclick="testAgentCommand('GET_QUINTE')"><i class="fas fa-play"></i> Tester (GET_QUINTE)</button>
+                        </div>
+                        <table class="param-table">
+                            <thead>
+                                <tr><th>Action</th><th>Params Object</th><th>Description</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>GET_QUINTE</code></td><td><code>{ "date": "YYYY-MM-DD" }</code></td><td>Obtient le Quinté+ du jour avec fallback automatique</td></tr>
+                                <tr><td><code>QUERY_DATABASE</code></td><td><code>{ "sql": "SELECT..." }</code></td><td>Requête SQL SELECT sécurisée en lecture seule</td></tr>
+                                <tr><td><code>GET_HORSE_HISTORY</code></td><td><code>{ "horseName": "Nom" }</code></td><td>Recherche l'historique de performances d'un cheval</td></tr>
+                                <tr><td><code>GET_ENTOURAGE_STATS</code></td><td><code>{ "name": "Nom", "role": "driver" }</code></td><td>Taux de victoire / podium d'un driver ou entraîneur</td></tr>
+                                <tr><td><code>SYNC_MARKET</code></td><td><code>{ "days": 180 }</code></td><td>Déclenche la synchronisation PMU à distance</td></tr>
+                            </tbody>
+                        </table>
+                        <div id="res-POST_AGENT_CMD" class="code-preview" style="display:none;"></div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            checkApiStatus();
+        });
+
+        async function checkApiStatus() {
+            try {
+                const res = await fetch('/api/agent/status');
+                const data = await res.json();
+                if (data.success && data.database) {
+                    document.getElementById('stat-db-status').textContent = 'CONNECTÉ';
+                    document.getElementById('stat-db-status').style.color = 'var(--accent-emerald)';
+                    document.getElementById('stat-total-courses').textContent = data.database.total_courses || '0';
+                    document.getElementById('stat-latest-date').textContent = data.database.latest_date || 'Aucune';
+                }
+            } catch (e) {
+                console.error("API Status check error:", e);
+                document.getElementById('stat-db-status').textContent = 'HORS LIGNE';
+                document.getElementById('stat-db-status').style.color = 'var(--accent-crimson)';
+            }
+        }
+
+        async function testEndpoint(url, targetId) {
+            const container = document.getElementById(`res-${targetId}`);
+            if (!container) return;
+
+            container.style.display = 'block';
+            container.textContent = 'Chargement en cours...';
+
+            const startTime = performance.now();
+            try {
+                const res = await fetch(url);
+                const duration = Math.round(performance.now() - startTime);
+                const data = await res.json();
+
+                const header = `// HTTP Status: ${res.status} ${res.statusText} (${duration} ms)\n// URL: ${url}\n\n`;
+                container.textContent = header + JSON.stringify(data, null, 2);
+            } catch (e) {
+                container.textContent = `// ERREUR REQUÊTE:\n${e.message}`;
+            }
+        }
+
+        async function testSyncPost(days = 7) {
+            const container = document.getElementById('res-POST_SYNC');
+            container.style.display = 'block';
+            container.textContent = 'Envoi de la requête de synchronisation...';
+
+            try {
+                const res = await fetch('/api/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days })
+                });
+                const data = await res.json();
+                container.textContent = `// HTTP Status: ${res.status} ${res.statusText}\n\n` + JSON.stringify(data, null, 2);
+            } catch (e) {
+                container.textContent = `// ERREUR:\n${e.message}`;
+            }
+        }
+
+        async function testAgentCommand(action = 'GET_QUINTE') {
+            const container = document.getElementById('res-POST_AGENT_CMD');
+            container.style.display = 'block';
+            container.textContent = `Exécution de l'action Agent: ${action}...`;
+
+            try {
+                const res = await fetch('/api/agent/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, params: {} })
+                });
+                const data = await res.json();
+                container.textContent = `// HTTP Status: ${res.status} ${res.statusText}\n\n` + JSON.stringify(data, null, 2);
+            } catch (e) {
+                container.textContent = `// ERREUR:\n${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

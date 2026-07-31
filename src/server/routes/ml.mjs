@@ -12,5 +12,6 @@ router.post('/backtest/compare', mlController.backtestCompare);
 router.post('/backtest/monte-carlo', mlController.backtestMonteCarlo);
 router.get('/patterns/optimized', mlController.getOptimizedPatterns);
 router.post('/patterns/recommendations', mlController.getRecommendations);
+router.post('/reload', mlController.reloadMLModelController);
 
 export default router;

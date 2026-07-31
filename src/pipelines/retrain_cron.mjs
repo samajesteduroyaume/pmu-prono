@@ -6,7 +6,7 @@ import logger from '../utils/logger.mjs';
  * Se recharge sur le dataset avec ses nouvelles features continues
  * Recommandé le Dimanche soir à 23h30
  */
-async function autoRetrain() {
+export async function autoRetrain() {
     logger.header('PIPELINE: APPRENTISSAGE MACHINE CONTINU (CRON)');
     logger.info('Démarrage du Deep Learning pour actualiser le modèle...');
     
@@ -15,6 +15,16 @@ async function autoRetrain() {
         logger.success('Apprentissage continu complété !');
         logger.info(`Nouvelle Accuracy: ${(metadata.testAccuracy * 100).toFixed(2)}%`);
         logger.info(`Perte Finale: ${metadata.testLoss.toFixed(4)}`);
+
+        // Notification du serveur en ligne pour rechargement immédiat si actif
+        try {
+            const res = await fetch('http://localhost:3000/api/ml/reload', { method: 'POST' });
+            if (res.ok) {
+                logger.success('[CRON] Signal de Hot-Reload envoyé au serveur web actif.');
+            }
+        } catch (e) {
+            // Le serveur n'est probablement pas démarré (ce qui est normal si exécuté hors ligne)
+        }
     } catch (err) {
         logger.error(`Erreur fatale de réentrainement ML: ${err.message}`);
         process.exit(1);

@@ -1,4 +1,4 @@
-import { initBrowser, closeBrowser, fetchDay } from '../modules/fetcher.mjs';
+import { initBrowser, closeBrowser, fetchDay } from '../core/fetcher.mjs';
 
 (async () => {
     console.log('=== TEST DATES PASSÉES ===');

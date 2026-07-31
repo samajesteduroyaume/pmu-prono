@@ -1,7 +1,9 @@
 import { calculerPredictionHybride } from '../core/hybrid.mjs';
+import { initDB } from '../core/db.mjs';
 import logger from '../utils/logger.mjs';
 
 async function testLiveIntegration() {
+    await initDB();
     logger.header('TEST INTÉGRATION LIVE PATTERNS V29');
 
     const participant = {

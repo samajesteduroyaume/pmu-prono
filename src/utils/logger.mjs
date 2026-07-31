@@ -28,6 +28,10 @@ export class Logger {
         console.log(`[${this.prefix}] ⚠️  ${message}`);
     }
     
+    warn(message) {
+        this.warning(message);
+    }
+    
     error(message) {
         if (this.isSilent) return;
         console.error(`[${this.prefix}] ❌ ${message}`);

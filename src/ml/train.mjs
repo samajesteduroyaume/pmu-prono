@@ -1,3 +1,8 @@
+import util from 'util';
+if (!util.isNullOrUndefined) {
+    util.isNullOrUndefined = (arg) => arg === null || arg === undefined;
+}
+
 import * as tf from '@tensorflow/tfjs-node';
 import { prepareDataset } from './dataset.mjs';
 import { closeDB } from '../core/db.mjs';

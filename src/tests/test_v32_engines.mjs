@@ -1,6 +1,8 @@
 import { calculerPrediction } from '../core/intelligence.mjs';
+import { initDB } from '../core/db.mjs';
 
 async function testEngines() {
+    await initDB();
     console.log("=== V32 ENGINES LOGIC TEST ===");
 
     const participant = {
@@ -19,7 +21,7 @@ async function testEngines() {
         { name: "ATTELE", expectedEngine: "ARCHITECT-ATTELÉ v27.1" },
         { name: "MONTE", expectedEngine: "ARCHITECT-MONTÉ v27.1" },
         { name: "PLAT", expectedEngine: "ARCHITECT-GALOP v27.1" },
-        { name: "HAIE", expectedEngine: "ARCHITECT-OBSTACLE v27.1" }
+        { name: "HAIE", expectedEngine: "ARCHITECT-OBSTACLE v27.1 (HAIE)" }
     ];
 
     for (const d of disciplines) {

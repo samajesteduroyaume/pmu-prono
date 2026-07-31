@@ -1,4 +1,8 @@
-import * as tf from '@tensorflow/tfjs-node';
+import util from 'util';
+if (!util.isNullOrUndefined) {
+    util.isNullOrUndefined = (arg) => arg === null || arg === undefined;
+}
+
 import path from 'path';
 import fs from 'fs';
 import { calculerPrediction as calculerPredictionV14 } from './intelligence.mjs';
@@ -8,19 +12,59 @@ import { extractBaseFeatures } from './features.mjs';
 const MODEL_PATH = './src/ml/model';
 let model = null;
 let metadata = null;
+let tfModule = null;
+
+async function getTF() {
+    if (tfModule) return tfModule;
+    try {
+        tfModule = await import('@tensorflow/tfjs-node');
+        return tfModule;
+    } catch (e) {
+        try {
+            tfModule = await import('@tensorflow/tfjs');
+            return tfModule;
+        } catch (e2) {
+            console.warn('[ML] TensorFlow non disponible, mode v14 actif.');
+            return null;
+        }
+    }
+}
 
 /**
- * Chargement du modèle ML au démarrage
+ * Chargement du modèle ML au démarrage (Compatibilité universelle ARM64 / Freebox Ultra / Pure JS)
  */
 export async function loadMLModel() {
     try {
+        const tf = await getTF();
+        if (!tf) return false;
+
         const modelPath = path.resolve(MODEL_PATH);
-        if (!fs.existsSync(modelPath)) {
+        const jsonPath = path.join(modelPath, 'model.json');
+        const binPath = path.join(modelPath, 'weights.bin');
+
+        if (!fs.existsSync(jsonPath)) {
             console.warn('[ML] Modèle non trouvé, utilisation de v14 uniquement');
             return false;
         }
 
-        model = await tf.loadLayersModel(`file://${modelPath}/model.json`);
+        try {
+            model = await tf.loadLayersModel(`file://${jsonPath}`);
+        } catch (e1) {
+            // Fallback IOHandler pour moteurs pure JS sans C++ native (ex: ARM64 Freebox Ultra, Alpine Docker, Raspberry Pi)
+            const ioHandler = {
+                load: async () => {
+                    const jsonContent = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                    const binBuffer = fs.readFileSync(binPath);
+                    const weightsManifest = jsonContent.weightsManifest;
+                    return {
+                        modelTopology: jsonContent.modelTopology,
+                        weightSpecs: weightsManifest[0].weights,
+                        weightData: binBuffer.buffer.slice(binBuffer.byteOffset, binBuffer.byteOffset + binBuffer.byteLength)
+                    };
+                }
+            };
+            model = await tf.loadLayersModel(ioHandler);
+        }
 
         const metaPath = path.join(modelPath, 'metadata.json');
         if (fs.existsSync(metaPath)) {
@@ -32,6 +76,39 @@ export async function loadMLModel() {
     } catch (error) {
         console.error('[ML] Erreur chargement modèle:', error.message);
         return false;
+    }
+}
+
+let isWatcherActive = false;
+let reloadDebounceTimeout = null;
+
+/**
+ * Active la surveillance automatique du dossier modèle sur disque (Hot-Reloading à chaud)
+ */
+export function enableModelHotReload() {
+    if (isWatcherActive) return;
+
+    const modelDirPath = path.resolve(MODEL_PATH);
+    if (!fs.existsSync(modelDirPath)) return;
+
+    try {
+        fs.watch(modelDirPath, (eventType, filename) => {
+            if (!filename || (!filename.endsWith('.json') && !filename.endsWith('.bin'))) return;
+
+            if (reloadDebounceTimeout) clearTimeout(reloadDebounceTimeout);
+            reloadDebounceTimeout = setTimeout(async () => {
+                console.log(`[ML Hot-Reload] Modification détectée (${filename}). Rechargement à chaud des poids...`);
+                const success = await loadMLModel();
+                if (success) {
+                    console.log('[ML Hot-Reload] Nouveau modèle réentraîné chargé en mémoire avec succès sans interruption !');
+                }
+            }, 500);
+        });
+
+        isWatcherActive = true;
+        console.log('[ML Hot-Reload] Surveillance automatique des mises à jour du modèle activée.');
+    } catch (err) {
+        console.error('[ML Hot-Reload] Erreur lors de l\'activation de la surveillance:', err.message);
     }
 }
 
@@ -78,6 +155,8 @@ async function predictML(participant, contexteCourse, allParticipants = []) {
 
     try {
         const features = await extractMLFeatures(participant, contexteCourse, allParticipants);
+        const tf = await getTF();
+        if (!tf) return null;
         const tensor = tf.tensor2d([features]);
         const prediction = model.predict(tensor);
         const probability = await prediction.data();

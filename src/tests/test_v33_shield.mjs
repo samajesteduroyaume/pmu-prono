@@ -1,6 +1,8 @@
 import { calculerPrediction } from '../core/intelligence.mjs';
+import { initDB } from '../core/db.mjs';
 
 async function testShield() {
+    await initDB();
     console.log("=== V33 THE SHIELD - LOGIC TEST ===");
 
     const cases = [

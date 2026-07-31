@@ -1,5 +1,5 @@
 import { CONFIG } from '../../config/settings.mjs';
-import { checkShieldStatus } from '../../utils/engine_utils.mjs';
+import { checkShieldStatus, determinerChangementCategorie } from '../../utils/engine_utils.mjs';
 import { calculerBonusDistanceTerrain } from './distance_terrain.mjs';
 
 const WEIGHTS = CONFIG.weights.PLAT;

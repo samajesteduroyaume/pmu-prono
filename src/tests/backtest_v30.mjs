@@ -1,20 +1,22 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import { calculerPrediction } from '../core/intelligence.mjs';
-
-const dbPath = path.resolve('./data/pmu.db');
-const db = new sqlite3.Database(dbPath);
-
-function runQuery(q, params = []) {
-    return new Promise((resolve, reject) => {
-        db.all(q, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-}
+import { initDB } from '../core/db.mjs';
 
 async function analyze() {
+    await initDB();
+    const dbPath = path.resolve('./data/pmu.db');
+    const db = new sqlite3.Database(dbPath);
+
+    function runQuery(q, params = []) {
+        return new Promise((resolve, reject) => {
+            db.all(q, params, (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    }
+
     console.log("=== V30 SIMULATED BACKTEST ANALYSIS ===");
 
     // Get 50 recent courses with known winners

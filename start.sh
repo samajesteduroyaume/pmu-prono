@@ -37,10 +37,45 @@ animate_loading() {
     echo -e "\b [ OK ]${RESET}"
 }
 
-# Entête UI
-show_header() {
+# Animation des Chevaux Flottants (Floating Horses Intro)
+animate_floating_horses() {
     clear
-    animate_loading
+    local steps=10
+    for (( i=0; i<steps; i++ )); do
+        local indent=$(printf '%*s' $((i * 3)) '')
+        clear
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo -e "${GOLD}   [IA PMU] INITIALISATION DES CHEVAUX NEURONAUX ET MATRICES DE GALOP...${RESET}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        
+        if (( i % 2 == 0 )); then
+            echo -e "${BRIGHT_GREEN}${indent}     ,,  🐎                     ${GOLD}     ,,  🐎                     ${CYAN}     ,,  🐎${RESET}"
+            echo -e "${BRIGHT_GREEN}${indent}  /  \\   /\\_/\\               ${GOLD}  /  \\   /\\_/\\               ${CYAN}  /  \\   /\\_/\\${RESET}"
+            echo -e "${BRIGHT_GREEN}${indent} / /\\ \\ ( o.o ) ✨           ${GOLD} / /\\ \\ ( ^.^ ) ✨           ${CYAN} / /\\ \\ ( -.- ) ✨${RESET}"
+            echo -e "${BRIGHT_GREEN}${indent}(  ___ ) > ^ <               ${GOLD}(  ___ ) > ^ <               ${CYAN}(  ___ ) > ^ <${RESET}"
+            echo -e "${BRIGHT_GREEN}${indent} / /  \\ \\                    ${GOLD} / /  \\ \\                    ${CYAN} / /  \\ \\${RESET}"
+        else
+            echo -e "${PURPLE}${indent}      ,,  ✨                    ${BRIGHT_GREEN}      ,,  ✨                    ${GOLD}      ,,  ✨${RESET}"
+            echo -e "${PURPLE}${indent}   /  \\   /\\_/\\ 🐎             ${BRIGHT_GREEN}   /  \\   /\\_/\\ 🐎             ${GOLD}   /  \\   /\\_/\\ 🐎${RESET}"
+            echo -e "${PURPLE}${indent}  / /\\ \\ ( -.- )              ${BRIGHT_GREEN}  / /\\ \\ ( o.o )              ${GOLD}  / /\\ \\ ( ^.^ )${RESET}"
+            echo -e "${PURPLE}${indent} (  ___ ) > ^ <               ${BRIGHT_GREEN} (  ___ ) > ^ <               ${GOLD} (  ___ ) > ^ <${RESET}"
+            echo -e "${PURPLE}${indent}  / /  \\ \\                    ${BRIGHT_GREEN}  / /  \\ \\                    ${GOLD}  / /  \\ \\${RESET}"
+        fi
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        sleep 0.05
+    done
+}
+
+# Entête UI avec Chevaux Flottants
+show_header() {
+    animate_floating_horses
+    clear
+    echo -e "${GOLD}"
+    echo "         ,,                                 ,,                                 ,,"
+    echo "      /  \\   /\\_/\\                       /  \\   /\\_/\\                       /  \\   /\\_/\\"
+    echo "     / /\\ \\ ( o.o ) ✨  CHEVAUX FLOTTANTS  / /\\ \\ ( ^.^ ) ✨  NEURONAUX PMU  / /\\ \\ ( -.- ) ✨"
+    echo "    (  ___ ) > ^ <                      (  ___ ) > ^ <                      (  ___ ) > ^ <"
+    echo -e "${RESET}"
     echo -e "${BRIGHT_GREEN}"
     echo "  ██████╗ ███╗   ███╗██╗   ██╗    ██████╗ ██████╗  ██████╗ ███╗   ██╗ ██████╗ "
     echo "  ██╔══██╗████╗ ████║██║   ██║    ██╔══██╗██╔══██╗██╔═══██╗████╗  ██║██╔═══██╗"
@@ -52,12 +87,29 @@ show_header() {
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SYSTEM v27.2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo -e "${GOLD}           [ ARCHITECT - Moteur de Pronostics de Haute Précision ]            ${RESET}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    animate_loading
 }
 
 # --- DÉMARRAGE DU SCRIPT ---
 show_header
 
-# 1. Vérification Port 3000 (Nettoyage automatique au démarrage)
+# 1. Vérification & Correction Automatique des Binaires Natifs (ex: SQLite3 macOS vs Linux)
+if ! node -e "import('sqlite3')" >/dev/null 2>&1; then
+    echo -e "${GOLD}[WARN] Incompatibilité binaire SQLite3 détectée (ex: transfert macOS -> Linux).${RESET}"
+    echo -e "${CYAN}[SYSTEM] Reconstruction automatique du module natif SQLite3 (npm rebuild sqlite3)...${RESET}"
+    
+    npm rebuild sqlite3 || npm install --build-from-source sqlite3
+    
+    if node -e "import('sqlite3')" >/dev/null 2>&1; then
+        echo -e "${GREEN}[SYSTEM] Module SQLite3 recompilé avec succès pour cet environnement !${RESET}"
+    else
+        echo -e "${RED}[ERROR] Échec de la recompilation automatique de sqlite3.${RESET}"
+        echo -e "${GOLD}[HINT] Exécutez sur la machine hôte: rm -rf node_modules package-lock.json && npm install${RESET}"
+        exit 1
+    fi
+fi
+
+# 2. Vérification Port 3000 (Nettoyage automatique au démarrage)
 if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
     echo -e "${GOLD}[INFO] Un processus utilise déjà le port 3000 (Nettoyage...)${RESET}"
     kill -9 $(lsof -t -i:3000) 2>/dev/null
@@ -76,5 +128,6 @@ echo -e "${CYAN}[SERVER] Dashboard accessible sur: ${BOLD}http://localhost:3000$
 echo -e "${CYAN}[HINT] Appuyez sur ${RED}Ctrl+C${CYAN} pour arrêter proprement le PROGRAMME.${RESET}"
 echo -e "------------------------------------------------------------"
 
-# Lancement effectif
+# Lancement effectif avec optimisation mémoire ARM64 / Freebox Ultra (Max 1024MB V8 Heap)
+export NODE_OPTIONS="--max-old-space-size=1024"
 node src/server/app.mjs

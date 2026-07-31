@@ -469,3 +469,30 @@ export async function getOptimizationSample(discipline, limit = 500) {
         });
     });
 }
+
+export async function getEcuriesForm(days = 90) {
+    const db = getDB();
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT 
+                p.entraineur as nom_ecurie,
+                COUNT(*) as total_engagements,
+                SUM(CASE WHEN CAST(p.classement AS INTEGER) = 1 THEN 1 ELSE 0 END) as victoires,
+                SUM(CASE WHEN CAST(p.classement AS INTEGER) <= 3 AND CAST(p.classement AS INTEGER) >= 1 THEN 1 ELSE 0 END) as podiums,
+                ROUND((CAST(SUM(CASE WHEN CAST(p.classement AS INTEGER) = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)) * 100, 1) as win_pct,
+                ROUND((CAST(SUM(CASE WHEN CAST(p.classement AS INTEGER) <= 3 AND CAST(p.classement AS INTEGER) >= 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)) * 100, 1) as podium_pct
+            FROM participants p
+            JOIN courses c ON p.course_id = c.id
+            WHERE p.entraineur IS NOT NULL AND p.entraineur != '' AND p.entraineur != 'INCONNU'
+            GROUP BY p.entraineur
+            HAVING total_engagements >= 3
+            ORDER BY victoires DESC, podiums DESC, total_engagements DESC
+            LIMIT 50
+        `;
+        db.all(query, [], (err, rows) => {
+            if (err) resolve([]);
+            else resolve(rows || []);
+        });
+    });
+}
+

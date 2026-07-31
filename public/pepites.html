@@ -11,12 +11,19 @@
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css?v=43.3.1">
+    <link rel="stylesheet" href="css/extra.css">
 </head>
 
 <body>
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-nav-toggle" onclick="toggleNavRail()" aria-label="Menu Navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="nav-overlay" onclick="toggleNavRail()"></div>
+
     <div class="app-shell">
         <!-- Sidebar Navigation Rail -->
-        <nav class="nav-rail">
+        <nav class="nav-rail" id="nav-rail-sidebar">
             <div class="brand">
                 <h2>ARCHITECT</h2>
                 <span>Terminal d'Intelligence</span>
@@ -27,9 +34,9 @@
                     <i class="fas fa-crown"></i>
                     <span>Quinté du Jour</span>
                 </a>
-                <a href="index.html" class="nav-item">
+                <a href="index.html?view=courses" class="nav-item">
                     <i class="fas fa-microchip"></i>
-                    <span>Scanner Exhaustif</span>
+                    <span>Scanner de Marché</span>
                 </a>
                 <a href="pepites.html" class="nav-item active">
                     <i class="fas fa-gem"></i>
@@ -39,9 +46,17 @@
                     <i class="fas fa-trophy"></i>
                     <span>Palmarès</span>
                 </a>
+                <a href="patterns.html" class="nav-item">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Modèles</span>
+                </a>
                 <a href="backtest.html" class="nav-item">
                     <i class="fas fa-vial"></i>
                     <span>Laboratoire</span>
+                </a>
+                <a href="api.html" class="nav-item">
+                    <i class="fas fa-code"></i>
+                    <span>Console API</span>
                 </a>
             </div>
 
@@ -104,8 +119,8 @@
     </div>
 
     <!-- Modal Details -->
-    <div id="modal-details" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
-        <div class="stat-card" style="width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo);">
+    <div id="modal-details" onclick="if (event.target === this) closeModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer;">
+        <div class="stat-card" style="width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo); cursor: default;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
                 <h2 style="font-size: 24px; font-weight: 800;">Analyse Profonde</h2>
                 <button onclick="closeModal()" style="background: hsla(0, 0%, 100%, 0.05); border: 1px solid var(--glass-border); color: var(--text-high); padding: 8px 12px; border-radius: 8px; cursor: pointer;">

@@ -4,12 +4,29 @@ const API_URL = '/api/courses';
 let allCourses = [];
 let currentView = 'dashboard';
 
+// Mobile Navigation Toggle
+window.toggleNavRail = () => {
+    const nav = document.getElementById('nav-rail-sidebar');
+    const overlay = document.querySelector('.nav-overlay');
+    if (nav) nav.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('open');
+};
+
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
     if (!document.getElementById('view-dashboard')) return;
 
     initUI();
-    refreshData();
+
+    // Check URL parameters for view navigation (e.g. ?view=courses)
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewParam = urlParams.get('view');
+    if (viewParam && ['dashboard', 'courses'].includes(viewParam)) {
+        showPage(viewParam);
+    } else {
+        refreshData();
+    }
+
     renderNavStats();
     
     // WebSockets Setup
@@ -25,13 +42,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             refreshData(); // Refresh current view
             showNotification(`Auto-Sync : ${data.count} courses actualisées`, 'success');
         });
+
+        socket.on('sync_progress', (data) => {
+            console.log("SYNC PROGRESS", data);
+            showSyncProgressBar(data);
+        });
+
+        socket.on('sync_completed', (data) => {
+            console.log("SYNC COMPLETED", data);
+            showNotification(`Synchronisation terminée : ${data.totalCourses} courses sur ${data.successfulDays} jours !`, 'success');
+            removeSyncProgressBar();
+            refreshData();
+        });
     }
 
-    // Live Sync Polling (Every 60s)
-    setInterval(() => {
-        if (currentView === 'courses') syncMarket(true);
-    }, 60000);
+    // Escape Key Listener to unblur and close modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // Live Sync Polling (Configurable)
+    setupLiveSync(60000);
 });
+
+let liveSyncInterval = null;
+
+function setupLiveSync(ms = 60000) {
+    if (liveSyncInterval) clearInterval(liveSyncInterval);
+    if (ms > 0) {
+        liveSyncInterval = setInterval(() => {
+            if (currentView === 'courses') syncMarket(true);
+        }, ms);
+    }
+}
 
 function showNotification(message, type = 'info') {
     let container = document.getElementById('notification-container');
@@ -56,6 +99,38 @@ function showNotification(message, type = 'info') {
         toast.style.transition = '0.5s';
         setTimeout(() => toast.remove(), 500);
     }, 4000);
+}
+
+function showSyncProgressBar(data) {
+    let bar = document.getElementById('sync-progress-banner');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'sync-progress-banner';
+        bar.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; height: 38px; background: rgba(10, 20, 35, 0.95); border-bottom: 2px solid var(--accent-blue); z-index: 10000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: var(--text-pure); font-size: 13px; font-weight: 600; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0, 150, 255, 0.2);';
+        document.body.appendChild(bar);
+    }
+    bar.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-sync fa-spin" style="color: var(--accent-blue);"></i>
+            <span>Synchronisation PMU : <strong>${data.currentDay}/${data.totalDays} jours</strong> (${data.date})</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="color: var(--accent-gold); font-size: 12px;">+${data.totalCourses} courses</span>
+            <div style="width: 140px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
+                <div style="width: ${data.percent}%; height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-emerald)); transition: width 0.3s ease;"></div>
+            </div>
+            <span style="font-weight: 700; color: var(--accent-emerald); width: 35px; text-align: right;">${data.percent}%</span>
+        </div>
+    `;
+}
+
+function removeSyncProgressBar() {
+    const bar = document.getElementById('sync-progress-banner');
+    if (bar) {
+        bar.style.opacity = '0';
+        bar.style.transition = '0.5s';
+        setTimeout(() => bar.remove(), 500);
+    }
 }
 
 function showSmartMoneyNotification(data) {
@@ -179,14 +254,26 @@ async function renderNavStats() {
 
 async function loadData(page = 1, filters = {}) {
     try {
-        const params = new URLSearchParams({ page, limit: 100, ...filters });
+        const cleanFilters = {};
+        for (const [key, val] of Object.entries(filters)) {
+            if (val !== null && val !== undefined && val !== '' && val !== 'null') {
+                cleanFilters[key] = val;
+            }
+        }
+        const params = new URLSearchParams({ page, limit: 100, ...cleanFilters });
         const res = await fetch(`${API_URL}?${params}`);
+        if (!res.ok) {
+            console.error("Data Load HTTP Error:", res.status);
+            allCourses = [];
+            return;
+        }
         const response = await res.json();
         allCourses = response.data || [];
         window.currentPage = page;
         window.totalPages = response.pagination?.totalPages || 1;
     } catch (e) {
         console.error("Data Load Error:", e);
+        allCourses = [];
     }
 }
 
@@ -197,7 +284,11 @@ function updateUI() {
 
 // Navigation Logic
 window.showPage = (pageId) => {
-    if (currentView === pageId) return;
+    closeModal();
+    if (currentView === pageId) {
+        refreshData();
+        return;
+    }
     
     currentView = pageId;
     
@@ -220,7 +311,8 @@ window.showPage = (pageId) => {
         // Update Title
         const titleMap = {
             'dashboard': 'Analyse Spéciale Quinté+',
-            'courses': 'Scanner de Marché Exhaustif'
+            'courses': 'Scanner de Marché Exhaustif',
+            'todo': 'Feuille de Route & Suivi des Améliorations (TODO)'
         };
         document.getElementById('stage-title').textContent = titleMap[pageId] || 'Architect v43.3';
 
@@ -393,63 +485,170 @@ async function renderQuinte() {
     }
 }
 
+window.updateRefreshRate = () => {
+    const select = document.getElementById('refresh-rate-select');
+    const ms = select ? parseInt(select.value) : 60000;
+    setupLiveSync(ms);
+    if (ms > 0) {
+        showNotification(`Fréquence de synchro réglée sur ${ms / 1000}s`, 'success');
+    } else {
+        showNotification(`Auto-synchro désactivée`, 'info');
+    }
+};
+
+window.resetScannerFilters = () => {
+    const searchInput = document.getElementById('scanner-search');
+    const discSelect = document.getElementById('filter-discipline');
+    const scoreSelect = document.getElementById('filter-min-score');
+    if (searchInput) searchInput.value = '';
+    if (discSelect) discSelect.value = 'ALL';
+    if (scoreSelect) scoreSelect.value = '0';
+    renderScanner();
+};
+
+window.filterScanner = () => {
+    renderScanner();
+};
+
 function renderScanner() {
     const tbody = document.getElementById('courses-table-body');
     if (!tbody) return;
     
     tbody.innerHTML = '';
-    const sorted = [...allCourses].sort((a, b) => a.heure.localeCompare(b.heure));
+    
+    const search = (document.getElementById('scanner-search')?.value || '').toLowerCase().trim();
+    const discipline = document.getElementById('filter-discipline')?.value || 'ALL';
+    const minScore = parseInt(document.getElementById('filter-min-score')?.value || '0');
+
+    let filtered = allCourses.filter(c => {
+        // Search filter
+        if (search) {
+            const matchesCheval = c.top_horse && c.top_horse.toLowerCase().includes(search);
+            const matchesHippo = c.hippodrome && c.hippodrome.toLowerCase().includes(search);
+            if (!matchesCheval && !matchesHippo) return false;
+        }
+
+        // Discipline filter
+        if (discipline !== 'ALL') {
+            const discUpper = (c.discipline || '').toUpperCase();
+            if (discipline === 'ATTELE' && !discUpper.includes('ATTELE')) return false;
+            if (discipline === 'MONTE' && !discUpper.includes('MONTE')) return false;
+            if (discipline === 'PLAT' && !discUpper.includes('PLAT') && !discUpper.includes('GALOP')) return false;
+            if (discipline === 'OBSTACLE' && !discUpper.includes('HAIE') && !discUpper.includes('OBSTACLE') && !discUpper.includes('STEEPLE')) return false;
+        }
+
+        // Min Score filter
+        const score = c.ia_score || 0;
+        if (score < minScore) return false;
+
+        return true;
+    });
+
+    const sorted = [...filtered].sort((a, b) => (a.heure || '').localeCompare(b.heure || ''));
+
+    if (sorted.length === 0) {
+        if (allCourses.length > 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-med); padding: 40px; font-weight: 600;">
+                        <div style="font-size: 14px; margin-bottom: 8px; color: var(--text-high);">Aucune course ne correspond à vos filtres actuels (${allCourses.length} courses chargées au total).</div>
+                        <button onclick="resetScannerFilters()" class="nav-item" style="margin-top: 10px; padding: 6px 16px; font-size: 12px; border: 1px solid var(--accent-gold); color: var(--accent-gold); background: hsla(var(--h-gold), 100%, 50%, 0.1);">
+                            <i class="fas fa-undo" style="margin-right: 6px;"></i> Réinitialiser les filtres
+                        </button>
+                    </td>
+                </tr>`;
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-med); padding: 40px; font-weight: 600;">
+                        <div style="font-size: 15px; margin-bottom: 8px; color: var(--text-pure);">Aucune course trouvée pour cette date.</div>
+                        <div style="font-size: 12px; margin-bottom: 16px;">La synchronisation PMU en direct permet de récupérer le programme complet.</div>
+                        <button onclick="syncMarket()" class="nav-item" style="padding: 8px 20px; font-size: 12px; border: 1px solid var(--accent-emerald-bright); color: var(--accent-emerald-bright); background: rgba(16, 185, 129, 0.15); font-weight: 700;">
+                            <i class="fas fa-sync-alt" style="margin-right: 6px;"></i> Synchroniser les courses PMU en direct
+                        </button>
+                    </td>
+                </tr>`;
+        }
+        return;
+    }
 
     sorted.forEach((c, index) => {
         const row = document.createElement('tr');
-        row.style.animation = `fadeIn 0.5s ease-out ${index * 0.05}s both`;
+        row.style.animation = `fadeIn 0.5s ease-out ${index * 0.04}s both`;
         
         const iaScore = c.ia_score || 0;
-        const favCote = c.fav_cote || 1;
-        const edge = parseFloat((iaScore / 100 - (1 / favCote)).toFixed(4));
-        const edgeColor = edge > 0.05 ? 'var(--accent-emerald)' : 'var(--text-low)';
-
         const meteoIcon = getMeteoIcon(c.meteo);
         const terrainText = c.terrain ? c.terrain.replace('_', ' ') : 'Standard';
 
         row.innerHTML = `
-            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-indigo)">${c.heure}</td>
             <td>
-                <div style="font-weight: 700; color: var(--text-pure)">${c.hippodrome}</div>
-                <div style="font-size: 11px; color: var(--text-low); font-weight: 600;">R${c.reunionNum} C${c.courseNum} • ${c.discipline}</div>
+                <button onclick="showDetails(${c.id})" class="nav-item" style="padding: 8px 16px; font-size: 11px; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald-bright); font-weight: 700;">
+                    <i class="fas fa-search-plus" style="margin-right: 4px;"></i> DÉTAILS
+                </button>
+            </td>
+            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${c.heure}</td>
+            <td>
+                <div style="font-weight: 700; color: var(--text-pure); font-size: 15px;">${c.hippodrome}</div>
+                <div style="font-size: 11px; color: var(--text-med); font-weight: 600;">R${c.reunionNum} C${c.courseNum} • ${c.discipline}</div>
             </td>
             <td>
                 <div style="font-size: 12px; font-weight: 700; color: var(--text-high); display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-ruler-horizontal" style="font-size: 10px; color: var(--text-low);"></i> ${c.distance}m
+                    <i class="fas fa-ruler-horizontal" style="font-size: 10px; color: var(--text-med);"></i> ${c.distance}m
                 </div>
                 <div style="font-size: 11px; color: var(--text-med); margin-top: 4px; display: flex; align-items: center; gap: 6px;">
                     ${meteoIcon} <span style="text-transform: capitalize;">${terrainText.toLowerCase()}</span>
                 </div>
             </td>
             <td>
-                <div style="font-weight: 800; color: var(--text-high); display: flex; align-items: center; gap: 10px;">
+                <div style="font-weight: 800; color: var(--text-pure); display: flex; align-items: center; gap: 10px; font-size: 15px;">
                     ${c.top_horse || '---'}
                     ${c.cat_trend === 'DOWN' ? '<span class="badge badge-success" style="font-size: 8px; padding: 4px 8px;">DÉCLASSÉ</span>' : ''}
                 </div>
             </td>
             <td>
-                <div class="badge ${iaScore > 75 ? 'badge-success' : 'badge-warning'}">${iaScore}%</div>
+                <div class="badge ${iaScore >= 75 ? 'badge-success' : 'badge-warning'}">${iaScore}%</div>
             </td>
-            <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'">${c.fav_cote || '--'}</td>
+            <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'; font-size: 15px;">${c.fav_cote || '--'}</td>
             <td>
                 <div style="font-weight: 700; color: var(--text-high); font-family: 'JetBrains Mono'; font-size: 13px;">${c.prix ? c.prix.toLocaleString() + ' €' : '--'}</div>
-                <div style="font-size: 10px; color: var(--text-low); font-weight: 600;">${c.partants} PARTANTS</div>
+                <div style="font-size: 10px; color: var(--text-med); font-weight: 600;">${c.partants} PARTANTS</div>
             </td>
-            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald)">${c.ordre_arrivee || 'À VENIR'}</td>
-            <td>
-                <button onclick="showDetails(${c.id})" class="nav-item" style="padding: 10px 20px; font-size: 11px; border: 1px solid var(--glass-border); border-radius: 8px;">
-                    DETAILS
-                </button>
-            </td>
+            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${c.ordre_arrivee || 'À VENIR'}</td>
         `;
         tbody.appendChild(row);
     });
 }
+
+window.exportScannerCSV = () => {
+    if (!allCourses || allCourses.length === 0) {
+        showNotification("Aucune donnée à exporter", "info");
+        return;
+    }
+    
+    const headers = ["Heure", "Hippodrome", "Reunion", "Course", "Discipline", "Distance", "Top Cheval", "Score IA", "Cote Fav", "Prix"];
+    const rows = allCourses.map(c => [
+        `"${c.heure || ''}"`,
+        `"${c.hippodrome || ''}"`,
+        `"${c.reunionNum || ''}"`,
+        `"${c.courseNum || ''}"`,
+        `"${c.discipline || ''}"`,
+        `"${c.distance || ''}"`,
+        `"${c.top_horse || ''}"`,
+        `"${c.ia_score || ''}"`,
+        `"${c.fav_cote || ''}"`,
+        `"${c.prix || ''}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `PMU_Scanner_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showNotification("Export CSV des pronostics généré !", "success");
+};
 
 function animateValue(id, value) {
     const el = document.getElementById(id);
@@ -462,27 +661,39 @@ function animateValue(id, value) {
 
 // Sync Utilities
 window.syncHistoryPrompt = async () => {
-    const days = prompt("Profondeur de synchronisation (jours, max 30) :", "7");
-    if (!days || isNaN(days)) return;
+    const daysStr = prompt("Profondeur de synchronisation (en jours, jusqu'à 180 jours / 6 mois) :", "30");
+    if (!daysStr || isNaN(daysStr)) return;
 
-    const btn = event.currentTarget;
-    const icon = btn.querySelector('i');
-    icon.className = 'fas fa-spinner fa-spin';
+    const days = parseInt(daysStr, 10);
+    if (days < 1 || days > 365) {
+        alert("Veuillez saisir un nombre de jours entre 1 et 365 (ex: 180 pour 6 mois).");
+        return;
+    }
+
+    const btn = event?.currentTarget;
+    const icon = btn?.querySelector('i');
+    if (icon) icon.className = 'fas fa-spinner fa-spin';
     
+    showNotification(`Synchronisation de ${days} jours lancée (cela peut prendre quelques minutes)...`, 'info');
+
     try {
         const res = await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ days: parseInt(days) })
+            body: JSON.stringify({ days })
         });
         const data = await res.json();
         if (data.success) {
+            showNotification(`Synchronisation réussie : ${data.count} courses traitées sur ${data.daysProcessed} jours.`, 'success');
             refreshData();
+        } else {
+            showNotification(`Erreur synchro : ${data.error || 'Erreur inconnue'}`, 'error');
         }
     } catch (e) {
         console.error("Sync Error:", e);
+        showNotification(`Erreur lors de la synchronisation : ${e.message}`, 'error');
     } finally {
-        icon.className = 'fas fa-history';
+        if (icon) icon.className = 'fas fa-history';
     }
 };
 
@@ -640,3 +851,213 @@ window.showDetails = async (id) => {
         body.innerHTML = `<div style="color: var(--accent-crimson); padding: 40px; text-align: center;">Erreur de chargement des vecteurs.</div>`;
     }
 };
+
+// ----------------------------------------------------
+// TODO FEATURE 1: Assistant Vocal (Dictée Vocale UI)
+// ----------------------------------------------------
+window.startVoiceSearch = (targetInputId) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('voice-search-btn');
+    const input = document.getElementById(targetInputId);
+    
+    if (!SpeechRecognition) {
+        showNotification("La reconnaissance vocale n'est pas supportée sur ce navigateur.", "info");
+        return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.interimResults = false;
+    
+    if (btn) {
+        btn.style.color = 'var(--accent-crimson)';
+        btn.innerHTML = '<i class="fas fa-microphone-alt fa-pulse"></i>';
+    }
+    showNotification("Écoute vocale en cours... Parlez !", "info");
+    
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (input) {
+            input.value = transcript;
+            showNotification(`Dictée vocale capturée: "${transcript}"`, "success");
+            if (targetInputId === 'scanner-search') window.filterScanner();
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        showNotification(`Erreur vocale: ${event.error}`, "info");
+    };
+    
+    recognition.onend = () => {
+        if (btn) {
+            btn.style.color = 'var(--accent-gold)';
+            btn.innerHTML = '<i class="fas fa-microphone"></i>';
+        }
+    };
+    
+    recognition.start();
+};
+
+// ----------------------------------------------------
+// TODO FEATURE 2: Exportation Synthétique PDF
+// ----------------------------------------------------
+window.exportQuintePDF = () => {
+    showNotification("Génération de la fiche PDF en cours...", "info");
+    const printWindow = window.open('', '_blank');
+    const todayStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    
+    let tableRowsHtml = '';
+    if (allCourses && allCourses.length > 0) {
+        tableRowsHtml = allCourses.slice(0, 15).map(c => `
+            <tr>
+                <td><b>${c.heure || '--'}</b></td>
+                <td><b>${c.hippodrome || '--'}</b><br><small>R${c.reunionNum} C${c.courseNum} - ${c.discipline}</small></td>
+                <td>${c.top_horse || 'Non analysé'}</td>
+                <td><b>${c.ia_score || 0}%</b></td>
+                <td>${c.fav_cote || '--'}</td>
+                <td>${c.prix ? c.prix.toLocaleString() + ' €' : '--'}</td>
+            </tr>
+        `).join('');
+    } else {
+        tableRowsHtml = `<tr><td colspan="6">Aucune course enregistrée.</td></tr>`;
+    }
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>PMU-Prono Elite - Fiche de Presse & Synthèse ${todayStr}</title>
+            <style>
+                body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #111; line-height: 1.5; }
+                h1 { color: #0f5132; margin-bottom: 5px; border-bottom: 3px solid #0f5132; padding-bottom: 10px; }
+                .subtitle { color: #555; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
+                th { background-color: #0f5132; color: white; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .footer { margin-top: 40px; font-size: 11px; text-align: center; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <h1>🏇 PMU-PRONO ELITE PUNTER V43.4</h1>
+            <div class="subtitle">FICHE DE PRESSE DU SCANNER & SYNTHÈSE QUINTÉ+ • ${todayStr.toUpperCase()}</div>
+            <p>Rapport d'analyse généré automatiquement par l'IA PMU-Prono (Modèle Hybride XGBoost / LightGBM).</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Heure</th>
+                        <th>Hippodrome / Événement</th>
+                        <th>Top Vecteur IA</th>
+                        <th>Score IA</th>
+                        <th>Cote Ref</th>
+                        <th>Allocation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHtml}
+                </tbody>
+            </table>
+            <div class="footer">Document officiel généré pour hippodromes par PMU-Prono AI System. Tous droits réservés.</div>
+            <script>window.onload = function() { window.print(); };</script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+};
+
+// ----------------------------------------------------
+// TODO FEATURE 3: Test & Alertes Telegram
+// ----------------------------------------------------
+window.testTelegramPrompt = async () => {
+    const token = prompt("Entrez votre Token de Bot Telegram (ou laissez vide pour utiliser l'existant):");
+    const chatId = prompt("Entrez votre Chat ID Telegram (ex: 123456789):");
+    
+    if (token !== null && chatId !== null) {
+        try {
+            await fetch('/api/alerts/telegram/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ botToken: token, chatId: chatId, enabled: true })
+            });
+            showNotification("Configuration Telegram enregistrée. Envoi du message de test...", "info");
+            
+            const res = await fetch('/api/alerts/telegram/test', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            const data = await res.json();
+            if (data.success) {
+                showNotification("✅ Message Telegram envoyé avec succès !", "success");
+            } else {
+                showNotification(`⚠️ Erreur Telegram: ${data.error}`, "info");
+            }
+        } catch(e) {
+            showNotification(`Erreur de connexion Telegram: ${e.message}`, "info");
+        }
+    }
+};
+
+// ----------------------------------------------------
+// TODO FEATURE 4: Comparateur de Forme Écuries
+// ----------------------------------------------------
+window.openEcuriesModal = async () => {
+    const modal = document.getElementById('modal-details');
+    const body = document.getElementById('modal-body');
+    modal.style.display = 'flex';
+    modal.style.opacity = '0';
+    setTimeout(() => modal.style.opacity = '1', 10);
+    
+    body.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+            <div class="skeleton skeleton-title" style="margin: 0 auto 20px;"></div>
+            <div class="skeleton skeleton-text" style="margin: 0 auto 10px;"></div>
+        </div>
+    `;
+
+    try {
+        const res = await fetch('/api/ecuries/compare');
+        const result = await res.json();
+        const ecuries = result.data || [];
+        
+        body.innerHTML = `
+            <div style="margin-bottom: 32px; animation: fadeIn 0.5s ease-out;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <div>
+                        <h3 style="font-size: 12px; color: var(--accent-purple); text-transform: uppercase; font-weight: 800; letter-spacing: 2px;">Analyse de Réussite</h3>
+                        <div style="font-size: 24px; font-weight: 800; color: var(--text-pure); margin-top: 4px;">Comparateur de Forme des Écuries (90 Derniers Jours)</div>
+                    </div>
+                    <span class="badge badge-success">${ecuries.length} Écuries Analysées</span>
+                </div>
+                
+                <div class="data-table-container" style="max-height: 500px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rang</th>
+                                <th>Entraîneur / Écurie</th>
+                                <th>Engagements</th>
+                                <th>Victoires</th>
+                                <th>Podiums (Top 3)</th>
+                                <th>Taux de Victoire %</th>
+                                <th>Taux de Podium %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${ecuries.map((e, idx) => `
+                                <tr>
+                                    <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono';">#${idx + 1}</td>
+                                    <td style="font-weight: 700; color: var(--text-pure);">${e.nom_ecurie}</td>
+                                    <td style="font-family: 'JetBrains Mono';">${e.total_engagements}</td>
+                                    <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono';">${e.victoires} V</td>
+                                    <td style="font-weight: 700; color: var(--accent-indigo); font-family: 'JetBrains Mono';">${e.podiums} P</td>
+                                    <td><div class="badge ${e.win_pct >= 20 ? 'badge-success' : 'badge-warning'}">${e.win_pct}%</div></td>
+                                    <td><div class="badge ${e.podium_pct >= 40 ? 'badge-success' : 'badge-warning'}">${e.podium_pct}%</div></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } catch(err) {
+        body.innerHTML = `<div style="color: var(--accent-crimson); padding: 40px; text-align: center;">Erreur lors du chargement des statistiques d'écuries.</div>`;
+    }
+};
+

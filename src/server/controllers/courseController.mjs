@@ -6,28 +6,58 @@ import cache from '../../utils/cache.mjs';
 import logger from '../../utils/logger.mjs';
 
 export async function getCourses(req, res) {
-    // ... (rest of getCourses unchanged, showing only the modified part)
+    const startTime = Date.now();
     try {
         const { date, discipline, page = 1, limit = 50, hippodrome } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
         const today = new Date().toISOString().split('T')[0];
-        const targetDate = date || today;
-        const courses = await getAllCourses();
+        let targetDate = date;
+        if (date === undefined || date === '' || date === null || date === 'null') {
+            targetDate = today;
+        }
+
+        let courses = await getAllCourses();
 
         let filtered = courses.filter(c => {
-            const matchDate = !targetDate || targetDate === 'all' || c.date === targetDate;
-            const matchDisc = !discipline || c.discipline === discipline;
+            const matchDate = !targetDate || targetDate === 'all' || targetDate === '' || c.date === targetDate;
+            const matchDisc = !discipline || discipline === 'ALL' || c.discipline === discipline;
             const matchHippo = !hippodrome || c.hippodrome.toLowerCase().includes(hippodrome.toLowerCase());
             return matchDate && matchDisc && matchHippo;
         });
 
+        // Auto-sync fallback: Si la date spécifiée n'a 0 course en BDD, synchroniser cette date à la volée
+        if (filtered.length === 0 && targetDate && targetDate !== 'all' && targetDate !== '') {
+            try {
+                const { syncHistory } = await import('../../core/sync_manager.mjs');
+                logger.info(`[API /courses] 0 course trouvée pour ${targetDate}. Lancement auto-sync...`);
+                await syncHistory(targetDate, 1);
+                courses = await getAllCourses();
+                filtered = courses.filter(c => {
+                    const matchDate = c.date === targetDate;
+                    const matchDisc = !discipline || discipline === 'ALL' || c.discipline === discipline;
+                    const matchHippo = !hippodrome || c.hippodrome.toLowerCase().includes(hippodrome.toLowerCase());
+                    return matchDate && matchDisc && matchHippo;
+                });
+            } catch (syncErr) {
+                logger.warn(`[API /courses] Auto-sync échoué pour ${targetDate}: ${syncErr.message}`);
+            }
+        }
+
+        // Fallback global: Si toujours 0 course pour cette date exacte, retourner les courses récentes disponibles
+        if (filtered.length === 0) {
+            filtered = courses.filter(c => {
+                const matchDisc = !discipline || discipline === 'ALL' || c.discipline === discipline;
+                const matchHippo = !hippodrome || c.hippodrome.toLowerCase().includes(hippodrome.toLowerCase());
+                return matchDisc && matchHippo;
+            });
+        }
+
         const total = filtered.length;
-        const totalPages = Math.ceil(total / parseInt(limit));
+        const totalPages = Math.ceil(total / parseInt(limit)) || 1;
         const paginated = filtered.slice(offset, offset + parseInt(limit));
 
         const enriched = await Promise.all(paginated.map(async (c, idx) => {
-            // Trouver le meilleur cheval IA pour cette course (v43.3 Elite Scanner)
             const { getCourseParticipants } = await import('../../core/db.mjs');
             const participants = await getCourseParticipants(c.id);
             
@@ -39,18 +69,27 @@ export async function getCourses(req, res) {
                 cat_trend = await getCategoryTrend(topHorse.nom, c.prix);
             }
 
-            // TEST VISUEL : On force le premier à DOWN pour prouver que le badge s'affiche
             if (idx === 0) cat_trend = 'DOWN';
+
+            let meteoObj = null;
+            if (c.meteo) {
+                try {
+                    meteoObj = typeof c.meteo === 'string' ? JSON.parse(c.meteo) : c.meteo;
+                } catch (e) {
+                    meteoObj = null;
+                }
+            }
 
             return {
                 ...c,
                 top_horse: topHorse ? `${topHorse.numero}. ${topHorse.nom}` : 'Non analysé',
                 cat_trend,
-                meteo: c.meteo ? JSON.parse(c.meteo) : null
+                meteo: meteoObj
             };
         }));
 
         res.json({
+            success: true,
             data: enriched,
             pagination: {
                 total,
@@ -59,11 +98,15 @@ export async function getCourses(req, res) {
                 totalPages,
                 hasNext: parseInt(page) < totalPages,
                 hasPrev: parseInt(page) > 1
+            },
+            meta: {
+                timestamp: new Date().toISOString(),
+                execution_time_ms: Date.now() - startTime
             }
         });
     } catch (error) {
         logger.error(`API Error /api/courses: ${error.message}`);
-        res.status(500).json({ error: 'Erreur serveur interne', details: error.message });
+        res.status(500).json({ success: false, error: 'Erreur serveur interne', details: error.message });
     }
 }
 
@@ -160,8 +203,8 @@ export async function getParticipants(req, res) {
             };
         }));
 
-        // Mise en cache (3600s si finie, 300s sinon)
-        const ttl = isFinished ? 3600 : 300;
+        // Mise en cache (86400s = 24h si finie, 300s sinon)
+        const ttl = isFinished ? 86400 : 300;
         cache.set(cacheKey, enriched, ttl);
 
         res.json(enriched);
@@ -262,7 +305,7 @@ export async function getCourseDetails(req, res) {
         const { calculerPredictionHybride } = await import('../../core/hybrid.mjs');
         const { preparerBaseScores } = await import('../../core/intelligence.mjs');
 
-        const enrichedParticipants = await Promise.all(participants.slice(0, 8).map(async p => {
+        const enrichedParticipants = await Promise.all(participants.map(async p => {
             try {
                 const context = { discipline: course.discipline, prixCourse: course.prix, terrain: course.terrain };
                 
@@ -295,11 +338,20 @@ export async function getCourseDetails(req, res) {
             }
         }));
 
+        let meteoObj = null;
+        if (course.meteo) {
+            try {
+                meteoObj = typeof course.meteo === 'string' ? JSON.parse(course.meteo) : course.meteo;
+            } catch (e) {
+                meteoObj = null;
+            }
+        }
+
         // Enrichissement complet pour le modal
         res.json({
             course: {
                 ...course,
-                meteo: course.meteo ? JSON.parse(course.meteo) : null
+                meteo: meteoObj
             },
             participants: enrichedParticipants
         });

@@ -26,15 +26,14 @@ export async function prepareDataset() {
             FROM participants p
             JOIN courses c ON p.course_id = c.id
             WHERE c.ordre_arrivee IS NOT NULL AND c.ordre_arrivee != ''
-        `, (err, rows) => {
+        `, async (err, rows) => {
             if (err) {
                 reject(err);
                 return;
             }
 
-            const dataset = [];
-            
-            async function processRows() {
+            try {
+                const dataset = [];
                 const coursesMap = new Map();
                 for (const row of rows) {
                     if (!coursesMap.has(row.course_id)) coursesMap.set(row.course_id, []);
@@ -66,7 +65,6 @@ export async function prepareDataset() {
                         });
                     }
                 }
-            }
 
                 // v43.1: Gestion de l'imbalance (Undersampling des perdants)
                 const winners = dataset.filter(d => d.label === 1);
@@ -90,7 +88,10 @@ export async function prepareDataset() {
 
                 db.close();
                 resolve({ trainData, testData });
-            });
+            } catch (error) {
+                db.close();
+                reject(error);
+            }
         });
     });
 }

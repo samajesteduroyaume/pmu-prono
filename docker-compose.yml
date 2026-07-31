@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  pmu-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pmu-prono-server
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+    deploy:
+      resources:
+        limits:
+          memory: 1024M

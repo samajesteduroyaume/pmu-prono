@@ -7,7 +7,7 @@ import logger from '../utils/logger.mjs';
 
 // Import Database
 import { initDB } from '../db/db.mjs';
-import { loadMLModel } from '../core/hybrid.mjs';
+import { loadMLModel, enableModelHotReload } from '../core/hybrid.mjs';
 import { syncLive } from '../core/sync_manager.mjs';
 
 // Import Routes
@@ -17,6 +17,7 @@ import mlRoutes from './routes/ml.mjs';
 import financeRoutes from './routes/finance.mjs';
 import syncRoutes from './routes/sync.mjs';
 import tuningRoutes from './routes/tuning.mjs';
+import agentRoutes from './routes/agent.mjs';
 import * as statController from './controllers/statController.mjs';
 import * as mlController from './controllers/mlController.mjs';
 import * as financeController from './controllers/financeController.mjs';
@@ -76,6 +77,7 @@ app.use('/api/ml', mlRoutes); // New unified ML route
 app.use('/api/finance', financeRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/tuning', tuningRoutes);
+app.use('/api/agent', agentRoutes);
 
 // Legacy/Compatibility Routes (Mapped to new controllers)
 app.get('/api/performance', statController.getPerformance);
@@ -83,6 +85,7 @@ app.get('/api/performance/advanced', statController.getAdvanced);
 app.get('/api/performance/winrate', winrateController.getWinRateStats); // v44: Win Rate Reporting
 app.get('/api/performance/shadow', financeController.getShadowPerformanceStats);
 app.get('/api/palmares', statController.getPalmares);
+app.get('/api/ecuries/compare', statController.getEcuries);
 app.get('/api/tendances', mlController.getTendances);
 app.get('/api/patterns', mlController.getPatterns);
 app.get('/api/sequence', mlController.getSequence);
@@ -114,6 +117,7 @@ async function startServer() {
     try {
         await initDB();
         await loadMLModel();
+        enableModelHotReload();
         
         // V46: Background Auto-Sync (Every 5 minutes)
         // Fetches new races and updates arrivals/results automatically
@@ -129,6 +133,28 @@ async function startServer() {
                 logger.error(`[V46] Auto-Sync Error: ${e.message}`);
             }
         }, 300000); // 300,000ms = 5 minutes
+
+        // Programmation du réentraînement automatique du modèle tous les soirs à 00h00 (Minuit)
+        const scheduleMidnightRetrain = () => {
+            const now = new Date();
+            const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+            const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+            logger.info(`[CRON] Prochain réentraînement IA programmé ce soir à 00h00 (dans ${(msUntilMidnight / 3600000).toFixed(2)}h).`);
+
+            setTimeout(async () => {
+                try {
+                    logger.header('[CRON] 00H00 - Démarrage du réentraînement quotidien du modèle IA...');
+                    const { autoRetrain } = await import('../pipelines/retrain_cron.mjs');
+                    await autoRetrain();
+                    logger.success('[CRON] Réentraînement nocturne de 00h00 terminé avec succès !');
+                } catch (err) {
+                    logger.error(`[CRON Error] Échec du réentraînement nocturne : ${err.message}`);
+                }
+                scheduleMidnightRetrain();
+            }, msUntilMidnight);
+        };
+        scheduleMidnightRetrain();
         
         io.on('connection', (socket) => {
             logger.info(`[Socket] Nouveau client connecté: ${socket.id}`);
@@ -137,9 +163,10 @@ async function startServer() {
             });
         });
 
-        server.listen(PORT, () => {
+        server.listen(PORT, '0.0.0.0', () => {
             logger.header(`SERVEUR MODULARISÉ LANCÉ (Port: ${PORT})`);
-            logger.info(`Dashboard accessible sur: http://localhost:${PORT}`);
+            logger.info(`Dashboard local: http://localhost:${PORT}`);
+            logger.info(`Dashboard réseau: http://192.168.1.119:${PORT}`);
             logger.info(`[Socket.io] Serveur WebSocket prêt`);
         });
     } catch (e) {
@@ -148,4 +175,9 @@ async function startServer() {
     }
 }
 
-startServer();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+    startServer();
+}
+
+export { app, server, startServer };
+

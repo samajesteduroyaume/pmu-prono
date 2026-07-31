@@ -1,4 +1,7 @@
 import { calculerPrediction } from '../core/intelligence.mjs';
+import { initDB } from '../core/db.mjs';
+
+await initDB();
 
 const testCases = [
     {

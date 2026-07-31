@@ -1,4 +1,4 @@
-import { getIAPerformanceStats, getAdvancedStats, getPalmaresStats } from '../../core/db.mjs';
+import { getIAPerformanceStats, getAdvancedStats, getPalmaresStats, getEcuriesForm } from '../../core/db.mjs';
 import logger from '../../utils/logger.mjs';
 
 export async function getPerformance(req, res) {
@@ -32,5 +32,17 @@ export async function getPalmares(req, res) {
     } catch (error) {
         logger.error(`API Error Palmarès: ${error.message}`);
         res.status(500).json({ error: error.message });
+    }
+}
+
+export async function getEcuries(req, res) {
+    try {
+        const { days = 90 } = req.query;
+        logger.info('API: Requête /api/ecuries/compare');
+        const data = await getEcuriesForm(parseInt(days));
+        res.json({ success: true, data });
+    } catch (error) {
+        logger.error(`API Error Ecuries: ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
     }
 }

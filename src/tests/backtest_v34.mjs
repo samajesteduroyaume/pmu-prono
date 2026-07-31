@@ -1,17 +1,19 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import { calculerPredictionHybride } from '../core/hybrid.mjs';
-
-const dbPath = path.resolve('./data/pmu.db');
-const db = new sqlite3.Database(dbPath);
-
-function runQuery(q, params = []) {
-    return new Promise((resolve, reject) => {
-        db.all(q, params, (err, rows) => err ? reject(err) : resolve(rows));
-    });
-}
+import { initDB } from '../core/db.mjs';
 
 async function runBacktestV34() {
+    await initDB();
+    const dbPath = path.resolve('./data/pmu.db');
+    const db = new sqlite3.Database(dbPath);
+
+    function runQuery(q, params = []) {
+        return new Promise((resolve, reject) => {
+            db.all(q, params, (err, rows) => err ? reject(err) : resolve(rows));
+        });
+    }
+
     console.log("=== V34 HYBRID SYSTEM BACKTEST ===");
 
     // Test sur les 100 dernières courses avec arrivées

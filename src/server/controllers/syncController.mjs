@@ -10,13 +10,46 @@ export async function sync(req, res) {
         }
         
         const { date, days } = validation.data;
-        const results = await syncHistory(date, days);
-        res.json({
-            success: true,
-            count: results.totalCourses,
-            daysProcessed: results.successfulDays,
-            errors: results.errors
-        });
+        const io = req.app.get('io');
+
+        if (days > 1) {
+            // Lancement asynchrone en arrière-plan pour éviter tout timeout HTTP
+            const jobId = `sync_${Date.now()}`;
+            res.status(202).json({
+                success: true,
+                async: true,
+                jobId,
+                days,
+                message: `Synchronisation de ${days} jour(s) démarrée en arrière-plan.`
+            });
+
+            // Exécution asynchrone avec émission WebSocket en temps réel
+            (async () => {
+                try {
+                    const results = await syncHistory(date, days, (progress) => {
+                        if (io) {
+                            io.emit('sync_progress', { jobId, ...progress });
+                        }
+                    });
+                    if (io) {
+                        io.emit('sync_completed', { jobId, ...results });
+                        io.emit('sync_update', { count: results.totalCourses, timestamp: new Date() });
+                    }
+                } catch (err) {
+                    logger.error(`Async Sync Error (Job ${jobId}): ${err.message}`);
+                    if (io) io.emit('sync_error', { jobId, error: err.message });
+                }
+            })();
+        } else {
+            // Synchronisation synchrone directe pour 1 seul jour (rapide)
+            const results = await syncHistory(date, 1);
+            res.json({
+                success: true,
+                count: results.totalCourses,
+                daysProcessed: results.successfulDays,
+                errors: results.errors
+            });
+        }
     } catch (error) {
         logger.error(`API Sync Error: ${error.message}`);
         res.status(500).json({ error: error.message });

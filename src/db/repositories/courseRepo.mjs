@@ -231,9 +231,7 @@ export async function getCourseParticipants(courseId) {
 export async function getCourseQuinte(targetDate = null) {
     const db = getDB();
     return new Promise((resolve, reject) => {
-        const dateToUse = targetDate || new Date().toISOString().split('T')[0];
-        // Priority to explicit Quinte pari type, fallback to high prize + min partants
-        const query = `
+        const queryExact = `
             SELECT c.*, COUNT(p.id) as nb_partants
             FROM courses c
             JOIN participants p ON c.id = p.course_id
@@ -246,15 +244,46 @@ export async function getCourseQuinte(targetDate = null) {
             LIMIT 1
         `;
 
-        db.get(query, [dateToUse], (err, row) => {
-            if (err) return reject(err);
-            // Verify if it's a likely quinte (pari type or min partants)
-            if (row && (row.type_pari?.includes('QUINTE') || row.nb_partants >= 12)) {
-                resolve(row);
-            } else {
-                resolve(null);
-            }
-        });
+        const queryLatest = `
+            SELECT c.*, COUNT(p.id) as nb_partants
+            FROM courses c
+            JOIN participants p ON c.id = p.course_id
+            GROUP BY c.id
+            ORDER BY 
+                c.date DESC,
+                (CASE WHEN c.type_pari LIKE '%QUINTE%' THEN 1 ELSE 0 END) DESC,
+                c.prix DESC,
+                nb_partants DESC
+            LIMIT 1
+        `;
+
+        const executeFallback = () => {
+            db.get(queryLatest, [], (errLatest, rowLatest) => {
+                if (errLatest) return reject(errLatest);
+                resolve(rowLatest || null);
+            });
+        };
+
+        if (targetDate) {
+            db.get(queryExact, [targetDate], (err, row) => {
+                if (err) return reject(err);
+                if (row && (row.type_pari?.includes('QUINTE') || row.nb_partants >= 12)) {
+                    resolve(row);
+                } else {
+                    executeFallback();
+                }
+            });
+        } else {
+            const today = new Date().toISOString().split('T')[0];
+            db.get(queryExact, [today], (err, row) => {
+                if (err) return reject(err);
+                if (row && (row.type_pari?.includes('QUINTE') || row.nb_partants >= 12)) {
+                    resolve(row);
+                } else {
+                    executeFallback();
+                }
+            });
+        }
     });
 }
 

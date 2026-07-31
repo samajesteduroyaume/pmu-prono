@@ -56,8 +56,17 @@ export async function runMigrations(db) {
                 
                 logger.success(`[DB] Migration réussie : ${file}`);
             } catch (err) {
-                logger.error(`[DB] ÉCHEC de la migration ${file}: ${err.message}`);
-                throw err;
+                if (err.message && err.message.includes('duplicate column name')) {
+                    logger.warn(`[DB] Colonne déjà existante (${file}), enregistrement de la migration.`);
+                    await new Promise((resolve, reject) => {
+                        db.run('INSERT INTO migrations_history (name) VALUES (?)', [file], (err) => {
+                            err ? reject(err) : resolve();
+                        });
+                    });
+                } else {
+                    logger.error(`[DB] ÉCHEC de la migration ${file}: ${err.message}`);
+                    throw err;
+                }
             }
         }
     }

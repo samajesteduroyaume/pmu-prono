@@ -1,110 +1,105 @@
-# 🏇 PMU Elite Punter - Architect v27
+# PMU Prono
 
-> **Système de Trading Hippique Haute Précision - Hybridation IA Deep Learning & Heuristiques Expertes**
+Application de consultation et d’analyse des courses PMU, destinée à fonctionner sur Ubuntu. Elle récupère le programme auprès de l’API PMU, conserve les courses et les observations dans SQLite, calcule des scores heuristiques (et peut charger un modèle TensorFlow.js), puis expose une interface web et une API JSON.
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-4.x-orange.svg)](https://www.tensorflow.org/js)
-[![UI](https://img.shields.io/badge/UI-Elite_Glow-gold.svg)](#-interface-premium)
+Les scores sont des indicateurs expérimentaux, pas des probabilités garanties. Les anciennes mesures de précision ou de ROI présentes dans des notes de versions ne constituent pas une validation indépendante. L’évaluation prospective ne porte que sur les pronostics enregistrés avant le départ et dont le résultat officiel est ensuite disponible.
 
----
+## Prérequis
 
-## 🎯 Vision du Projet
+- Ubuntu 22.04 ou 24.04 LTS recommandé, avec accès réseau sortant.
+- Node.js 20 et npm.
+- Outils de compilation nécessaires aux modules natifs SQLite3 et TensorFlow.js. Le conteneur fournit `python3`, `make`, `g++` et `sqlite3` comme base de compilation.
 
-**PMU Elite Punter** n'est pas un simple outil de pronostics. C'est un terminal d'analyse conçu pour les parieurs professionnels, intégrant les dernières avancées en **Machine Learning** et une expertise métier profonde via le moteur **Architect v26**. L'objectif est simple : **Dépasser les 80% de précision sur les sélections IA.**
+## Installation et démarrage
 
----
-
-## 🏗️ Architecture du Système
-
-```mermaid
-graph TD
-    A[PMU API] -->|Fetch| B(Fetcher.mjs)
-    B -->|Raw Data| C(Processor.mjs)
-    
-    subgraph "Moteur Hybride v26"
-    C --> D(Hybrid.mjs)
-    D --> E[TensorFlow Model v15]
-    D --> F[Architect Heuristics v26]
-    E -->|70% Weight| G(Score IA Final)
-    F -->|30% Weight| G
-    end
-    
-    G -->|Persistence| H[(SQLite Database)]
-    H -->|API REST| I(Express Server)
-    I -->|WebSocket/JSON| J[Dashboard Elite v27]
+```sh
+npm ci
+cp .env.example .env
+npm start
 ```
 
----
+Ouvrir `http://localhost:3000`. L’application écoute sur `0.0.0.0`; configurez le pare-feu si elle est accessible depuis le réseau. La base par défaut est `data/pmu.db`.
 
-## ✨ Points Forts (v27)
+**Au démarrage, le serveur initialise la base, charge le modèle disponible, puis lance une synchronisation PMU en arrière-plan.** Il répète la synchronisation toutes les cinq minutes, programme une synchronisation quotidienne à 06:30 et une tentative de réentraînement hebdomadaire le dimanche à 23:30 (heure locale du processus). Ces tâches font des appels réseau et écrivent dans la base. Pour exécuter des tests sans démarrer ces tâches, utilisez `npm test`.
 
-### 🧠 Intelligence Artificielle "Architect v26"
-Le cerveau du système a été unifié pour une précision chirurgicale :
-- **Détection de Rentrée** : Analyse des dates de performance (ex: malus automatique si inactivité > 1 an).
-- **Bonus de Spécialité** : Gain de +15% de score si le cheval court dans sa discipline de prédilection.
-- **Apprentissage Profond** : Intégration globale de **TensorFlow.js** dès la synchronisation des données.
+Arrêt propre : `Ctrl+C` ou signal `SIGTERM`.
 
-### 📊 Interface "Elite Glow"
-Une UI pensée pour la prise de décision rapide :
-- **Performance Glow** : Intensité lumineuse dynamique basée sur la probabilité de victoire.
-- **Top Choice Labels** : Identification instantanée des meilleures opportunités.
-- **Détails Enrichis** : Affichage des équipements (⚙️ Ferrage, 👁️ Oeillères), de la musique complète et du statut de catégorie (MONTEE/DESCENTE).
+## Configuration
 
-### 💰 Gestion de Capital
-- **Kelly Criterion Dynamique** : Calculatrice de mise intégrée basée sur l'Edge IA.
-- **Tracking ROI** : Calcul automatique du rendement par discipline et par hippodrome.
+Copiez `.env.example` en `.env` et ajustez au besoin :
 
----
+| Variable | Valeur par défaut | Usage |
+|---|---|---|
+| `PORT` | `3000` | Port HTTP |
+| `NODE_ENV` | — | Environnement d’exécution |
+| `DB_PATH` | `./data/pmu.db` | Fichier SQLite |
+| `CORS_ORIGINS` | vide | Origines web autorisées, séparées par des virgules; vide = même origine et requêtes sans en-tête Origin |
+| `AGENT_API_KEY` | vide | Clé facultative de protection de l’API agent |
+| `TELEGRAM_BOT_TOKEN` ou `TELEGRAM_TOKEN` | vide | Jeton facultatif pour les notifications |
+| `TELEGRAM_CHAT_ID` | vide | Salon de notification Telegram |
+| `LOG_LEVEL` | `info` | Niveau de journalisation si pris en charge par le logger |
 
-## 🚀 Installation & Lancement
+Ne commitez pas `.env`, les jetons ou des données personnelles. Le chemin `DB_PATH` est résolu par le code de base de données; prévoyez un répertoire accessible en écriture et des sauvegardes SQLite cohérentes.
 
-### Chemin Rapide (Recommandé)
-Le système inclut un script de démarrage intelligent qui gère l'environnement pour vous.
+## Commandes
 
-```bash
-# 1. Cloner et installer
-git clone https://github.com/samajesteduroyaume/pmu-prono.git
-cd pmu-prono
-npm install
+| Commande | Fonction |
+|---|---|
+| `npm start` | Serveur web, tâches planifiées et synchronisation live |
+| `npm test` | Suite locale isolée avec base temporaire, sans appel PMU |
+| `npm run test:pmu` | Vérification réseau/API PMU du jour; nécessite Internet et interroge le service réel |
+| `npm run test:pmu:history` | Vérification API sur des dates historiques prédéfinies; nécessite Internet |
+| `npm run sync` | Pipeline de synchronisation historique (consulter les journaux et le script avant une collecte volumineuse) |
+| `npm run sync:month` / `sync:year` | Même pipeline sur la période indiquée par le script |
 
-# 2. Lancer le terminal intelligent
-chmod +x start.sh
-./start.sh
+Les tests PMU valident l’accès aux données de l’API, pas le démarrage complet du serveur ni l’exactitude des pronostics. La collecte historique peut être longue et écrire beaucoup de données.
+
+## Interface et API
+
+Pages servies depuis `public/` : tableau de bord `/`, ainsi que `pepites.html`, `palmares.html`, `patterns.html`, `backtest.html` et `api.html`.
+
+Routes principales (JSON sauf indication contraire) :
+
+| Méthode et route | Fonction |
+|---|---|
+| `GET /api/courses` | Courses paginées; filtres `date` (`YYYY-MM-DD` ou `all`), `discipline`, `hippodrome`, `page`, `limit` (1–500) |
+| `GET /api/courses/:id/participants` | Partants et données de la course |
+| `POST /api/sync` | Synchronisation demandée; paramètres validés par l’API |
+| `GET /api/alerts`, `/api/ml`, `/api/finance`, `/api/tuning`, `/api/agent` | Familles de fonctions spécialisées; consulter les routes dans `src/server/routes/` |
+| `GET /api/performance/forecast` | Évaluation prospective des snapshots et résultats réglés |
+| `POST /api/backtest` | Évaluation selon les paramètres de la requête |
+
+Routes de compatibilité supplémentaires (dont palmarès, tendances, patterns, valeur et performances) : voir `src/server/app.mjs`. Socket.IO émet notamment les mises à jour de synchronisation et de rechargement du modèle. Les corps et réponses détaillés restent définis par les validateurs et contrôleurs dans `src/server/`.
+
+## Données, modèle et interprétation
+
+- SQLite est initialisé/migré par l’application. Gardez une sauvegarde avant toute opération de maintenance.
+- Le moteur combine des heuristiques métier et, si un modèle valide est disponible, une composante ML. En l’absence de modèle utilisable, un chemin heuristique de repli est disponible; l’interface de statut du modèle fait foi.
+- Un historique de résultats seul ne permet pas de reconstruire un pronostic pré-course. Le tableau de bord d’évaluation exclut donc les courses sans snapshot enregistré à temps.
+- Les courses encore à courir restent en attente; elles ne comptent pas comme gagnées ou perdues. Les résultats non officiels ou manquants ne doivent pas être interprétés comme des pertes.
+- Les mises ou portefeuilles sont des outils de simulation. Ne misez pas sur la seule base d’un score affiché.
+
+## Déploiement sur Ubuntu
+
+Consultez le [guide Ubuntu](UBUNTU_DEPLOYMENT.md) pour installer les prérequis, configurer systemd et gérer les sauvegardes. Le déploiement direct Node permet d’administrer explicitement l’environnement et les mises à jour.
+
+## Déploiement Docker
+
+Le dépôt fournit `Dockerfile` et `docker-compose.yml`, à lancer sur Ubuntu avec Docker Engine et le plugin Compose installés. Depuis la racine :
+
+```sh
+docker compose up -d --build
+docker compose logs -f pmu-server
 ```
 
----
+Le compose publie le port 3000 et monte `./data` dans `/app/data`. Il utilise actuellement `PORT=3000`; modifier le port hôte seul ne change pas le port interne. La politique `restart: always` redémarre le conteneur. Définissez les variables Telegram dans l’environnement ou un fichier `.env` local si elles sont nécessaires.
 
-## 📡 API & Données
+`scripts/setup_autostart.sh` peut activer ou créer un service système et requiert des droits élevés; lisez-le avant exécution. Ce n’est pas nécessaire avec le redémarrage Docker déjà configuré.
 
-Le backend offre une API JSON robuste pour les intégrations tierces.
+## Développement
 
-| Endpoint | Description |
-| :--- | :--- |
-| `GET /api/courses` | Liste des courses avec pagination & filtres |
-| `GET /api/courses/:id/participants` | Détails complet avec scores IA Hybrides |
-| `GET /api/performance` | ROI, taux de réussite et stats globales |
-| `POST /api/sync` | Déclenchement manuel de la synchronisation |
+Consultez [CONTRIBUTING.md](CONTRIBUTING.md), [le journal des changements](CHANGELOG.md) et [le guide Ubuntu](UBUNTU_DEPLOYMENT.md). Les notes de validation historiques sont dans `src/tests/`; elles sont distinctes des tests exécutables.
 
----
+## Licence
 
-## 🛠️ Stack Technique
-
-- **Runtime** : Node.js (V3 Engine)
-- **IA** : TensorFlow.js + Custom Heuristics Engine
-- **Base de données** : SQLite3 avec indexation haute performance
-- **Frontend** : Vanilla JS, Montserrat Typography, CSS Grid/Flexbox
-- **DevOps** : Bash Automation (start.sh)
-
----
-
-## 👨‍💻 Auteur & License
-
-Développé avec passion par **Selim**. 
-Ce projet est distribué sous licence **MIT**.
-
----
-
-<div align="center">
-  <strong>⭐ Si ce projet vous aide, n'hésitez pas à lui donner une étoile ! ⭐</strong>
-</div>
+MIT — voir [LICENSE](LICENSE).

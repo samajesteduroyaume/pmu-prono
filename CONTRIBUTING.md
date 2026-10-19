@@ -1,93 +1,44 @@
-# Guide de Contribution
+# Contribuer
 
-Merci de votre intérêt pour contribuer à **PMU Elite Punter** ! 🎉
+Merci de contribuer à PMU Prono. Ce guide vise les changements de code, de données et de documentation.
 
-## 🚀 Comment Contribuer
+## Préparer l’environnement
 
-### 1. Fork & Clone
-
-```bash
-git clone https://github.com/votre-username/pmu-prono.git
-cd pmu-prono
-npm install
-```
-
-### 2. Créer une Branche
-
-```bash
-git checkout -b feature/ma-super-feature
-```
-
-### 3. Développer
-
-- Suivez les conventions de code existantes
-- Commentez votre code si nécessaire
-- Testez vos modifications
-
-### 4. Commit
-
-```bash
-git add .
-git commit -m "feat: ajout de ma super feature"
-```
-
-**Format des commits** :
-- `feat:` Nouvelle fonctionnalité
-- `fix:` Correction de bug
-- `docs:` Documentation
-- `style:` Formatage
-- `refactor:` Refactoring
-- `test:` Tests
-- `chore:` Maintenance
-
-### 5. Push & Pull Request
-
-```bash
-git push origin feature/ma-super-feature
-```
-
-Puis ouvrez une Pull Request sur GitHub.
-
-## 📋 Checklist PR
-
-- [ ] Le code compile sans erreur
-- [ ] Les tests passent
-- [ ] La documentation est à jour
-- [ ] Le commit suit les conventions
-- [ ] Pas de console.log oubliés
-
-## 🐛 Signaler un Bug
-
-Utilisez les [Issues GitHub](https://github.com/votre-username/pmu-prono/issues) avec le template suivant :
-
-**Titre** : [BUG] Description courte
-
-**Description** :
-- Comportement attendu
-- Comportement observé
-- Étapes pour reproduire
-- Environnement (OS, Node version)
-
-## 💡 Proposer une Feature
-
-Utilisez les [Issues GitHub](https://github.com/votre-username/pmu-prono/issues) avec le label `enhancement`.
-
-## 🎨 Style de Code
-
-- **Indentation** : 4 espaces
-- **Quotes** : Single quotes `'`
-- **Semicolons** : Optionnels
-- **Naming** : camelCase pour variables/fonctions, PascalCase pour classes
-
-## 🧪 Tests
-
-```bash
-# Lancer les tests (à venir)
+```sh
+npm ci
+cp .env.example .env
 npm test
 ```
 
-## 📞 Contact
+`npm test` utilise une base temporaire et ne démarre pas le serveur ni ses synchronisations planifiées. `npm run test:pmu` et `npm run test:pmu:history` interrogent l’API réelle : lancez-les seulement si vous voulez vérifier l’accès réseau et les données PMU. Ne confondez pas ces contrôles d’intégration avec une mesure de qualité prédictive.
 
-Pour toute question : ouvrez une issue ou contactez-moi directement.
+## Cycle de changement
 
-Merci ! 🙏
+1. Créez une branche dédiée à partir de la branche de travail appropriée.
+2. Gardez le changement ciblé et suivez le style du fichier voisin (ES modules, indentation généralement de quatre espaces, noms explicites).
+3. Ajoutez ou adaptez les tests locaux pour une modification de comportement.
+4. Mettez à jour le README ou le guide concerné si les commandes, routes, variables, schéma de données ou comportement observable changent.
+5. Avant de proposer le changement, exécutez les vérifications pertinentes et indiquez clairement celles qui n’ont pas été exécutées.
+
+Exemple de validation locale :
+
+```sh
+npm test
+git diff --check
+```
+
+Les appels réseau PMU, la collecte historique volumineuse, le démarrage du serveur et les opérations système ont des effets externes ou des écritures : vérifiez leur portée et leur environnement avant de les lancer.
+
+## Points d’attention métier
+
+- N’affichez pas un score heuristique comme une probabilité calibrée sans calibration documentée.
+- L’évaluation rétrospective doit s’appuyer sur les snapshots pris avant le départ et les résultats officiels. Ne régénérez pas un pronostic historique avec le code courant.
+- Distinguez les courses réglées des courses en attente et exposez la couverture de l’échantillon.
+- Ne publiez pas de chiffres de précision ou de ROI sans décrire le jeu de données, la période, le protocole, la taille d’échantillon et les limites.
+- Gardez les secrets, bases locales, journaux sensibles et résultats personnels hors du dépôt.
+
+## Documentation et commits
+
+Rédigez la documentation en français, avec des commandes réellement définies par `package.json` et des routes effectivement montées dans `src/server/app.mjs`. Évitez les promesses de performance et les versions marketing non vérifiées.
+
+Les messages de commit peuvent suivre une convention simple : `feat:`, `fix:`, `docs:`, `refactor:`, `test:` ou `chore:`. Dans une demande de fusion, résumez le problème, le comportement modifié, les vérifications exécutées et les limitations connues.

@@ -1,105 +1,32 @@
-# Changelog
+# Journal des changements
 
-Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+Ce journal décrit les changements visibles dans le dépôt. Les anciennes notes de version contenaient des mesures de précision, des promesses de performance et des liens de publication qui ne sont pas accompagnés ici d’un protocole reproductible. Ces affirmations historiques ne sont pas reprises comme résultats validés.
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
+## [Non publié]
 
----
+### Ajouté
 
-## [v15.0.0] - 2026-02-07
+- Suite locale unifiée via `npm test` et commandes explicites pour les vérifications d’intégration PMU du jour et de dates historiques.
+- Documentation d’installation, d’évaluation prospective, de configuration et de déploiement réécrite à partir du code et des commandes présents.
 
-### 🚀 Ajouté
+### Modifié
 
-- **Machine Learning** : IA v15 avec TensorFlow.js (91% accuracy)
-- **Pagination API** : Réduction de 17 Mo → 100 Ko par requête
-- **Bankroll Management** : Kelly Criterion pour optimisation des mises
-- **Progressive Web App** : Manifest + Service Worker
-- **Table paris_historique** : Tracking complet des paris et ROI
-- **Module Hybride** : Combinaison 70% ML + 30% Heuristiques v14
+- Les tests locaux utilisent une base temporaire et couvrent plusieurs suites de régression.
+- Les appels manuels à `syncHistoryPrompt` transmettent explicitement l’événement déclencheur.
+- Corrections de fiabilité dans les assertions et nettoyages de tests, et de compatibilité de fuseau dans un test de dates.
 
-### ⚡ Amélioré
+### Vérification effectuée
 
-- **Performance** : Temps de chargement 5s → <500ms (-90%)
-- **API** : Filtrage par date, discipline, hippodrome
-- **Frontend** : Contrôles de pagination (Précédent/Suivant)
+- `npm test` : 7 suites réussies lors de la vérification locale documentée dans la session de travail.
+- `npm run test:pmu` et `npm run test:pmu:history` : accès aux données PMU vérifié sur une série courante et des dates historiques.
+- L’API et les pages ont aussi fait l’objet de contrôles HTTP/statique. Ces contrôles ne constituent pas une validation visuelle complète dans un navigateur.
+- Une synchronisation réelle a alimenté des courses et partants pour la journée contrôlée; au moment du contrôle, les courses enregistrées étaient encore à courir. Le ROI prospectif réglé n’a donc pas pu être mesuré.
 
-### 📚 Documentation
+Les résultats ci-dessus sont un relevé ponctuel du dépôt/de la base de travail, pas une garantie que les mêmes commandes réussiront ultérieurement ou dans chaque environnement. Voir le README pour les limites et les commandes.
 
-- README.md complet avec badges et exemples
-- CONTRIBUTING.md pour les contributeurs
-- LICENSE (MIT)
-- Walkthrough technique détaillé
+## Versions historiques
 
----
+Les notes `v10` à `v15` ci-dessous existaient dans le journal précédent, mais aucune étiquette Git ou artefact de publication correspondant n’a été vérifié lors de cette réécriture. Les taux de précision, ROI et gains de performance anciennement associés à ces versions sont retirés car leur protocole n’est pas documenté.
 
-## [v14.0.0] - 2026-02-06
-
-### 🚀 Ajouté
-
-- **IA v14** : Spécialisation par discipline (Trot/Plat/Obstacle)
-- **Poids dynamiques** : Adaptation automatique selon le type de course
-- **Analyse Musique** : Affinement de la notation de forme
-
-### ⚡ Amélioré
-
-- **Précision** : +10% grâce aux poids spécialisés
-- **Migration BDD** : Recalcul de 204 913 participants
-
----
-
-## [v13.0.0] - 2026-02-05
-
-### 🚀 Ajouté
-
-- **Analyse Expert** : Détection changement de catégorie
-- **Équipements** : Prise en compte œillères et ferrage
-- **Régularité** : Indicateur % Top 3 carrière
-
-### ⚡ Amélioré
-
-- **Dashboard** : Graphiques de performance
-- **UI** : Design glassmorphism premium
-
----
-
-## [v12.0.0] - 2026-02-04
-
-### 🚀 Ajouté
-
-- **Arrivées Officielles** : Intégration résultats PMU
-- **Rapports** : Affichage des gains (Simple, Couplé, Trio...)
-- **Win Rate** : Calcul automatique de la précision IA
-
----
-
-## [v11.0.0] - 2026-02-03
-
-### 🚀 Ajouté
-
-- **Transition API Pure** : Suppression de Playwright
-- **Collecte 1 an** : Pipeline historique complet
-- **Dashboard Web** : Interface premium avec Chart.js
-
-### 🗑️ Supprimé
-
-- Dépendance Playwright
-- Scripts de scraping obsolètes
-
----
-
-## [v10.0.0] - 2026-01-15
-
-### 🚀 Ajouté
-
-- **IA Architect v10** : Première version avec heuristiques
-- **Base SQLite** : Stockage structuré des données
-- **API PMU** : Intégration directe
-
----
-
-[v15.0.0]: https://github.com/votre-username/pmu-prono/releases/tag/v15.0.0
-[v14.0.0]: https://github.com/votre-username/pmu-prono/releases/tag/v14.0.0
-[v13.0.0]: https://github.com/votre-username/pmu-prono/releases/tag/v13.0.0
-[v12.0.0]: https://github.com/votre-username/pmu-prono/releases/tag/v12.0.0
-[v11.0.0]: https://github.com/votre-username/pmu-prono/releases/tag/v11.0.0
-[v10.0.0]: https://github.com/votre-username/pmu-prono/releases/tag/v10.0.0
+- Les étapes historiques mentionnaient l’ajout progressif d’une base SQLite, d’une intégration PMU, d’une interface web, de filtres, de fonctions ML et financières.
+- Consultez l’historique Git pour établir quand un changement précis a été introduit.

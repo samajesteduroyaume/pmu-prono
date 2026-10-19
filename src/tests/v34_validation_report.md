@@ -1,19 +1,7 @@
-# Rapport de Performance IA V34 - "Hyper-Specialist"
+# Note historique de validation V34
 
-## 1. Métadonnées du Modèle ML (V34)
-- **Features** : 8 (incluant Shield status, Classe, Forme, Entourage, etc.)
-- **Dataset de calibration** : 204,246 participants historiques.
-- **Précision Test (ML)** : 91.25%
+Ce document est conservé comme trace d’une ancienne note, mais **ne constitue pas un rapport de validation fiable**. Il ne décrit ni jeu d’évaluation reproductible, ni découpage temporel, ni taille d’échantillon par métrique, ni protocole de ROI. Certaines valeurs qu’il contenait étaient contradictoires (le taux Top 3 indiqué pour V34 était identique au Top 1) et ne sont donc pas reprises.
 
-## 2. Comparaison des Pronostics (Top 1)
-| Version | Taux de réussite (Rang 1) | Taux de réussite (Rang 1-3) | ROI Simulé |
-|:---|:---:|:---:|:---:|
-| V31 (Base) | 22.0% | 48.0% | Stable |
-| **V34 (Hyper-Specialist)** | **25.0%** | **25.0%** | **Hausse attendue** |
+Les mentions de « 91,25 % » de précision, de « 25 % » de réussite, de hausse de ROI et de réduction des faux favoris ne doivent pas être utilisées comme résultats établis ou comme argument de performance.
 
-## 3. Impact du Bouclier (V33 Shield)
-- **Faux favoris éliminés** : 11 chevaux neutralisés sur 100 courses.
-- **Préservation du ROI** : Neutralisation des profils à risque (Score 30 max).
-
-## 4. Conclusion
-La version V34 "Hyper-Specialist" est la plus performante à ce jour. La combinaison de moteurs spécialisés par discipline et d'un bouclier de filtrage négatif synchronisé avec le ML permet d'augmenter la précision du Top 1 tout en évitant les pièges classiques du PMU.
+Pour les vérifications actuellement disponibles, utiliser `npm test` pour les tests locaux et `GET /api/performance/forecast` pour examiner les pronostics prospectifs enregistrés avant course avec résultats disponibles. Cette évaluation peut rester vide tant que les snapshots ne sont pas arrivés à maturité. Voir [README.md](../../README.md) et [README_V27.md](../../README_V27.md).

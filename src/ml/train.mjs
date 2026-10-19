@@ -5,17 +5,17 @@ if (!util.isNullOrUndefined) {
 
 import * as tf from '@tensorflow/tfjs-node';
 import { prepareDataset } from './dataset.mjs';
+import { evaluateModelPromotion, MIN_PROMOTION_TEST_COURSES } from './promotion_gate.mjs';
 import { closeDB } from '../core/db.mjs';
 import logger from '../utils/logger.mjs';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 import { isMainModule } from '../utils/isMainModule.mjs';
+import { MODEL_PATH } from './model_paths.mjs';
 
-const MODEL_DIR = path.dirname(fileURLToPath(import.meta.url));
-const MODEL_PATH = path.join(MODEL_DIR, 'model');
-const MODEL_STAGING_PATH = path.join(MODEL_DIR, 'model.staging');
-const MODEL_BACKUP_PATH = path.join(MODEL_DIR, 'model.previous');
+const MODEL_STAGING_PATH = `${MODEL_PATH}.staging`;
+const MODEL_BACKUP_PATH = `${MODEL_PATH}.previous`;
 
 async function trainModel(options = {}) {
     const { closeDbAtEnd = false } = options;
@@ -26,6 +26,9 @@ async function trainModel(options = {}) {
     try {
         // 1. Préparation du dataset
         const { trainData, validationData, testData, trainPrior, courseCounts } = await prepareDataset();
+        if (courseCounts.test < MIN_PROMOTION_TEST_COURSES) {
+            throw new Error(`Entraînement différé : le test chronologique ne contient que ${courseCounts.test}/${MIN_PROMOTION_TEST_COURSES} courses; aucun candidat ne pourra être promu avec un test aussi petit.`);
+        }
 
         // 2. Conversion en tenseurs
         const trainFeatures = tf.tensor2d(trainData.map(d => d.features)); tensors.push(trainFeatures);
@@ -121,6 +124,7 @@ async function trainModel(options = {}) {
     let marketFavoriteCourses = 0;
     let matchedArchivedForecastHits = 0;
     let matchedMarketFavoriteHits = 0;
+    let matchedMlHits = 0;
     let matchedMarketCourses = 0;
     for (const runners of testCourses.values()) {
         const topPick = runners.reduce((best, runner) => runner.score > best.score ? runner : best);
@@ -138,6 +142,7 @@ async function trainModel(options = {}) {
         }
         if (forecastPick && marketPick) {
             matchedMarketCourses++;
+            if (topPick.label === 1) matchedMlHits++;
             if (forecastPick.label === 1) matchedArchivedForecastHits++;
             if (marketPick.label === 1) matchedMarketFavoriteHits++;
         }
@@ -145,15 +150,26 @@ async function trainModel(options = {}) {
     const testMlTop1HitRate = testCourses.size ? topPickHits / testCourses.size : 0;
     const testForecastTop1HitRate = archivedForecastCourses ? archivedForecastHits / archivedForecastCourses : null;
     const testMarketTop1HitRate = marketFavoriteCourses ? marketFavoriteHits / marketFavoriteCourses : null;
+    const testMatchedMlTop1HitRate = matchedMarketCourses ? matchedMlHits / matchedMarketCourses : null;
     const testMatchedForecastTop1HitRate = matchedMarketCourses ? matchedArchivedForecastHits / matchedMarketCourses : null;
     const testMatchedMarketTop1HitRate = matchedMarketCourses ? matchedMarketFavoriteHits / matchedMarketCourses : null;
     logger.info(`Courses dans le test temporel : ${testCourses.size}`);
     logger.success(`Top 1 ML seul (recalculé sur les snapshots test) : ${(testMlTop1HitRate * 100).toFixed(2)}% (${testCourses.size} courses)`);
     logger.info(`Top 1 du pronostic hybride archivé : ${testForecastTop1HitRate === null ? 'indisponible' : `${(testForecastTop1HitRate * 100).toFixed(2)}% (${archivedForecastCourses} courses)`}`);
     logger.info(`Favori marché archivé : ${testMarketTop1HitRate === null ? 'indisponible' : `${(testMarketTop1HitRate * 100).toFixed(2)}% (${marketFavoriteCourses} courses)`}`);
-    logger.info(`Comparaison pronostic/favori sur les mêmes courses : ${testMatchedForecastTop1HitRate === null ? 'indisponible' : `pronostic ${(testMatchedForecastTop1HitRate * 100).toFixed(2)}%, marché ${(testMatchedMarketTop1HitRate * 100).toFixed(2)}% (${matchedMarketCourses} courses)`}`);
+    logger.info(`Comparaison sur les mêmes courses : ML ${testMatchedMlTop1HitRate === null ? 'indisponible' : `${(testMatchedMlTop1HitRate * 100).toFixed(2)}%`}, heuristique archivée ${testMatchedForecastTop1HitRate === null ? 'indisponible' : `${(testMatchedForecastTop1HitRate * 100).toFixed(2)}%`}, favori marché ${testMatchedMarketTop1HitRate === null ? 'indisponible' : `${(testMatchedMarketTop1HitRate * 100).toFixed(2)}%`} (${matchedMarketCourses} courses)`);
 
     predictions.dispose();
+
+    // Ne jamais remplacer le modèle utilisé par l'application avec un candidat
+    // qui n'a pas de test commun suffisant ou qui perd face aux deux références.
+    const promotion = evaluateModelPromotion({
+        matchedCourses: matchedMarketCourses,
+        mlHitRate: testMatchedMlTop1HitRate,
+        heuristicHitRate: testMatchedForecastTop1HitRate,
+        marketHitRate: testMatchedMarketTop1HitRate
+    });
+    if (!promotion.promote) throw new Error(`Modèle non promu : ${promotion.reason}`);
 
     // 7. Préparer entièrement la nouvelle génération avant de toucher au modèle actif.
     const modelPath = path.resolve(MODEL_PATH);
@@ -184,6 +200,7 @@ async function trainModel(options = {}) {
         testForecastCourseCount: archivedForecastCourses,
         testMarketTop1HitRate,
         testMarketCourseCount: marketFavoriteCourses,
+        testMatchedMlTop1HitRate,
         testMatchedForecastTop1HitRate,
         testMatchedMarketTop1HitRate,
         testMatchedCourseCount: matchedMarketCourses,

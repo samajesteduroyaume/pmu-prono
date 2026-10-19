@@ -24,6 +24,8 @@ Les valeurs de score, filtres « value » et calculs de bankroll sont des aides 
 
 Une base fraîche peut donc ne montrer aucun résultat réglé et afficher surtout des courses en attente. Une telle sortie signifie que l’échantillon prospectif est insuffisant, pas que le système a fait zéro gagnant. Consultez les compteurs de couverture, réglés et en attente avant d’interpréter tout taux ou ROI.
 
+L’entraînement exige 120 courses prospectives réglées sur au moins 30 dates, puis un test chronologique commun d’au moins 100 courses. Le statut `GET /api/ml/status` calcule le nombre réel de courses prévu dans cette partition, car le premier seuil ne garantit pas que le test sera assez grand. Le candidat n’est installé que si le Top 1 ML dépasse à la fois le pronostic heuristique archivé et le favori du marché. En cas d’échec ou d’échantillon insuffisant, les poids existants sont conservés. Les poids sans provenance vérifiable restent désactivés.
+
 ## Paramètres utiles
 
 Les valeurs réelles sont définies dans `src/config/settings.mjs`; ce résumé ne doit pas servir de configuration indépendante. On y trouve notamment :

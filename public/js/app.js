@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!document.getElementById('view-dashboard')) return;
 
     initUI();
+    refreshMLStatus();
 
     // Check URL parameters for view navigation (e.g. ?view=courses)
     const urlParams = new URLSearchParams(window.location.search);
@@ -78,6 +79,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Live Sync Polling (Configurable)
     setupLiveSync(60000);
 });
+
+async function refreshMLStatus() {
+    const banner = document.getElementById('ml-status-banner');
+    if (!banner) return;
+    try {
+        const response = await fetch('/api/ml/status');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const status = await response.json();
+        const readiness = status.trainingReadiness;
+        const readinessText = readiness
+            ? ` Données prospectives : ${readiness.eligibleCourses}/${readiness.requiredCourses} courses, ${readiness.eligibleDates}/${readiness.requiredDates} dates et ${readiness.chronologicalSplit?.test || 0}/${readiness.requiredTestCourses} courses de test chronologique.`
+            : '';
+        banner.hidden = false;
+        if (status.active) {
+            banner.style.borderColor = 'var(--accent-emerald)';
+            banner.style.background = 'hsla(150, 70%, 35%, 0.10)';
+            banner.textContent = `Modèle ML actif : ${status.version || 'version inconnue'}. Le score reste un score de classement, pas une probabilité.${readinessText}`;
+            return;
+        }
+        banner.textContent = status.reason === 'unverified-training-provenance'
+            ? `Modèle ML inactif : provenance d’entraînement non vérifiée. Les pronostics utilisent le moteur heuristique; le score sur 100 n’est pas une probabilité.${readinessText}`
+            : `Modèle ML inactif. Les pronostics utilisent le moteur heuristique; le score sur 100 n’est pas une probabilité.${readinessText}`;
+    } catch (error) {
+        banner.hidden = false;
+        banner.textContent = 'État du modèle ML indisponible. Ne considérez pas les scores comme des probabilités.';
+    }
+}
 
 let liveSyncInterval = null;
 

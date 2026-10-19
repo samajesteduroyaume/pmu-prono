@@ -33,6 +33,7 @@ Copiez `.env.example` en `.env` et ajustez au besoin :
 | `PORT` | `3000` | Port HTTP |
 | `NODE_ENV` | — | Environnement d’exécution |
 | `DB_PATH` | `./data/pmu.db` | Fichier SQLite |
+| `ML_MODEL_DIR` | `./data/ml-model` dans `.env.example` | Dossier des poids et métadonnées du modèle; doit être persistant et accessible en écriture |
 | `CORS_ORIGINS` | vide | Origines web autorisées, séparées par des virgules; vide = même origine et requêtes sans en-tête Origin |
 | `AGENT_API_KEY` | vide | Clé facultative de protection de l’API agent |
 | `TELEGRAM_BOT_TOKEN` ou `TELEGRAM_TOKEN` | vide | Jeton facultatif pour les notifications |
@@ -66,6 +67,7 @@ Routes principales (JSON sauf indication contraire) :
 | `GET /api/courses/:id/participants` | Partants et données de la course |
 | `POST /api/sync` | Synchronisation demandée; paramètres validés par l’API |
 | `GET /api/alerts`, `/api/ml`, `/api/finance`, `/api/tuning`, `/api/agent` | Familles de fonctions spécialisées; consulter les routes dans `src/server/routes/` |
+| `GET /api/ml/status` | Indique si le modèle ML est réellement chargé ou si le calcul utilise le repli heuristique |
 | `GET /api/performance/forecast` | Évaluation prospective des snapshots et résultats réglés |
 | `POST /api/backtest` | Évaluation selon les paramètres de la requête |
 
@@ -75,6 +77,7 @@ Routes de compatibilité supplémentaires (dont palmarès, tendances, patterns, 
 
 - SQLite est initialisé/migré par l’application. Gardez une sauvegarde avant toute opération de maintenance.
 - Le moteur combine des heuristiques métier et, si un modèle valide est disponible, une composante ML. En l’absence de modèle utilisable, un chemin heuristique de repli est disponible; l’interface de statut du modèle fait foi.
+- L’entraînement demande au moins 120 courses prospectives réglées sur 30 dates, puis au moins 100 courses dans le test chronologique commun. Le statut ML affiche aussi le nombre de courses qui tomberaient dans ce test, car atteindre le premier seuil ne suffit pas. Un candidat n’est installé que s’il bat à la fois le pronostic archivé et le favori du marché en Top 1. Ce contrôle limite les promotions sur petit échantillon, sans garantir la rentabilité.
 - Un historique de résultats seul ne permet pas de reconstruire un pronostic pré-course. Le tableau de bord d’évaluation exclut donc les courses sans snapshot enregistré à temps.
 - Les courses encore à courir restent en attente; elles ne comptent pas comme gagnées ou perdues. Les résultats non officiels ou manquants ne doivent pas être interprétés comme des pertes.
 - Les mises ou portefeuilles sont des outils de simulation. Ne misez pas sur la seule base d’un score affiché.
@@ -92,7 +95,7 @@ docker compose up -d --build
 docker compose logs -f pmu-server
 ```
 
-Le compose publie le port 3000 et monte `./data` dans `/app/data`. Il utilise actuellement `PORT=3000`; modifier le port hôte seul ne change pas le port interne. La politique `restart: always` redémarre le conteneur. Définissez les variables Telegram dans l’environnement ou un fichier `.env` local si elles sont nécessaires.
+Le compose publie le port 3000 et monte `./data` dans `/app/data`. La base et le modèle entraîné (`/app/data/ml-model`) survivent ainsi aux reconstructions du conteneur. Il utilise actuellement `PORT=3000`; modifier le port hôte seul ne change pas le port interne. La politique `restart: always` redémarre le conteneur. Définissez les variables Telegram dans l’environnement ou un fichier `.env` local si elles sont nécessaires.
 
 `scripts/setup_autostart.sh` peut activer ou créer un service système et requiert des droits élevés; lisez-le avant exécution. Ce n’est pas nécessaire avec le redémarrage Docker déjà configuré.
 

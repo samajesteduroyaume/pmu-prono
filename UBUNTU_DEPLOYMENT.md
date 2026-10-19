@@ -30,6 +30,8 @@ cp .env.example .env
 
 Éditez `.env` si nécessaire. Le processus doit pouvoir écrire dans `data/` et dans tout répertoire utilisé par `DB_PATH`. Gardez les secrets dans un fichier lisible uniquement par l’utilisateur de service, hors du contrôle de version.
 
+Les poids du modèle sont enregistrés dans `data/ml-model` par défaut indiqué dans `.env.example`. Ce dossier est ignoré par Git et doit rester sur un disque persistant. Pour systemd, `ReadWritePaths=/opt/pmu-prono/data` autorise déjà l’accès au répertoire par défaut. Docker Compose mappe aussi ce stockage sous `/app/data/ml-model`.
+
 Avant d’exposer le service, faites un contrôle local :
 
 ```sh

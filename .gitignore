@@ -4,6 +4,11 @@ node_modules/
 # Ignore database
 data/*.db
 data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+data/ml-model/
+data/ml-model.staging/
+data/ml-model.previous/
 
 # Ignore ML model (trop volumineux pour Git)
 src/ml/model/

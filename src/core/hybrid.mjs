@@ -5,15 +5,34 @@ if (!util.isNullOrUndefined) {
 
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 import { calculerPrediction as calculerPredictionV14 } from './intelligence.mjs';
 import { CONFIG } from '../config/settings.mjs';
 import { extractBaseFeatures } from './features.mjs';
-
-const MODEL_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../ml/model');
+import { MIN_PROMOTION_TEST_COURSES } from '../ml/promotion_gate.mjs';
+import { MODEL_PATH } from '../ml/model_paths.mjs';
+import { MIN_CAPTURED_COURSES, MIN_CAPTURE_DATES } from '../ml/course_split.mjs';
 let model = null;
 let metadata = null;
 let tfModule = null;
+let modelStatus = {
+    active: false,
+    reason: 'not-checked',
+    checkedAt: null
+};
+
+function updateModelStatus(reason, active = Boolean(model), details = {}) {
+    modelStatus = {
+        active,
+        reason,
+        checkedAt: new Date().toISOString(),
+        version: active ? metadata?.version || null : null,
+        trainedAt: active ? metadata?.trainedAt || null : null,
+        testTop1HitRate: active ? metadata?.testMlTop1HitRate ?? metadata?.testTop1HitRate ?? null : null,
+        testCourseCount: active ? metadata?.testCourseCount ?? null : null,
+        ...details
+    };
+}
 
 async function getTF() {
     if (tfModule) return tfModule;
@@ -37,7 +56,10 @@ async function getTF() {
 export async function loadMLModel() {
     try {
         const tf = await getTF();
-        if (!tf) return false;
+        if (!tf) {
+            updateModelStatus('tensorflow-unavailable');
+            return false;
+        }
 
         const modelPath = path.resolve(MODEL_PATH);
         const jsonPath = path.join(modelPath, 'model.json');
@@ -46,6 +68,7 @@ export async function loadMLModel() {
 
         if (!fs.existsSync(jsonPath)) {
             console.warn('[ML] Modèle non trouvé, utilisation de v14 uniquement');
+            updateModelStatus('model-not-found');
             return false;
         }
 
@@ -55,7 +78,9 @@ export async function loadMLModel() {
         }
         if (nextMetadata?.trainingMethod !== 'immutable-pre-race-feature-snapshots') {
             console.warn('[ML] Modèle historique ignoré : il n’a pas été entraîné sur des snapshots pré-course immuables. Utilisation de v14.');
-            if (!model) metadata = null;
+            updateModelStatus('unverified-training-provenance', Boolean(model), {
+                candidateVersion: nextMetadata?.version || null
+            });
             return false;
         }
 
@@ -82,6 +107,7 @@ export async function loadMLModel() {
         const previousModel = model;
         model = nextModel;
         metadata = nextMetadata;
+        updateModelStatus('active', true);
         const mlHitRate = metadata.testMlTop1HitRate ?? metadata.testTop1HitRate;
         const top1 = Number.isFinite(mlHitRate)
             ? `Top 1 ML seul (test prospectif): ${(mlHitRate * 100).toFixed(2)}%`
@@ -95,8 +121,21 @@ export async function loadMLModel() {
         return true;
     } catch (error) {
         console.error('[ML] Erreur chargement modèle:', error.message);
+        updateModelStatus('model-load-error', Boolean(model), { error: error.message });
         return false;
     }
+}
+
+export function getMLStatus() {
+    return {
+        ...modelStatus,
+        mode: model ? 'ml-hybrid' : 'heuristic-fallback',
+        trainingRequirements: {
+            minimumSettledCourses: MIN_CAPTURED_COURSES,
+            minimumDistinctDates: MIN_CAPTURE_DATES,
+            minimumMatchedTestCoursesForPromotion: MIN_PROMOTION_TEST_COURSES
+        }
+    };
 }
 
 let isWatcherActive = false;

@@ -3,6 +3,7 @@ import * as mlController from '../controllers/mlController.mjs';
 
 const router = Router();
 
+router.get('/status', mlController.getMLStatusController);
 router.get('/tendances', mlController.getTendances);
 router.get('/patterns', mlController.getPatterns);
 router.get('/sequence', mlController.getSequence);

@@ -3,11 +3,7 @@ import sqlite3 from 'sqlite3';
 import { CONFIG } from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
 import { isMainModule } from '../utils/isMainModule.mjs';
-
-const TRAIN_FRACTION = 0.70;
-const VALIDATION_FRACTION = 0.15;
-const MIN_CAPTURE_DATES = 30;
-const MIN_CAPTURED_COURSES = 120;
+import { MIN_CAPTURED_COURSES, splitCourseGroups } from './course_split.mjs';
 
 function shuffleWithSeed(items, seed) {
     let state = seed >>> 0;
@@ -22,25 +18,6 @@ function shuffleWithSeed(items, seed) {
         [result[i], result[j]] = [result[j], result[i]];
     }
     return result;
-}
-
-function splitCourseGroups(courses) {
-    const dates = [...new Set(courses.map(course => String(course.date || '')))].sort();
-    if (dates.length < MIN_CAPTURE_DATES) {
-        throw new Error(`Données prospectives insuffisantes : il faut au moins ${MIN_CAPTURE_DATES} dates distinctes pour séparer train, validation et test.`);
-    }
-
-    const trainEnd = Math.min(dates.length - 2, Math.max(1, Math.floor(dates.length * TRAIN_FRACTION)));
-    const validationEnd = Math.min(dates.length - 1, Math.max(trainEnd + 1, Math.floor(dates.length * (TRAIN_FRACTION + VALIDATION_FRACTION))));
-    const trainDates = new Set(dates.slice(0, trainEnd));
-    const validationDates = new Set(dates.slice(trainEnd, validationEnd));
-    const testDates = new Set(dates.slice(validationEnd));
-
-    return {
-        trainCourses: courses.filter(course => trainDates.has(String(course.date || ''))),
-        validationCourses: courses.filter(course => validationDates.has(String(course.date || ''))),
-        testCourses: courses.filter(course => testDates.has(String(course.date || '')))
-    };
 }
 
 function balanceTrainingSet(samples, seed) {

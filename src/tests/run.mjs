@@ -13,6 +13,10 @@ const testFiles = [
     'src/tests/test_v32_engines.mjs',
     'src/tests/test_v33_shield.mjs',
     'src/tests/test_live_patterns.mjs',
+    'src/tests/test_ml_promotion.mjs',
+    'src/tests/test_ml_status.mjs',
+    'src/tests/test_ml_course_split.mjs',
+    'src/tests/test_ml_snapshot_capture.mjs',
     'src/tests/check_v30_logic.mjs'
 ];
 

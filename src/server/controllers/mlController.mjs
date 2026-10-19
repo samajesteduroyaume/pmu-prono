@@ -1,6 +1,9 @@
 import logger from '../../utils/logger.mjs';
 import cache from '../../utils/cache.mjs';
 import { parseDays } from '../../utils/requestParams.mjs';
+import { getDB } from '../../db/db.mjs';
+import { countChronologicalCourseSplits } from '../../ml/course_split.mjs';
+import { MIN_PROMOTION_TEST_COURSES } from '../../ml/promotion_gate.mjs';
 
 function validEvaluationPeriod(startDate, endDate) {
     const validDate = value => {
@@ -110,6 +113,57 @@ export async function forecastEvaluation(req, res) {
     } catch (error) {
         logger.error(`API Forecast Evaluation Error: ${error.message}`);
         res.status(500).json({ error: error.message });
+    }
+}
+
+export async function getMLStatusController(req, res) {
+    try {
+        const { getMLStatus } = await import('../../core/hybrid.mjs');
+        const status = getMLStatus();
+        const db = getDB();
+        const rows = await new Promise((resolve, reject) => db.all(`
+            SELECT course_id, course_date, feature_vector_json, outcome_rank, settled_at
+            FROM prediction_snapshots
+            WHERE course_id IN (
+                SELECT DISTINCT course_id FROM prediction_snapshots WHERE settled_at IS NOT NULL
+            )
+            ORDER BY course_date, course_id
+        `, (error, result) => error ? reject(error) : resolve(result || [])));
+        const grouped = new Map();
+        for (const row of rows) {
+            if (!grouped.has(row.course_id)) {
+                grouped.set(row.course_id, { date: row.course_date, invalidFeatures: false, invalidOutcome: false, hasWinner: false, samples: 0 });
+            }
+            const course = grouped.get(row.course_id);
+            let features;
+            try { features = JSON.parse(row.feature_vector_json); } catch { features = null; }
+            if (!Array.isArray(features) || features.length !== 15 || !features.every(Number.isFinite)) course.invalidFeatures = true;
+            if (row.settled_at == null || row.outcome_rank == null) course.invalidOutcome = true;
+            else {
+                course.samples++;
+                if (Number(row.outcome_rank) === 1) course.hasWinner = true;
+            }
+        }
+        const eligible = [...grouped.values()].filter(course =>
+            !course.invalidFeatures && !course.invalidOutcome && course.samples > 0 && course.hasWinner
+        );
+        const splitCounts = countChronologicalCourseSplits(eligible);
+        const { minimumSettledCourses, minimumDistinctDates } = status.trainingRequirements;
+        status.trainingReadiness = {
+            eligibleCourses: eligible.length,
+            requiredCourses: minimumSettledCourses,
+            eligibleDates: splitCounts.dates,
+            requiredDates: minimumDistinctDates,
+            chronologicalSplit: splitCounts,
+            requiredTestCourses: MIN_PROMOTION_TEST_COURSES,
+            ready: eligible.length >= minimumSettledCourses
+                && splitCounts.splittable
+                && splitCounts.test >= MIN_PROMOTION_TEST_COURSES
+        };
+        res.json(status);
+    } catch (error) {
+        logger.error(`API ML Status Error: ${error.message}`);
+        res.status(500).json({ error: 'État ML indisponible.' });
     }
 }
 

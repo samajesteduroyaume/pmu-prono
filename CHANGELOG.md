@@ -8,6 +8,9 @@ Ce journal décrit les changements visibles dans le dépôt. Les anciennes notes
 
 - Suite locale unifiée via `npm test` et commandes explicites pour les vérifications d’intégration PMU du jour et de dates historiques.
 - Documentation d’installation, d’évaluation prospective, de configuration et de déploiement réécrite à partir du code et des commandes présents.
+- Route `GET /api/ml/status` et avertissement sur le tableau de bord pour distinguer le modèle ML actif du repli heuristique.
+- Garde de promotion des modèles comparant le Top 1 au pronostic archivé et au favori du marché sur un minimum de 100 courses communes.
+- Stockage configurable des poids, avec chemin Docker persistant sous `data/ml-model` pour les conserver lors des reconstructions.
 
 ### Modifié
 

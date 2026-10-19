@@ -24,8 +24,10 @@ export async function autoRetrain(options = {}) {
         if (Number.isFinite(metadata.testMarketTop1HitRate)) {
             logger.info(`Favori marché archivé : ${(metadata.testMarketTop1HitRate * 100).toFixed(2)}% (${metadata.testMarketCourseCount} courses)`);
         }
-        if (Number.isFinite(metadata.testMatchedForecastTop1HitRate) && Number.isFinite(metadata.testMatchedMarketTop1HitRate)) {
-            logger.info(`Comparaison sur les mêmes ${metadata.testMatchedCourseCount} courses : pronostic ${(metadata.testMatchedForecastTop1HitRate * 100).toFixed(2)}%, marché ${(metadata.testMatchedMarketTop1HitRate * 100).toFixed(2)}%`);
+        if (Number.isFinite(metadata.testMatchedMlTop1HitRate)
+            && Number.isFinite(metadata.testMatchedForecastTop1HitRate)
+            && Number.isFinite(metadata.testMatchedMarketTop1HitRate)) {
+            logger.info(`Comparaison Top 1 sur les mêmes ${metadata.testMatchedCourseCount} courses : ML ${(metadata.testMatchedMlTop1HitRate * 100).toFixed(2)}%, heuristique ${(metadata.testMatchedForecastTop1HitRate * 100).toFixed(2)}%, marché ${(metadata.testMatchedMarketTop1HitRate * 100).toFixed(2)}%`);
         }
 
         // Rechargement immédiat du modèle en mémoire dans le serveur actif

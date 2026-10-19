@@ -91,3 +91,28 @@ Réponse attendue :
   "dbConnected": true
 }
 ```
+
+---
+
+## 🔄 5. Démarrage Automatique au Redémarrage de la Freebox (Auto-Restart)
+
+Lorsque la **Freebox Ultra** effectue une mise à jour système et redémarre, la VM (Machine Virtuelle Linux) s'éteint. Pour que le serveur **PMU-Prono se relance automatiquement** dès la fin du redémarrage de la Freebox :
+
+### Étape 1 : Activer l'Auto-Start de la VM dans Freebox OS
+1. Ouvrez l'interface d'administration : `http://mafreebox.freebox.fr`
+2. Allez dans **Gestion des VMs** (VMs / Virtual Machines).
+3. Sélectionnez votre VM (Debian / Docker).
+4. Cochez l'option **"Démarrage automatique au démarrage de la Freebox"**.
+
+### Étape 2 : Activer l'Auto-Start de PMU-Prono dans la VM
+Exécutez simplement le script d'automatisation inclus dans le projet :
+
+```bash
+chmod +x scripts/setup_autostart.sh
+./scripts/setup_autostart.sh
+```
+
+Ce script détecte automatiquement votre mode de déploiement :
+- **Si vous utilisez Docker** : Il active le service Docker au démarrage (`sudo systemctl enable docker`). Le conteneur se relancera automatiquement grâce à `restart: always`.
+- **Si vous utilisez PM2** : Il configure `pm2 startup` pour relancer l'application Node.js au boot de la VM.
+- **Si vous utilisez Systemd** : Il génère et active automatiquement le service `/etc/systemd/system/pmu-prono.service`.

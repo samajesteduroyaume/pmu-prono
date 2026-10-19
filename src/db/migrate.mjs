@@ -39,34 +39,36 @@ export async function runMigrations(db) {
     for (const file of files) {
         if (!executed.includes(file)) {
             logger.info(`[DB] Exécution de la migration : ${file}`);
-            const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
-            
-            try {
-                // On utilise exec pour exécuter plusieurs statements SQL
-                await new Promise((resolve, reject) => {
-                    db.exec(sql, (err) => err ? reject(err) : resolve());
-                });
+            const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8')
+                .replace(/--.*$/gm, '');
+            const statements = sql.split(';').map(statement => statement.trim()).filter(Boolean);
 
-                // Enregistrer le succès
+            try {
+                await new Promise((resolve, reject) => db.run('BEGIN IMMEDIATE', error => error ? reject(error) : resolve()));
+                for (const statement of statements) {
+                    // Les anciennes bases ont parfois une colonne sans son
+                    // entrée migrations_history. Ignorer uniquement l'ALTER
+                    // correspondant si cette colonne existe déjà.
+                    const alterColumn = statement.match(/^ALTER\s+TABLE\s+["`\[]?([\w]+)["`\]]?\s+ADD\s+COLUMN\s+["`\[]?([\w]+)["`\]]?/i);
+                    if (alterColumn) {
+                        const [, tableName, columnName] = alterColumn;
+                        const columns = await new Promise((resolve, reject) => {
+                            db.all(`PRAGMA table_info("${tableName}")`, (error, rows) => error ? reject(error) : resolve(rows || []));
+                        });
+                        if (columns.some(column => column.name === columnName)) continue;
+                    }
+                    await new Promise((resolve, reject) => db.exec(statement, error => error ? reject(error) : resolve()));
+                }
                 await new Promise((resolve, reject) => {
-                    db.run('INSERT INTO migrations_history (name) VALUES (?)', [file], (err) => {
-                        err ? reject(err) : resolve();
-                    });
+                    db.run('INSERT INTO migrations_history (name) VALUES (?)', [file], error => error ? reject(error) : resolve());
                 });
+                await new Promise((resolve, reject) => db.run('COMMIT', error => error ? reject(error) : resolve()));
                 
                 logger.success(`[DB] Migration réussie : ${file}`);
             } catch (err) {
-                if (err.message && err.message.includes('duplicate column name')) {
-                    logger.warn(`[DB] Colonne déjà existante (${file}), enregistrement de la migration.`);
-                    await new Promise((resolve, reject) => {
-                        db.run('INSERT INTO migrations_history (name) VALUES (?)', [file], (err) => {
-                            err ? reject(err) : resolve();
-                        });
-                    });
-                } else {
-                    logger.error(`[DB] ÉCHEC de la migration ${file}: ${err.message}`);
-                    throw err;
-                }
+                await new Promise(resolve => db.run('ROLLBACK', () => resolve()));
+                logger.error(`[DB] ÉCHEC de la migration ${file}: ${err.message}`);
+                throw err;
             }
         }
     }

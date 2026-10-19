@@ -25,17 +25,23 @@ export async function analysePatternsCroises(historique) {
 
         const discipline = pari.discipline.toUpperCase();
         const hippodrome = pari.hippodrome;
-        const date = new Date(pari.date);
-        const jour = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'][date.getDay()];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(pari.date || '')) return;
+        const [year, month, day] = pari.date.split('-').map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day, 12));
+        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return;
+        const jour = date.toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
 
         // Extraire l'heure
-        const heureMatch = pari.heure_depart.match(/(\d+)h/);
-        const heure = heureMatch ? parseInt(heureMatch[1]) : null;
-        if (!heure) return;
+        const heureMatch = String(pari.heure_depart).match(/(\d{1,2})(?:h|:)/i);
+        const heure = heureMatch ? Number.parseInt(heureMatch[1], 10) : null;
+        if (!Number.isInteger(heure) || heure < 0 || heure > 23) return;
 
         const plageHoraire = getPlageHoraire(heure);
 
         const catTrend = pari.cat_trend || 'STABLE';
+
+        const mise = Number(pari.mise);
+        if (!Number.isFinite(mise) || mise <= 0) return;
 
         // Générer toutes les combinaisons possibles (Enrichies v43.3)
         const combinaisons = [
@@ -63,8 +69,7 @@ export async function analysePatternsCroises(historique) {
         ];
 
         const isWin = pari.resultat === 'WIN' || pari.resultat === 'win';
-        const mise = parseFloat(pari.mise) || 1;
-        const gain = parseFloat(pari.gain) || 0;
+        const gain = pari.gain == null || !Number.isFinite(Number(pari.gain)) ? null : Number(pari.gain);
 
         combinaisons.forEach(pattern => {
             if (!patterns.has(pattern)) {
@@ -75,23 +80,27 @@ export async function analysePatternsCroises(historique) {
                     losses: 0,
                     totalMise: 0,
                     totalGain: 0,
+                    missingPayouts: 0,
                     roi: 0,
                     winRate: 0,
                     avgOdds: 0,
-                    oddsSum: 0
+                    oddsSum: 0,
+                    oddsCount: 0
                 });
             }
 
             const p = patterns.get(pattern);
             p.count++;
             p.totalMise += mise;
-            p.totalGain += gain;
+            if (gain === null) p.missingPayouts++;
+            else p.totalGain += gain;
 
             if (isWin) {
                 p.wins++;
-                if (mise > 0) {
-                    const odds = (mise + gain) / mise;
+                const odds = Number(pari.cote);
+                if (Number.isFinite(odds) && odds > 1) {
                     p.oddsSum += odds;
+                    p.oddsCount++;
                 }
             } else {
                 p.losses++;
@@ -104,11 +113,11 @@ export async function analysePatternsCroises(historique) {
     patterns.forEach(p => {
         if (p.count >= PAT.min_significance_count) { // Minimum significatif
             p.winRate = (p.wins / p.count) * 100;
-            p.roi = p.totalMise > 0 ? ((p.totalGain / p.totalMise) * 100) : 0;
-            p.avgOdds = p.wins > 0 ? (p.oddsSum / p.wins) : 0;
+            p.roi = p.totalMise > 0 && p.missingPayouts === 0 ? ((p.totalGain / p.totalMise) * 100) : null;
+            p.avgOdds = p.oddsCount > 0 ? (p.oddsSum / p.oddsCount) : 0;
 
             // Score de qualité (combinaison de ROI et win rate)
-            p.qualityScore = (p.roi * 0.6) + (p.winRate * 0.4);
+            p.qualityScore = p.roi === null ? null : (p.roi * 0.6) + (p.winRate * 0.4);
 
             results.push({
                 pattern: p.pattern,
@@ -116,16 +125,17 @@ export async function analysePatternsCroises(historique) {
                 wins: p.wins,
                 losses: p.losses,
                 winRate: parseFloat(p.winRate.toFixed(2)),
-                roi: parseFloat(p.roi.toFixed(2)),
+                roi: p.roi === null ? null : parseFloat(p.roi.toFixed(2)),
                 avgOdds: parseFloat(p.avgOdds.toFixed(2)),
-                qualityScore: parseFloat(p.qualityScore.toFixed(2)),
-                profit: parseFloat((p.totalGain - p.totalMise).toFixed(2))
+                payoutCoverage: parseFloat((((p.count - p.missingPayouts) / p.count) * 100).toFixed(1)),
+                qualityScore: p.qualityScore === null ? null : parseFloat(p.qualityScore.toFixed(2)),
+                profit: p.missingPayouts === 0 ? parseFloat(p.totalGain.toFixed(2)) : null
             });
         }
     });
 
     // Trier par quality score décroissant
-    results.sort((a, b) => b.qualityScore - a.qualityScore);
+    results.sort((a, b) => (b.qualityScore ?? -Infinity) - (a.qualityScore ?? -Infinity));
 
     return {
         patterns: results,
@@ -158,32 +168,34 @@ export function identifierPatternsAEviter(patterns) {
 }
 
 /**
- * Analyse de corrélation entre cotes et performance
+ * Analyse des performances par plage de cotes
  */
 export function analyserCorrelationCotes(historique) {
-    if (!historique || historique.length === 0) {
-        return { ranges: [], correlation: 0 };
-    }
-
     const ranges = [
-        { min: 0, max: 2, label: '1.0-2.0', count: 0, wins: 0, totalMise: 0, totalGain: 0 },
-        { min: 2, max: 3, label: '2.0-3.0', count: 0, wins: 0, totalMise: 0, totalGain: 0 },
-        { min: 3, max: 5, label: '3.0-5.0', count: 0, wins: 0, totalMise: 0, totalGain: 0 },
-        { min: 5, max: 10, label: '5.0-10.0', count: 0, wins: 0, totalMise: 0, totalGain: 0 },
-        { min: 10, max: 999, label: '10.0+', count: 0, wins: 0, totalMise: 0, totalGain: 0 }
+        { min: 1, max: 2, label: '1.0-2.0', count: 0, wins: 0, totalMise: 0, totalGain: 0, missingPayouts: 0 },
+        { min: 2, max: 3, label: '2.0-3.0', count: 0, wins: 0, totalMise: 0, totalGain: 0, missingPayouts: 0 },
+        { min: 3, max: 5, label: '3.0-5.0', count: 0, wins: 0, totalMise: 0, totalGain: 0, missingPayouts: 0 },
+        { min: 5, max: 10, label: '5.0-10.0', count: 0, wins: 0, totalMise: 0, totalGain: 0, missingPayouts: 0 },
+        { min: 10, max: Infinity, label: '10.0+', count: 0, wins: 0, totalMise: 0, totalGain: 0, missingPayouts: 0 }
     ];
 
+    if (!historique || historique.length === 0) {
+        return { ranges: [], recommendation: getBestCoteRange([]) };
+    }
+
     historique.forEach(pari => {
-        const cote = parseFloat(pari.cote) || 0;
-        const mise = parseFloat(pari.mise) || 1;
-        const gain = parseFloat(pari.gain) || 0;
+        const cote = Number(pari.cote);
+        const mise = Number(pari.mise);
+        const gain = pari.gain == null || !Number.isFinite(Number(pari.gain)) ? null : Number(pari.gain);
         const isWin = pari.resultat === 'WIN' || pari.resultat === 'win';
 
+        if (!Number.isFinite(cote) || cote <= 1 || !Number.isFinite(mise) || mise <= 0) return;
         const range = ranges.find(r => cote >= r.min && cote < r.max);
         if (range) {
             range.count++;
             range.totalMise += mise;
-            range.totalGain += gain;
+            if (gain === null) range.missingPayouts++;
+            else range.totalGain += gain;
             if (isWin) range.wins++;
         }
     });
@@ -193,61 +205,13 @@ export function analyserCorrelationCotes(historique) {
         label: r.label,
         count: r.count,
         winRate: r.count > 0 ? ((r.wins / r.count) * 100).toFixed(2) : 0,
-        roi: r.totalMise > 0 ? (((r.totalGain / r.totalMise) * 100)).toFixed(2) : 0
+        roi: r.totalMise > 0 && r.missingPayouts === 0 ? (((r.totalGain / r.totalMise) * 100)).toFixed(2) : null
     }));
 
     return {
         ranges: results,
         recommendation: getBestCoteRange(results)
     };
-}
-
-/**
- * Détecte les mouvements suspects de cotes (smart money)
- */
-export function detecterSmartMoney(coursesRecentes) {
-    const alerts = [];
-
-    coursesRecentes.forEach(course => {
-        if (!course.participants) return;
-
-        course.participants.forEach(participant => {
-            const coteInitiale = parseFloat(participant.cote_initiale);
-            const coteActuelle = parseFloat(participant.cote_ref);
-
-            if (!coteInitiale || !coteActuelle) return;
-
-            const variation = ((coteActuelle - coteInitiale) / coteInitiale) * 100;
-
-            // Baisse significative de cote = smart money
-            if (variation < PAT.smart_money_threshold) {
-                alerts.push({
-                    course: `${course.reunionNum}C${course.courseNum}`,
-                    cheval: participant.nom,
-                    coteInitiale: coteInitiale.toFixed(2),
-                    coteActuelle: coteActuelle.toFixed(2),
-                    variation: variation.toFixed(2),
-                    type: 'SMART_MONEY',
-                    message: `Forte baisse de cote (${Math.abs(variation).toFixed(0)}%) - Argent intelligent détecté`
-                });
-            }
-
-            // Hausse significative = délaissement
-            if (variation > PAT.abandonment_threshold) {
-                alerts.push({
-                    course: `${course.reunionNum}C${course.courseNum}`,
-                    cheval: participant.nom,
-                    coteInitiale: coteInitiale.toFixed(2),
-                    coteActuelle: coteActuelle.toFixed(2),
-                    variation: variation.toFixed(2),
-                    type: 'DELAISSEMENT',
-                    message: `Forte hausse de cote (${variation.toFixed(0)}%) - Cheval délaissé`
-                });
-            }
-        });
-    });
-
-    return alerts;
 }
 
 /**
@@ -307,15 +271,19 @@ export function getPlageHoraire(heure) {
 function getBestCoteRange(ranges) {
     let best = ranges[0];
     let bestScore = -Infinity;
+    let found = false;
 
     ranges.forEach(r => {
-        if (r.count < 5) return; // Pas assez de données
+        if (r.count < 5 || r.roi == null) return; // Pas assez de données ou de rapports officiels
         const score = parseFloat(r.roi) * 0.7 + parseFloat(r.winRate) * 0.3;
         if (score > bestScore) {
             bestScore = score;
             best = r;
+            found = true;
         }
     });
+
+    if (!found) return { range: null, roi: null, winRate: null, message: 'Données insuffisantes avec rapports officiels complets.' };
 
     return {
         range: best.label,
@@ -355,14 +323,13 @@ function matchPattern(pattern, contexte) {
 /**
  * Fonction principale d'analyse complète
  */
-export async function analyseCompletePatterns(historique, coursesRecentes = []) {
+export async function analyseCompletePatterns(historique) {
     logger.info('Analyse complète des patterns...');
 
     const patternsCroises = await analysePatternsCroises(historique);
     const goldenPatterns = identifierGoldenPatterns(patternsCroises.patterns);
     const dangerPatterns = identifierPatternsAEviter(patternsCroises.patterns);
     const correlationCotes = analyserCorrelationCotes(historique);
-    const smartMoney = detecterSmartMoney(coursesRecentes);
 
     logger.success(`${patternsCroises.patterns.length} patterns identifiés`);
     logger.info(`${goldenPatterns.length} Golden Patterns`);
@@ -373,7 +340,6 @@ export async function analyseCompletePatterns(historique, coursesRecentes = []) 
         goldenPatterns,
         dangerPatterns,
         correlationCotes,
-        smartMoney,
         stats: patternsCroises.stats
     };
 }

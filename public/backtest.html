@@ -75,10 +75,10 @@
             <header class="stage-header">
                 <div class="title-group">
                     <h1>Laboratoire Élite</h1>
-                    <div class="meta"><span class="live-indicator"></span> BACKTESTING ET OPTIMISATION DE STRATÉGIES</div>
+                    <div class="meta"><span class="live-indicator"></span> ÉVALUATION CHRONOLOGIQUE DES PRONOSTICS</div>
                 </div>
                 <div class="actions" style="display: flex; gap: 12px;">
-                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
+                    <button onclick="syncHistoryPrompt(event)" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
                         <i class="fas fa-history"></i>
                         <span>Synchro. Étendue</span>
                     </button>
@@ -92,108 +92,68 @@
             <div class="scroll-content">
                 <!-- Configuration Section -->
                 <div class="stat-card" style="margin-bottom: 40px; background: hsla(var(--h-indigo), 84%, 67%, 0.02);">
-                    <label>Paramètres de Simulation</label>
+                    <label>Période évaluée</label>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-top: 20px;">
                         <div>
                             <span style="font-size: 11px; color: var(--text-low); text-transform: uppercase; font-weight: 800;">Date de Début</span>
-                            <input type="date" id="startDate" value="2026-01-01" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
+                            <input type="date" id="startDate" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
                         </div>
                         <div>
                             <span style="font-size: 11px; color: var(--text-low); text-transform: uppercase; font-weight: 800;">Date de Fin</span>
-                            <input type="date" id="endDate" value="2026-05-01" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
-                        </div>
-                        <div>
-                            <span style="font-size: 11px; color: var(--text-low); text-transform: uppercase; font-weight: 800;">Capital Initial</span>
-                            <input type="number" id="initialBankroll" value="1000" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
+                            <input type="date" id="endDate" style="width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: var(--border-light); background: hsla(0,0%,0%,0.3); color: white; font-family: 'JetBrains Mono'; font-weight: 700; outline: none;">
                         </div>
                     </div>
                     <button onclick="runComparison()" style="margin-top: 32px; width: 100%; padding: 20px; background: var(--accent-indigo); border: none; border-radius: 12px; color: white; font-weight: 800; cursor: pointer; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 20px hsla(var(--h-indigo), 84%, 67%, 0.3);">
-                        <i class="fas fa-play" style="margin-right: 12px;"></i> LANCER LA SIMULATION COMPLÈTE
+                        <i class="fas fa-chart-line" style="margin-right: 12px;"></i> ANALYSER LES PRONOSTICS ENREGISTRÉS
                     </button>
+                    <p style="margin: 18px 0 0; color: var(--text-low); font-size: 12px; line-height: 1.6;">Seuls les pronostics capturés avant le départ sont évalués. Les courses historiques sans capture ne sont pas reconstituées. Le ROI apparaît lorsque les rapports officiels sont disponibles.</p>
                 </div>
 
                 <!-- Results Section -->
                 <div id="results" style="display: none;">
-                    <div class="data-table-container" style="margin-bottom: 40px;">
-                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-gold); font-size: 13px; letter-spacing: 1px;">
-                            <i class="fas fa-chart-line"></i> RÉSULTATS COMPARATIFS
-                        </div>
-                        <table class="data-table" id="comparison-table">
-                            <thead>
-                                <tr>
-                                    <th>Stratégie</th>
-                                    <th style="text-align: right;">Capital Final</th>
-                                    <th style="text-align: right;">Profit</th>
-                                    <th style="text-align: right;">ROI</th>
-                                    <th style="text-align: right;">WinRate</th>
-                                    <th style="text-align: right;">Sharpe</th>
-                                    <th style="text-align: right;">Max DD</th>
-                                </tr>
-                            </thead>
-                            <tbody id="comparison-body"></tbody>
-                        </table>
+                    <div id="evaluation-summary" class="stat-card" style="margin-bottom: 24px;"></div>
+                    <div class="data-table-container" style="margin-bottom: 24px; overflow-x: auto;">
+                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-gold);">IA VS FAVORI DU MARCHÉ</div>
+                        <div id="comparison-coverage" style="padding: 0 24px 16px; color: var(--text-low); font-size: 12px;"></div>
+                        <table class="data-table"><thead><tr><th>Référence</th><th>Courses</th><th>Réglées</th><th>Gagnants</th><th>Taux</th><th>IC 95 %</th><th>ROI officiel</th><th>Couverture rapports</th></tr></thead><tbody id="comparison-body"></tbody></table>
                     </div>
-
-                    <div class="stat-card" style="height: 500px; margin-bottom: 40px; background: hsla(0,0%,0%,0.2);">
-                        <label>Équité Comparative</label>
-                        <canvas id="bankroll-chart"></canvas>
+                    <div class="data-table-container" style="margin-bottom: 24px; overflow-x: auto;">
+                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-indigo);">RÉSULTATS PAR DISCIPLINE ET COTE DU PREMIER CHOIX IA</div>
+                        <table class="data-table"><thead><tr><th>Segment</th><th>Courses</th><th>Réglées</th><th>Gagnants</th><th>Taux</th><th>IC 95 %</th><th>ROI officiel</th></tr></thead><tbody id="segments-body"></tbody></table>
                     </div>
-
-                    <div class="data-table-container">
-                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-indigo); display: flex; justify-content: space-between; align-items: center; font-size: 13px; letter-spacing: 1px;">
-                            <span><i class="fas fa-history"></i> HISTORIQUE DÉTAILLÉ (DERNIÈRE STRATÉGIE)</span>
-                            <span style="font-size: 10px; color: var(--text-low); font-weight: 700;">ALGORITHME V43.3 • XAI ENABLED</span>
-                        </div>
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Course</th>
-                                    <th>Sélection</th>
-                                    <th style="text-align: right;">Cote</th>
-                                    <th style="text-align: right;">Mise</th>
-                                    <th style="text-align: right;">Résultat</th>
-                                    <th style="text-align: right;">Profit</th>
-                                </tr>
-                            </thead>
-                            <tbody id="history-body"></tbody>
-                        </table>
+                    <div class="data-table-container" style="margin-bottom: 24px; overflow-x: auto;">
+                        <div style="padding: 24px; border-bottom: var(--border-light); font-weight: 800; color: var(--accent-emerald);">TAUX DE RÉUSSITE OBSERVÉ PAR TRANCHE DE SCORE</div>
+                        <table class="data-table"><thead><tr><th>Score IA</th><th>Capturés</th><th>Réglés</th><th>Gagnants</th><th>Taux observé</th><th>IC 95 %</th></tr></thead><tbody id="calibration-body"></tbody></table>
                     </div>
+                    <div id="quality-summary" class="stat-card"></div>
                 </div>
 
                 <!-- Loader -->
                 <div id="loader" style="display: none; text-align: center; padding: 120px;">
                     <i class="fas fa-circle-notch fa-spin" style="font-size: 48px; color: var(--accent-indigo); text-shadow: 0 0 20px var(--accent-indigo-glow);"></i>
-                    <div style="margin-top: 24px; font-weight: 800; color: var(--text-med); letter-spacing: 2px;">ANALYSE DES VECTEURS HISTORIQUES...</div>
+                    <div style="margin-top: 24px; font-weight: 800; color: var(--text-med); letter-spacing: 2px;">LECTURE DES PRONOSTICS CAPTURÉS...</div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        let comparisonChart = null;
-
         async function runComparison() {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            const initialBankroll = parseInt(document.getElementById('initialBankroll').value);
-
             document.getElementById('loader').style.display = 'block';
             document.getElementById('results').style.display = 'none';
 
             try {
-                const res = await fetch('/api/backtest/compare', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ startDate, endDate, initialBankroll })
-                });
-
+                const query = new URLSearchParams();
+                if (startDate) query.set('startDate', startDate);
+                if (endDate) query.set('endDate', endDate);
+                const res = await fetch('/api/performance/forecast?' + query.toString());
                 const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Échec du chargement');
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('results').style.display = 'block';
-
-                renderComparisonTable(data.strategies);
-                renderBankrollChart(data.strategies);
+                renderForecastEvaluation(data);
 
             } catch (e) {
                 console.error('Erreur backtesting:', e);
@@ -202,91 +162,23 @@
             }
         }
 
-        function renderComparisonTable(strategies) {
-            const tbody = document.getElementById('comparison-body');
-            const historyBody = document.getElementById('history-body');
-            tbody.innerHTML = '';
-            historyBody.innerHTML = '';
+        const escapeBacktestHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
 
-            let lastStratHistory = [];
-
-            for (const [name, metrics] of Object.entries(strategies)) {
-                const row = document.createElement('tr');
-                row.style.animation = 'fadeIn 0.5s ease-out both';
-                const profitColor = metrics.profit >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)';
-
-                row.innerHTML = `
-                    <td style="font-weight: 800; color: var(--text-pure);">${name}</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${metrics.finalBankroll} €</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; color: ${profitColor}; font-weight: 800;">${metrics.profit >= 0 ? '+' : ''}${metrics.profit} €</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; color: ${profitColor}; font-weight: 800;">${metrics.roi}%</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${metrics.winRate}%</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${metrics.sharpe}</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; color: var(--accent-crimson); font-weight: 700;">${metrics.maxDrawdownPercent}%</td>
-                `;
-                tbody.appendChild(row);
-                lastStratHistory = metrics.history;
-            }
-
-            historyBody.innerHTML = lastStratHistory.slice(-50).reverse().map((h, i) => `
-                <tr style="animation: fadeIn 0.4s ease-out ${i * 0.02}s both">
-                    <td style="font-size: 11px; font-family: 'JetBrains Mono';">${h.date}</td>
-                    <td style="font-size: 12px; color: var(--text-med); font-weight: 600;">${h.course || ''}</td>
-                    <td style="font-weight: 800; color: var(--text-pure);">${h.selection || ''}</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 700; color: var(--accent-gold);">${h.cote || ''}</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${h.mise} €</td>
-                    <td style="text-align: right;">
-                        <span class="badge ${h.resultat === 'WIN' ? 'badge-success' : 'badge-warning'}">
-                            ${h.resultat}
-                        </span>
-                    </td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 800; color: ${h.gain >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)'};">
-                        ${h.gain >= 0 ? '+' : ''}${h.gain.toFixed(2)} €
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function renderBankrollChart(strategies) {
-            const ctx = document.getElementById('bankroll-chart').getContext('2d');
-            const datasets = [];
-            const palette = ['#6366f1', '#fbbf24', '#10b981', '#ef4444', '#a855f7'];
-
-            let colorIdx = 0;
-            for (const [name, metrics] of Object.entries(strategies)) {
-                datasets.push({
-                    label: name,
-                    data: metrics.history.map(h => h.bankroll),
-                    borderColor: palette[colorIdx % palette.length],
-                    borderWidth: 3,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    fill: false
-                });
-                colorIdx++;
-            }
-
-            if (comparisonChart) comparisonChart.destroy();
-
-            comparisonChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array.from({ length: datasets[0].data.length }, (_, i) => i + 1),
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'top', labels: { color: '#94a3b8', font: { family: 'Outfit', weight: 600, size: 12 } } }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 } } },
-                        y: { grid: { color: 'hsla(0,0%,100%,0.03)' }, ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 } } }
-                    }
-                }
-            });
+        function percent(value) { return value === null || value === undefined ? '—' : `${value}%`; }
+        function interval(value) { return value ? `${value[0]}–${value[1]}%` : '—'; }
+        function roi(value) { return value === null || value === undefined ? 'Indisponible' : `${value}%`; }
+        function renderForecastEvaluation(data) {
+            const q = data.quality;
+            document.getElementById('evaluation-summary').innerHTML = `<strong>Évaluation chronologique</strong><p style="color:var(--text-med);line-height:1.6">${escapeBacktestHtml(data.methodology)}</p><div style="color:var(--text-low);font-size:12px">Période : ${escapeBacktestHtml(data.period.startDate || 'début des captures')} → ${escapeBacktestHtml(data.period.endDate || 'aujourd’hui')}</div>`;
+            document.getElementById('comparison-body').innerHTML = data.comparison.map(row => `<tr><td>${escapeBacktestHtml(row.label)}</td><td>${row.courses}</td><td>${row.settled}</td><td>${row.wins}</td><td>${percent(row.winRate)}</td><td>${interval(row.confidence95)}</td><td title="${escapeBacktestHtml(row.roiStatus)}">${roi(row.roi)}</td><td>${percent(row.payoutCoverage)}</td></tr>`).join('');
+            const coverage = data.comparisonCoverage || {};
+            document.getElementById('comparison-coverage').textContent = `Comparaison sur ${coverage.coursesWithBothPicks ?? 0} courses avec un choix IA et un favori marché. Choix IA capturés : ${coverage.iaPicks ?? 0} ; favoris marché capturés : ${coverage.marketPicks ?? 0}.`;
+            const segments = [...data.byDiscipline.map(row => ({ ...row, segment: `Discipline : ${row.segment}` })), ...data.byOdds.map(row => ({ ...row, segment: `Cote IA : ${row.segment}` }))];
+            document.getElementById('segments-body').innerHTML = segments.map(row => `<tr><td>${escapeBacktestHtml(row.segment)}</td><td>${row.courses}</td><td>${row.settled}</td><td>${row.wins}</td><td>${percent(row.winRate)}</td><td>${interval(row.confidence95)}</td><td>${roi(row.roi)}</td></tr>`).join('');
+            document.getElementById('calibration-body').innerHTML = data.scoreBands.map(row => `<tr><td>${escapeBacktestHtml(row.band)}</td><td>${row.captured}</td><td>${row.settled}</td><td>${row.wins}</td><td>${percent(row.winRate)}</td><td>${interval(row.confidence95)}</td></tr>`).join('');
+            document.getElementById('quality-summary').innerHTML = `<strong>Qualité et couverture des données</strong><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:18px;color:var(--text-med)"><div>Courses avec capture : <b>${q.capturedCourses}</b></div><div>Partants enregistrés : <b>${q.capturedRunners}</b></div><div>Courses réglées : <b>${q.settledCourses}</b></div><div>Courses utilisables pour entraînement : <b>${q.trainingEligibleCourses}</b></div><div>Couverture résultats : <b>${percent(q.settlementCoverage)}</b></div><div>Partants sans variables figées : <b>${q.runnersWithoutFrozenFeatures}</b></div><div>Favoris IA sans cote : <b>${q.topPicksWithoutOdds}</b></div><div>Favoris IA sans musique : <b>${q.topPicksWithoutForm}</b></div><div>Favoris IA sans driver : <b>${q.topPicksWithoutDriver}</b></div><div>Gagnants sans rapport officiel : <b>${q.payoutMissingAmongWinningPicks}</b></div><div>Courses historiques non évaluables : <b>${q.legacyFinishedCoursesWithoutSnapshot}</b></div><div>Versions de modèle : <b>${escapeBacktestHtml((q.modelVersions || []).join(', ') || '—')}</b></div><div>Dernière capture : <b>${escapeBacktestHtml(q.lastCaptureAt || '—')}</b></div><div>Dernier règlement : <b>${escapeBacktestHtml(q.lastSettlementAt || '—')}</b></div></div>`;
         }
     </script>
     <script src="js/app.js"></script>

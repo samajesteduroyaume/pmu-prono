@@ -73,7 +73,7 @@
                     <div class="amount" id="stat-winrate-display" style="color: var(--accent-indigo); font-size: 20px;">--%</div>
                 </div>
                 <div class="bankroll-card">
-                    <label>Capital Actuel</label>
+                    <label>Capital simulé</label>
                     <div class="amount" id="stat-bankroll-display">0.00 €</div>
                 </div>
                 <div style="margin-top: 24px; font-size: 10px; color: var(--text-low); text-align: center; font-weight: 800; letter-spacing: 1px;">
@@ -97,7 +97,7 @@
                         <input type="date" id="calendar-filter" onchange="refreshData()" style="background: transparent; border: none; color: var(--text-pure); font-family: 'JetBrains Mono'; font-size: 13px; outline: none; cursor: pointer;">
                         <button onclick="document.getElementById('calendar-filter').value=''; refreshData();" title="Voir toutes les dates" style="background: transparent; border: none; color: var(--accent-gold); cursor: pointer; font-size: 11px; font-weight: 700; padding: 2px 6px;">TOUT</button>
                     </div>
-                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px;">
+                    <button onclick="syncHistoryPrompt(event)" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px;">
                         <i class="fas fa-history"></i>
                         <span>Synchro. Étendue</span>
                     </button>
@@ -147,9 +147,9 @@
                                 <i class="fas fa-chart-line" style="color: var(--accent-pmu-green-bright); font-size: 13px;"></i>
                                 <select id="filter-min-score" onchange="filterScanner()" style="background: transparent; border: none; color: var(--text-high); font-size: 13px; font-weight: 600; outline: none; cursor: pointer;">
                                     <option value="0" style="background: #0d1712;">Tous les scores IA</option>
-                                    <option value="50" style="background: #0d1712;">Score ≥ 50%</option>
-                                    <option value="65" style="background: #0d1712;">Score ≥ 65%</option>
-                                    <option value="75" style="background: #0d1712;">Score ≥ 75% (Élite)</option>
+                                    <option value="50" style="background: #0d1712;">Score ≥ 50 points</option>
+                                    <option value="65" style="background: #0d1712;">Score ≥ 65 points</option>
+                                    <option value="75" style="background: #0d1712;">Score ≥ 75 points (Élite)</option>
                                 </select>
                             </div>
 

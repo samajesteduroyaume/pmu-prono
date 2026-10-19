@@ -1,6 +1,7 @@
 import { syncHistory, syncLive } from '../../core/sync_manager.mjs';
 import { syncSchema } from '../validators/syncValidator.mjs';
 import logger from '../../utils/logger.mjs';
+import { formatDate } from '../../utils/dateUtils.mjs';
 
 export async function sync(req, res) {
     try {
@@ -44,7 +45,7 @@ export async function sync(req, res) {
             // Synchronisation synchrone directe pour 1 seul jour (rapide)
             const results = await syncHistory(date, 1);
             res.json({
-                success: true,
+                success: results.errors.length === 0,
                 count: results.totalCourses,
                 daysProcessed: results.successfulDays,
                 errors: results.errors
@@ -59,7 +60,7 @@ export async function sync(req, res) {
 export async function syncLiv(req, res) {
     try {
         const results = await syncLive();
-        res.json({ success: true, count: results.totalCourses, date: new Date().toISOString().split('T')[0] });
+        res.json({ success: results.errors.length === 0, count: results.totalCourses, errors: results.errors, date: formatDate(new Date()) });
     } catch (e) {
         logger.error(`Live Sync Error: ${e.message}`);
         res.status(500).json({ success: false, error: e.message });

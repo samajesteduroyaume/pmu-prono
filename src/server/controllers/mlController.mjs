@@ -1,19 +1,31 @@
 import logger from '../../utils/logger.mjs';
 import cache from '../../utils/cache.mjs';
+import { parseDays } from '../../utils/requestParams.mjs';
+
+function validEvaluationPeriod(startDate, endDate) {
+    const validDate = value => {
+        if (!value) return true;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const parsed = new Date(`${value}T00:00:00Z`);
+        return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+    };
+    return validDate(startDate) && validDate(endDate) && (!startDate || !endDate || startDate <= endDate);
+}
 
 export async function getTendances(req, res) {
     try {
         const { days } = req.query;
-        const daysFilter = days ? parseInt(days) : null;
+        const daysFilter = parseDays(days);
+        if (daysFilter === undefined) return res.status(400).json({ error: 'Le paramètre days doit être un entier entre 1 et 3650.' });
         
-        const cacheKey = cache.generateKey('tendances', daysFilter || 'all');
+        const cacheKey = cache.generateKey('tendances', daysFilter ?? 'all');
         const cached = cache.get(cacheKey);
         if (cached) return res.json(cached);
 
         const { getTendancesCumulees } = await import('../../core/db.mjs');
         const tendances = await getTendancesCumulees(daysFilter);
         
-        cache.set(cacheKey, tendances, 3600); // 1h cache
+        cache.set(cacheKey, tendances, 60); // Les réglages peuvent changer après la synchronisation d'une arrivée.
         res.json(tendances);
     } catch (error) {
         logger.error(`API Error Tendances: ${error.message}`);
@@ -24,7 +36,8 @@ export async function getTendances(req, res) {
 export async function getPatterns(req, res) {
     try {
         const { days } = req.query;
-        const daysFilter = days ? parseInt(days) : 30;
+        const daysFilter = parseDays(days, 30);
+        if (daysFilter === undefined) return res.status(400).json({ error: 'Le paramètre days doit être un entier entre 1 et 3650.' });
         const { getHistoriqueParis } = await import('../../core/db.mjs');
         const { detecterPatterns } = await import('../../core/tendances.mjs');
         const historique = await getHistoriqueParis(daysFilter);
@@ -54,11 +67,11 @@ export async function valueHunter(req, res) {
         const opportunities = await detectOpportunities(date);
         
         // Broadcast via Websocket si Smart Money détecté
-        const smartMoneys = opportunities.filter(o => o.is_smart_money || o.is_smart_money_alert);
-        if (smartMoneys.length > 0) {
+        const valueSignals = opportunities.filter(o => o.is_value_signal);
+        if (valueSignals.length > 0) {
             const io = req.app.get('io');
             if (io) {
-                io.emit('smart_money_alert', smartMoneys);
+                io.emit('value_opportunity_alert', valueSignals);
             }
         }
 
@@ -72,9 +85,9 @@ export async function valueHunter(req, res) {
 export async function backtest(req, res) {
     try {
         const { startDate, endDate } = req.body;
-        const { runBacktest } = await import('../../ml/backtest.mjs');
-        const results = await runBacktest(startDate, endDate);
-        res.json(results);
+        if (!validEvaluationPeriod(startDate, endDate)) return res.status(400).json({ error: 'Période invalide : dates attendues au format AAAA-MM-JJ.' });
+        const { getForecastEvaluation } = await import('../../core/forecast_evaluation.mjs');
+        res.json(await getForecastEvaluation({ startDate, endDate }));
     } catch (error) {
         logger.error(`API Backtest Error: ${error.message}`);
         res.status(500).json({ error: error.message });
@@ -82,35 +95,35 @@ export async function backtest(req, res) {
 }
 
 export async function backtestCompare(req, res) {
+    // L'évaluation standard inclut déjà la comparaison IA/marché sur les mêmes courses.
+    return backtest(req, res);
+}
+
+export async function forecastEvaluation(req, res) {
     try {
-        const { startDate, endDate, initialBankroll = 1000 } = req.body;
-        const { compareKellyStrategies } = await import('../../ml/backtest.mjs');
-        const results = await compareKellyStrategies(startDate, endDate, initialBankroll);
-        res.json(results);
+        const { startDate, endDate } = req.query;
+        if (!validEvaluationPeriod(startDate, endDate)) {
+            return res.status(400).json({ error: 'Période invalide : dates attendues au format AAAA-MM-JJ.' });
+        }
+        const { getForecastEvaluation } = await import('../../core/forecast_evaluation.mjs');
+        res.json(await getForecastEvaluation({ startDate, endDate }));
     } catch (error) {
-        logger.error(`API Compare Strategies Error: ${error.message}`);
+        logger.error(`API Forecast Evaluation Error: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 }
 
 export async function backtestMonteCarlo(req, res) {
-    try {
-        const { startDate, endDate, simulations = 100, initialBankroll = 1000 } = req.body;
-        const { runMonteCarloSimulation } = await import('../../ml/backtest.mjs');
-        const results = await runMonteCarloSimulation(startDate, endDate, simulations, initialBankroll);
-        res.json(results);
-    } catch (error) {
-        logger.error(`API Monte Carlo Error: ${error.message}`);
-        res.status(500).json({ error: error.message });
-    }
+    return res.status(410).json({ error: 'Simulation désactivée : elle utilisait des données historiques recalculées et ne mesure pas des pronostics enregistrés avant course.' });
 }
 
 export async function getOptimizedPatterns(req, res) {
     try {
-        const { days = 30 } = req.query;
+        const days = parseDays(req.query.days, 30);
+        if (days === undefined) return res.status(400).json({ error: 'Le paramètre days doit être un entier entre 1 et 3650.' });
         const { getHistoriqueParis } = await import('../../core/db.mjs');
         const { analyseCompletePatterns } = await import('../../core/pattern_optimizer.mjs');
-        const historique = await getHistoriqueParis(parseInt(days));
+        const historique = await getHistoriqueParis(days);
         const results = await analyseCompletePatterns(historique);
         res.json(results);
     } catch (error) {
@@ -121,10 +134,12 @@ export async function getOptimizedPatterns(req, res) {
 
 export async function getRecommendations(req, res) {
     try {
-        const { contexte, days = 30 } = req.body;
+        const { contexte } = req.body || {};
+        const days = parseDays(req.body?.days, 30);
+        if (days === undefined) return res.status(400).json({ error: 'Le paramètre days doit être un entier entre 1 et 3650.' });
         const { getHistoriqueParis } = await import('../../core/db.mjs');
         const { analysePatternsCroises, genererRecommandations } = await import('../../core/pattern_optimizer.mjs');
-        const historique = await getHistoriqueParis(parseInt(days));
+        const historique = await getHistoriqueParis(days);
         const { patterns } = await analysePatternsCroises(historique);
         const recommendations = genererRecommandations(patterns, contexte);
         res.json({ recommendations, totalPatterns: patterns.length, contexte });

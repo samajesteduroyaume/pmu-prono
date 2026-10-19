@@ -1,21 +1,22 @@
-// scripts/test_dates.mjs
+import assert from 'node:assert/strict';
+import { formatDate } from '../utils/dateUtils.mjs';
 
-console.log('=== TEST DES DATES ===');
+console.log('=== TEST DES DATES (Europe/Paris) ===');
 
-const today = new Date();
-console.log('Date actuelle:', today);
-console.log('Date ISO:', today.toISOString());
-console.log('Date locale:', today.toLocaleDateString('fr-FR'));
+const fixedDate = new Date('2024-12-30T12:00:00.000Z');
+assert.equal(formatDate(fixedDate), '2024-12-30', 'La date locale du 30 décembre doit rester le 30 décembre.');
+console.log('Date fixe:', formatDate(fixedDate));
 
-// Test du calcul des 7 derniers jours
-console.log('\n=== 7 DERNIERS JOURS ===');
-for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(today.getDate() - i);
-    console.log(`Jour ${7-i}: ${date.toISOString().split('T')[0]} (${date.toLocaleDateString('fr-FR')})`);
+const today = formatDate(new Date());
+const dateOnly = new Date(`${today}T12:00:00.000Z`);
+const lastSevenDays = [];
+for (let offset = 6; offset >= 0; offset--) {
+    const date = new Date(dateOnly);
+    date.setUTCDate(date.getUTCDate() - offset);
+    lastSevenDays.push(formatDate(date));
 }
 
-// Test avec une date fixe pour voir
-console.log('\n=== TEST AVEC DATE FIXE ===');
-const testDate = new Date(2024, 11, 30); // 30 décembre 2024
-console.log('Date de test:', testDate.toISOString().split('T')[0]); 
+assert.equal(new Set(lastSevenDays).size, 7, 'Les sept dates doivent être distinctes.');
+assert.equal(lastSevenDays.at(-1), today, 'La dernière date doit correspondre à aujourd’hui à Paris.');
+console.log('Sept derniers jours:', lastSevenDays.join(', '));
+console.log('Dates validées.');

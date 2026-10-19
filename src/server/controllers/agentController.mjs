@@ -1,18 +1,27 @@
 import logger from '../../utils/logger.mjs';
 import { syncLive, syncHistory } from '../../core/sync_manager.mjs';
-import { getCourses, getCourseDetails, getQuintePrediction, getPepites } from '../controllers/courseController.mjs';
-import { getPerformance } from '../controllers/statController.mjs';
+import { getCourseDetails, getQuintePrediction, getPepites } from '../controllers/courseController.mjs';
 import { getDB } from '../../db/db.mjs';
+import { syncSchema } from '../validators/syncValidator.mjs';
 
 /**
  * Controller pour le contrôle à distance par IA (AI Agent Remote API)
  */
 
 // Key secret d'API facultative (sécurité si définie dans .env)
-const AGENT_API_KEY = process.env.AGENT_API_KEY || null;
+const configuredAgentKey = String(process.env.AGENT_API_KEY || '').trim();
+const AGENT_API_KEY = configuredAgentKey && configuredAgentKey !== 'pmu_agent_secret_key_v43'
+    && !/^(CHANGE_ME|YOUR_)/i.test(configuredAgentKey)
+    ? configuredAgentKey
+    : null;
+const AGENT_ACTIONS = [
+    'SYNC_MARKET', 'GET_QUINTE', 'GET_PEPITES', 'ANALYZE_COURSE',
+    'QUERY_DATABASE', 'GET_HORSE_HISTORY', 'GET_ENTOURAGE_STATS', 'GET_FINANCE_STATS'
+];
 
 function checkAuth(req) {
-    if (!AGENT_API_KEY) return true;
+    // Fail closed: this API exposes data and can trigger expensive sync jobs.
+    if (!AGENT_API_KEY) return false;
     const providedKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
     return providedKey === AGENT_API_KEY;
 }
@@ -29,13 +38,16 @@ export async function getAgentStatus(req, res) {
         const memory = process.memoryUsage();
         const db = getDB();
 
-        const dbInfo = await new Promise((resolve) => {
+        const dbInfo = await new Promise((resolve, reject) => {
             db.get(`
                 SELECT 
                     (SELECT COUNT(*) FROM courses) as total_courses,
                     (SELECT COUNT(*) FROM participants) as total_participants,
                     (SELECT MAX(date) FROM courses) as latest_course_date
-            `, [], (err, row) => resolve(row || { total_courses: 0, total_participants: 0, latest_course_date: null }));
+            `, [], (err, row) => {
+                if (err) reject(err);
+                else resolve(row || { total_courses: 0, total_participants: 0, latest_course_date: null });
+            });
         });
 
         res.json({
@@ -53,16 +65,7 @@ export async function getAgentStatus(req, res) {
                 total_participants: dbInfo.total_participants,
                 latest_date: dbInfo.latest_course_date
             },
-            capabilities: [
-                "SYNC_MARKET",
-                "GET_QUINTE_PREDICTION",
-                "GET_PEPITES_IA",
-                "ANALYZE_COURSE",
-                "GET_FINANCE_STATS",
-                "QUERY_DATABASE",
-                "GET_HORSE_HISTORY",
-                "GET_ENTOURAGE_STATS"
-            ]
+            capabilities: AGENT_ACTIONS
         });
     } catch (e) {
         logger.error(`[Agent API] Status error: ${e.message}`);
@@ -78,18 +81,30 @@ export async function executeAgentCommand(req, res) {
         return res.status(401).json({ success: false, error: 'Clé API Agent non valide ou manquante.' });
     }
 
-    const { action, params = {} } = req.body;
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return res.status(400).json({ success: false, error: 'Un objet JSON est requis.' });
+    }
+    const { action, params = {} } = body;
+    if (!params || typeof params !== 'object' || Array.isArray(params)) {
+        return res.status(400).json({ success: false, error: 'Le champ params doit être un objet.' });
+    }
     logger.info(`[Agent API] Commande IA reçue: ${action}`);
 
     try {
         switch (action) {
             case 'SYNC_MARKET': {
-                const days = params.days || 1;
-                const result = await syncHistory(days);
+                const validation = syncSchema.safeParse(params);
+                if (!validation.success) {
+                    return res.status(400).json({ success: false, error: 'Paramètres de synchronisation invalides.', details: validation.error.format() });
+                }
+                const { days, date } = validation.data;
+                const result = await syncHistory(date, days);
+                const success = result.errors.length === 0;
                 return res.json({
-                    success: true,
+                    success,
                     action: 'SYNC_MARKET',
-                    message: `Synchronisation réussie pour ${days} jour(s).`,
+                    message: success ? `Synchronisation réussie pour ${days} jour(s).` : `Synchronisation partielle : ${result.errors.length} erreur(s) sur ${days} jour(s).`,
                     data: result
                 });
             }
@@ -113,13 +128,14 @@ export async function executeAgentCommand(req, res) {
 
             case 'GET_PEPITES': {
                 let responseData = null;
+                let statusCode = 200;
                 const resMock = {
                     json: (data) => { responseData = data; },
-                    status: () => resMock
+                    status: (code) => { statusCode = code; return resMock; }
                 };
                 await getPepites({}, resMock);
                 return res.json({
-                    success: true,
+                    success: statusCode === 200 && !responseData?.error,
                     action: 'GET_PEPITES',
                     data: responseData
                 });
@@ -132,13 +148,14 @@ export async function executeAgentCommand(req, res) {
                 }
                 const reqMock = { params: { id: courseId } };
                 let responseData = null;
+                let statusCode = 200;
                 const resMock = {
                     json: (data) => { responseData = data; },
-                    status: () => resMock
+                    status: (code) => { statusCode = code; return resMock; }
                 };
                 await getCourseDetails(reqMock, resMock);
                 return res.json({
-                    success: true,
+                    success: statusCode === 200 && !responseData?.error,
                     action: 'ANALYZE_COURSE',
                     courseId,
                     data: responseData
@@ -236,10 +253,11 @@ export async function executeAgentCommand(req, res) {
                 const shadowStats = await new Promise((resolve, reject) => {
                     db.get(`
                         SELECT 
-                            COUNT(*) as total_bets,
+                            SUM(CASE WHEN resultat != 'PENDING' THEN 1 ELSE 0 END) as total_bets,
                             SUM(CASE WHEN resultat = 'WIN' THEN 1 ELSE 0 END) as wins,
-                            SUM(mise) as total_mise,
-                            SUM(gain) as total_gain
+                            SUM(CASE WHEN resultat != 'PENDING' THEN mise ELSE 0 END) as total_mise,
+                            SUM(CASE WHEN resultat != 'PENDING' THEN gain ELSE 0 END) as total_gain,
+                            SUM(CASE WHEN resultat = 'PENDING' THEN 1 ELSE 0 END) as pending_bets
                         FROM shadow_bets
                     `, (err, row) => err ? reject(err) : resolve(row));
                 });
@@ -254,7 +272,8 @@ export async function executeAgentCommand(req, res) {
                             win_rate: shadowStats?.total_bets ? parseFloat(((shadowStats.wins / shadowStats.total_bets) * 100).toFixed(1)) : 0,
                             total_mise: shadowStats?.total_mise || 0,
                             total_gain: shadowStats?.total_gain || 0,
-                            profit: (shadowStats?.total_gain || 0) - (shadowStats?.total_mise || 0)
+                            profit: shadowStats?.total_gain || 0,
+                            pending_bets: shadowStats?.pending_bets || 0
                         }
                     }
                 });
@@ -263,7 +282,7 @@ export async function executeAgentCommand(req, res) {
             default:
                 return res.status(400).json({
                     success: false,
-                    error: `Action '${action}' non reconnue. Actions valides: SYNC_MARKET, GET_QUINTE, GET_PEPITES, ANALYZE_COURSE, QUERY_DATABASE, GET_HORSE_HISTORY, GET_ENTOURAGE_STATS, GET_FINANCE_STATS.`
+                    error: `Action '${action}' non reconnue. Actions valides: ${AGENT_ACTIONS.join(', ')}.`
                 });
         }
     } catch (e) {
@@ -286,7 +305,8 @@ export async function getAgentSchema(req, res) {
                 parameters: {
                     type: "object",
                     properties: {
-                        days: { type: "number", description: "Nombre de jours à synchroniser (1 à 180 jours / 6 mois)" }
+                        days: { type: "number", description: "Nombre de jours à synchroniser (1 à 365 jours)" },
+                        date: { type: "string", description: "Date de départ au format YYYY-MM-DD (facultatif)" }
                     }
                 }
             },
@@ -302,7 +322,7 @@ export async function getAgentSchema(req, res) {
             },
             {
                 name: "get_pepites",
-                description: "Récupère les meilleures pépites à forte valeur (Score IA >= 60%, Edge > 5%)",
+                description: "Récupère les meilleures pépites (score de classement IA >= 65 points et avantage estimé > 5 points de probabilité)",
                 parameters: { type: "object", properties: {} }
             },
             {

@@ -1,5 +1,6 @@
+import assert from 'node:assert/strict';
 import { calculerPrediction } from '../core/intelligence.mjs';
-import { initDB } from '../core/db.mjs';
+import { closeDB, initDB } from '../core/db.mjs';
 
 await initDB();
 
@@ -56,13 +57,16 @@ for (const tc of testCases) {
     const score = await calculerPrediction(tc.participant, tc.contexte);
     console.log(`SCORE FINAL: ${score} pts`);
 
-    if (tc.name.includes("Favori") && score > 80) {
-        console.warn("WARNING: Favori toujours trop haut ?");
+    if (tc.name.includes("Favori")) {
+        assert.ok(score <= 80, 'Le favori sans forme ne doit pas recevoir un score excessif.');
     }
-
-    if (tc.name.includes("Censure") && score >= 75) {
-        console.error("FAIL: Censure non appliquée!");
-    } else if (tc.name.includes("Censure")) {
+    if (tc.name.includes("Technique")) {
+        assert.ok(score > 70, 'La pépite technique doit être valorisée.');
+    }
+    if (tc.name.includes("Censure")) {
+        assert.ok(score < 75, 'La censure de montée de catégorie doit être appliquée.');
         console.log("SUCCESS: Censure appliquée (Score < 75)");
     }
 }
+
+await closeDB();

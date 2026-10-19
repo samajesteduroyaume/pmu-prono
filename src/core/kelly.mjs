@@ -4,11 +4,12 @@
  * Formule : f* = (bp - q) / b
  * f* : Fraction de bankroll à miser
  * b : Cote nette (Cote - 1)
- * p : Probabilité de victoire (Score IA / 100)
+ * p : estimation issue des favoris IA observés avant course
  * q : Probabilité de défaite (1 - p)
  */
 
 import { getBankroll } from './db.mjs';
+import { getDB } from '../db/db.mjs';
 import CONFIG from '../config/settings.mjs';
 
 const FINANCE = CONFIG.engine_settings.finance;
@@ -17,40 +18,81 @@ const BANKROLL_DEFAULT = FINANCE.bankroll_default;
 const KELLY_FRACTION = FINANCE.kelly_fraction;
 const MAX_BET_PERCENT = FINANCE.max_bet_percent;
 const MIN_EDGE_THRESHOLD = FINANCE.min_edge_threshold;
+const CALIBRATION_MIN_TOTAL = 100;
+const CALIBRATION_MIN_BAND = 30;
+const CALIBRATION_TTL_MS = 5 * 60 * 1000;
+const SCORE_BANDS = [
+    { label: '95+', min: 95, max: Infinity },
+    { label: '90–94', min: 90, max: 95 },
+    { label: '80–89', min: 80, max: 90 },
+    { label: '70–79', min: 70, max: 80 },
+    { label: '60–69', min: 60, max: 70 },
+    { label: '50–59', min: 50, max: 60 },
+    { label: '0–49', min: 0, max: 50 }
+];
+let prospectiveCalibration = null;
+
+function wilsonLowerBound(wins, total) {
+    if (!total) return 0;
+    const z = 1.96;
+    const p = wins / total;
+    const denominator = 1 + z * z / total;
+    const center = p + z * z / (2 * total);
+    const margin = z * Math.sqrt((p * (1 - p) + z * z / (4 * total)) / total);
+    return Math.max(0, (center - margin) / denominator);
+}
+
+export async function refreshProspectiveCalibration(modelVersion = 'heuristic-fallback') {
+    const now = Date.now();
+    if (prospectiveCalibration?.modelVersion === modelVersion && now - prospectiveCalibration.updatedAt < CALIBRATION_TTL_MS) {
+        return prospectiveCalibration;
+    }
+    const db = getDB();
+    const rows = await new Promise((resolve, reject) => db.all(`
+        SELECT prediction_score, outcome_rank
+        FROM prediction_snapshots
+        WHERE model_version = ? AND prediction_rank = 1
+          AND settled_at IS NOT NULL AND outcome_rank IS NOT NULL
+    `, [modelVersion], (error, result) => error ? reject(error) : resolve(result || [])));
+    const bins = SCORE_BANDS.map(band => {
+        const matches = rows.filter(row => Number(row.prediction_score) >= band.min && Number(row.prediction_score) < band.max);
+        const wins = matches.filter(row => Number(row.outcome_rank) === 1).length;
+        return {
+            ...band,
+            samples: matches.length,
+            wins,
+            probability: rows.length >= CALIBRATION_MIN_TOTAL && matches.length >= CALIBRATION_MIN_BAND
+                ? wilsonLowerBound(wins, matches.length)
+                : null
+        };
+    });
+    prospectiveCalibration = { modelVersion, samples: rows.length, bins, updatedAt: now };
+    return prospectiveCalibration;
+}
 
 /**
- * CALIBRATION DES PROBABILITÉS IA (v43.3 — Basée sur win rates réels)
- * Basée sur la table de calibration centralisée dans CONFIG.calibration.
- * Alignée sur le win rate réel observé en backtest (39% global, 25% value hunter).
- * Le score IA représente toujours LE meilleur cheval sélectionné dans une course.
- * Ces probabilités sont utilisées pour calculer l'Edge vs le marché (cote).
+ * Calibration conservatrice sur les seuls favoris IA capturés avant course,
+ * réglés officiellement et produits par la même version du modèle.
+ * Retourne null tant que l'échantillon n'est pas suffisant.
  */
 export function calibrateProbability(score) {
-    const table = CONFIG.calibration; // v48: Interpolation linéaire pour éviter les effets de seuil
-    
-    if (score >= table[0].minScore) return table[0].prob;
-    
-    for (let i = 0; i < table.length - 1; i++) {
-        const upper = table[i];
-        const lower = table[i + 1];
-        
-        if (score >= lower.minScore && score <= upper.minScore) {
-            const range = upper.minScore - lower.minScore;
-            if (range === 0) return upper.prob;
-            const factor = (score - lower.minScore) / range;
-            return lower.prob + factor * (upper.prob - lower.prob);
-        }
-    }
-    return table[table.length - 1].prob;
+    const value = Number(score);
+    if (!prospectiveCalibration || !Number.isFinite(value)) return null;
+    const band = prospectiveCalibration.bins.find(item => value >= item.min && value < item.max);
+    return band?.probability ?? null;
 }
 
 
-export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKROLL_DEFAULT) {
-    if (!cote || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
+export function calculateKellyMise(cote, predictionScore, currentBankroll = BANKROLL_DEFAULT) {
+    const odds = Number(cote);
+    const bankroll = Number(currentBankroll);
+    if (!Number.isFinite(odds) || odds <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
+    if (!Number.isFinite(bankroll) || bankroll < 1) return { mise: 0, advice: 'BANKROLL INSUFFISANTE' };
 
     // 1. Calcul des variables avec Calibration
-    const b = cote - 1; // Cote nette
-    const p = calibrateProbability(winProbPercent); // Proba calibrée (v40)
+    const b = odds - 1; // Cote nette
+    const p = calibrateProbability(predictionScore);
+    if (p === null) return { mise: 0, advice: 'CALIBRATION INSUFFISANTE', explanation: 'Pas encore assez de pronostics pré-course réglés pour estimer une probabilité fiable.' };
     const q = 1 - p; // Proba défaite
 
     // 2. Formule de Kelly
@@ -69,21 +111,18 @@ export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKR
     }
 
     // 4. Sécurisation (Kelly Fractionné) & Plafond
-    let fractionReelle = f * KELLY_FRACTION;
-
-    // Plafond de sécurité (Max 5% de la bankroll)
-    if (fractionReelle > MAX_BET_PERCENT) fractionReelle = MAX_BET_PERCENT;
+    const fractionReelle = Math.min(f * KELLY_FRACTION, MAX_BET_PERCENT);
 
     // 5. Calcul Mise Euro
-    let miseConseillee = Math.floor(currentBankroll * fractionReelle);
-    if (miseConseillee < 1 && fractionReelle > 0) miseConseillee = 1; // v48: Plancher 1€ pour les petites bankrolls
+    const miseConseillee = Math.floor(bankroll * fractionReelle);
+    if (miseConseillee < 1) return { mise: 0, advice: 'MISE INFERIEURE AU MINIMUM', bankroll };
 
     return {
         mise: miseConseillee,
         percentage: (fractionReelle * 100).toFixed(2),
         advice: 'BET',
-        bankroll: currentBankroll,
-        espérance: ((p * (cote - 1)) - q).toFixed(2) // Gain espéré par euro misé
+        bankroll,
+        espérance: ((p * (odds - 1)) - q).toFixed(2) // Gain espéré par euro misé
     };
 }
 
@@ -95,7 +134,7 @@ export function calculateKellyMise(cote, winProbPercent, currentBankroll = BANKR
  * - Séquence de défaites (réduit après 3+ défaites consécutives)
  * 
  */
-export async function calculateKellyAdaptatif(participantOrCote, winProbPercent, currentBankroll = 'shadow', tendances = null, currentPatterns = []) {
+export async function calculateKellyAdaptatif(participantOrCote, predictionScore, currentBankroll = 'shadow', tendances = null, currentPatterns = []) {
     let cote = 0;
     let participant = null;
     
@@ -117,13 +156,16 @@ export async function calculateKellyAdaptatif(participantOrCote, winProbPercent,
     } else if (typeof currentBankroll === 'number') {
         bankrollValue = currentBankroll;
     }
+    if (!Number.isFinite(bankrollValue) || bankrollValue < 1) {
+        return { mise: 0, advice: 'BANKROLL INSUFFISANTE' };
+    }
 
     // Si pas de tendances, utiliser Kelly classique
     if (!tendances) {
-        return calculateKellyMise(cote, winProbPercent, bankrollValue);
+        return calculateKellyMise(cote, predictionScore, bankrollValue);
     }
 
-    if (!cote || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
+    if (!Number.isFinite(cote) || cote <= 1) return { mise: 0, advice: 'COTE INVALIDE' };
 
     // --- V45.1 : BOUCLIER ANTI-PIÈGES ---
     if (participant && participant.is_trap) {
@@ -131,7 +173,8 @@ export async function calculateKellyAdaptatif(participantOrCote, winProbPercent,
     }
 
     const b = cote - 1;
-    const p = calibrateProbability(winProbPercent);
+    const p = calibrateProbability(predictionScore);
+    if (p === null) return { mise: 0, advice: 'CALIBRATION INSUFFISANTE', explanation: 'Pas encore assez de pronostics pré-course réglés pour estimer une probabilité fiable.' };
     const q = 1 - p;
 
     let f = ((b * p) - q) / b;
@@ -220,16 +263,12 @@ export async function calculateKellyAdaptatif(participantOrCote, winProbPercent,
     }
 
     // Appliquer la fraction adaptée
-    let fractionReelleFinal = f * fractionAdaptee;
-
-    // Plancher de sécurité
-    if (fractionReelleFinal > MAX_BET_PERCENT) fractionReelleFinal = MAX_BET_PERCENT;
-
-    // Plancher minimum (ne pas descendre en dessous de 0.5% si avantage détecté)
-    if (fractionReelleFinal < 0.005) fractionReelleFinal = 0.005;
-
-    let miseConseillee = Math.floor(bankrollValue * fractionReelleFinal);
-    if (miseConseillee < 1 && fractionReelleFinal > 0) miseConseillee = 1; // v48: Plancher 1€
+    const fractionReelleFinal = Math.min(f * fractionAdaptee, MAX_BET_PERCENT);
+    if (!Number.isFinite(fractionReelleFinal) || fractionReelleFinal <= 0) {
+        return { mise: 0, advice: 'MISE INFERIEURE AU MINIMUM' };
+    }
+    const miseConseillee = Math.floor(bankrollValue * fractionReelleFinal);
+    if (miseConseillee < 1) return { mise: 0, advice: 'MISE INFERIEURE AU MINIMUM', bankroll: bankrollValue };
 
     return {
         mise: miseConseillee,

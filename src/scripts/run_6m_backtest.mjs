@@ -1,49 +1,36 @@
-import { runBacktest, compareKellyStrategies } from '../ml/backtest.mjs';
 import { format, subMonths } from 'date-fns';
+import fs from 'node:fs';
 import logger from '../utils/logger.mjs';
-import fs from 'fs';
+import { initDB, closeDB } from '../core/db.mjs';
+import { getForecastEvaluation } from '../core/forecast_evaluation.mjs';
+import { isMainModule } from '../utils/isMainModule.mjs';
 
 async function main() {
     const today = new Date();
     const startDate = format(subMonths(today, 6), 'yyyy-MM-dd');
     const endDate = format(today, 'yyyy-MM-dd');
-
-    logger.header(`--- LANCEMENT VALIDATION ROI V40+ (6 MOIS) ---`);
-    logger.info(`Période : ${startDate} au ${endDate}`);
+    const reportPath = './data/prospective_evaluation_6m.json';
 
     try {
-        // 1. Backtest Standard (Mise Fixe 1€)
-        const standardResult = await runBacktest(startDate, endDate);
-        
-        // 2. Comparaison Stratégies Kelly
-        const kellyResult = await compareKellyStrategies(startDate, endDate, 1000);
-
-        // 3. Synthèse Finale
-        const finalReport = {
-            generatedAt: new Date().toISOString(),
-            period: { start: startDate, end: endDate },
-            standard: standardResult.summary,
-            kelly: kellyResult.strategies
-        };
-
-        const reportPath = './data/backtest_report_6m.json';
-        fs.writeFileSync(reportPath, JSON.stringify(finalReport, null, 2));
-        
-        logger.header(`--- BACKTEST RÉUSSI ---`);
+        await initDB();
+        const evaluation = await getForecastEvaluation({ startDate, endDate });
+        fs.mkdirSync('./data', { recursive: true });
+        fs.writeFileSync(reportPath, JSON.stringify({ generatedAt: new Date().toISOString(), ...evaluation }, null, 2));
+        logger.header('ÉVALUATION PROSPECTIVE (6 MOIS)');
+        logger.info(`Courses capturées avant le départ : ${evaluation.quality.capturedCourses}`);
+        logger.info(`Courses réglées : ${evaluation.quality.settledCourses}`);
+        logger.info(`Courses historiques sans snapshot : ${evaluation.quality.legacyFinishedCoursesWithoutSnapshot}`);
         logger.success(`Rapport généré : ${reportPath}`);
-        
-        // Affichage rapide du gagnant
-        const bestStrat = Object.entries(kellyResult.strategies)
-            .sort((a, b) => b[1].roi - a[1].roi)[0];
-        
-        logger.info(`\nMeilleure stratégie identifiée : ${bestStrat[0]}`);
-        logger.success(`ROI Final : ${bestStrat[1].roi}%`);
-        logger.info(`Profit Net : ${bestStrat[1].profit}€`);
-        
-    } catch (error) {
-        logger.error(`Erreur Backtest : ${error.message}`);
-        console.error(error);
+    } finally {
+        await closeDB();
     }
 }
 
-main().catch(console.error);
+if (isMainModule(import.meta.url)) {
+    main().catch(error => {
+        logger.error(`Erreur évaluation : ${error.message}`);
+        process.exitCode = 1;
+    });
+}
+
+export { main };

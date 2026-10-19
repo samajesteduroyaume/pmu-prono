@@ -31,10 +31,18 @@ let activeAlerts = [];
 let alertHistory = [];
 let alertIdCounter = 1;
 
+function getAlertDedupeKey(alert) {
+    const identity = alert.data?.pattern ?? alert.data?.discipline ?? alert.data?.heure ?? '';
+    return `${alert.type}:${alert.title}:${identity}`;
+}
+
 /**
  * Crée une nouvelle alerte
  */
 function createAlert(type, title, message, priority = ALERT_PRIORITY.MEDIUM, data = {}) {
+    const dedupeKey = getAlertDedupeKey({ type, title, data });
+    if (activeAlerts.some(alert => getAlertDedupeKey(alert) === dedupeKey)) return null;
+
     const alert = {
         id: alertIdCounter++,
         type,
@@ -54,6 +62,7 @@ function createAlert(type, title, message, priority = ALERT_PRIORITY.MEDIUM, dat
     if (alertHistory.length > 100) {
         alertHistory = alertHistory.slice(-100);
     }
+    if (activeAlerts.length > 500) activeAlerts = activeAlerts.slice(-500);
 
     logger.info(`[ALERTE ${type}] ${title}: ${message}`);
 
@@ -170,7 +179,7 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
     }
 
     // 5. ALERTE SHARPE RATIO FAIBLE
-    if (tendances.sharpe < MON.alert_sharpe_min) {
+    if (Number.isFinite(tendances.sharpe) && tendances.sharpe < MON.alert_sharpe_min) {
         newAlerts.push(createAlert(
             ALERT_TYPES.WARNING,
             '📉 Ratio Sharpe Négatif',
@@ -226,21 +235,9 @@ export function analyserEtGenererAlertes(tendances, performance, patternData = n
             });
         }
 
-        // Smart Money Alerts
-        if (patternData.smartMoney && patternData.smartMoney.length > 0) {
-            patternData.smartMoney.forEach(sm => {
-                newAlerts.push(createAlert(
-                    ALERT_TYPES.OPPORTUNITY,
-                    '🧠 SMART MONEY DÉTECTÉ',
-                    `${sm.cheval} (${sm.course}): Baisse de cote de ${Math.abs(sm.variation).toFixed(0)}%`,
-                    ALERT_PRIORITY.MEDIUM,
-                    { ...sm }
-                ));
-            });
-        }
     }
 
-    return newAlerts;
+    return newAlerts.filter(Boolean);
 }
 
 /**

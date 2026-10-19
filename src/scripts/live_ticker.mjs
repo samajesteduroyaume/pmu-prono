@@ -13,12 +13,20 @@ const COLORS = {
     DIM: '\x1b[2m'
 };
 
+function finiteNumber(value) {
+    if (value === null || value === undefined || value === '') return NaN;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : NaN;
+}
+
 async function fetchValueBets() {
     try {
         const res = await fetch(API_URL);
-        if (!res.ok) throw new Error('Serveur injoignable (Lancer: npm start)');
-        return await res.json();
+        if (!res.ok) throw new Error(`API Value Hunter indisponible (${res.status})`);
+        const data = await res.json();
+        return Array.isArray(data) ? data : null;
     } catch (e) {
+        logger.warn(`Lecture Value Hunter impossible : ${e.message}`);
         return null;
     }
 }
@@ -26,8 +34,11 @@ async function fetchValueBets() {
 async function fetchStats() {
     try {
         const res = await fetch(STATS_URL);
-        return await res.json();
+        if (!res.ok) throw new Error(`API statistiques indisponible (${res.status})`);
+        const data = await res.json();
+        return data && typeof data === 'object' && !data.error ? data : null;
     } catch (e) {
+        logger.warn(`Lecture des statistiques impossible : ${e.message}`);
         return null;
     }
 }
@@ -40,48 +51,64 @@ function drawLine() {
     console.log(COLORS.DIM + '─'.repeat(process.stdout.columns || 60) + COLORS.RESET);
 }
 
+let tickInProgress = false;
+
 async function tick() {
-    const bets = await fetchValueBets();
-    const stats = await fetchStats();
+    if (tickInProgress) return;
+    tickInProgress = true;
+    try {
+        const bets = await fetchValueBets();
+        const stats = await fetchStats();
 
-    clearConsole();
+        clearConsole();
     
-    // Header
-    console.log(`${COLORS.BOLD}${COLORS.CYAN}ARCHITECT V40+ | VALUE HUNTER DOMINATOR${COLORS.RESET}`);
-    console.log(`${COLORS.DIM}Monitoring actif... ${new Date().toLocaleTimeString()}${COLORS.RESET}`);
-    drawLine();
-
-    // Shadow Results
-    if (stats) {
-        const roiColor = stats.roi >= 0 ? COLORS.GREEN : COLORS.RED;
-        process.stdout.write(`${COLORS.BOLD}SHADOW ROI: ${roiColor}${stats.roi?.toFixed(2) || 0}%${COLORS.RESET} | `);
-        process.stdout.write(`${COLORS.BOLD}PROFIT: ${roiColor}${stats.total_gains?.toFixed(2) || 0}€${COLORS.RESET} | `);
-        process.stdout.write(`WIN RATE: ${COLORS.CYAN}${stats.wins || 0}/${stats.total || 0}${COLORS.RESET}\n`);
+        // Header
+        console.log(`${COLORS.BOLD}${COLORS.CYAN}ARCHITECT V40+ | VALUE HUNTER DOMINATOR${COLORS.RESET}`);
+        console.log(`${COLORS.DIM}Monitoring actif... ${new Date().toLocaleTimeString()}${COLORS.RESET}`);
         drawLine();
+
+        // Shadow Results
+        if (stats) {
+            const roi = finiteNumber(stats.roi);
+            const totalGains = finiteNumber(stats.total_gains);
+            const roiColor = Number.isFinite(roi) && roi >= 0 ? COLORS.GREEN : COLORS.RED;
+            process.stdout.write(`${COLORS.BOLD}SHADOW ROI: ${roiColor}${Number.isFinite(roi) ? roi.toFixed(2) : 'N/A'}%${COLORS.RESET} | `);
+            process.stdout.write(`${COLORS.BOLD}PROFIT: ${roiColor}${Number.isFinite(totalGains) ? totalGains.toFixed(2) : 'N/A'}€${COLORS.RESET} | `);
+            process.stdout.write(`WIN RATE: ${COLORS.CYAN}${stats.wins || 0}/${stats.total || 0}${COLORS.RESET}\n`);
+            drawLine();
+        }
+
+        // Opportunity List
+        console.log(`${COLORS.GOLD}${COLORS.BOLD}Opportunités de Trading (Edge > 5%):${COLORS.RESET}\n`);
+
+        if (!bets || bets.length === 0) {
+            console.log(`${COLORS.DIM}  [0] Aucune pépite identifiée pour l'instant...${COLORS.RESET}`);
+        } else {
+            bets.sort((a, b) => Number(b.edge) - Number(a.edge)).forEach(b => {
+                const edge = finiteNumber(b.edge);
+                const probability = finiteNumber(b.proba);
+                const edgePercent = Number.isFinite(edge) ? (edge > 1 ? edge : edge * 100).toFixed(1) : 'N/A';
+                const probPercent = Number.isFinite(probability) ? (probability <= 1 ? probability * 100 : probability).toFixed(1) : 'N/A';
+                const horseName = String(b.nom || 'Inconnu');
+                const odds = finiteNumber(b.cote);
+
+                console.log(
+                    `${COLORS.CYAN}R${b.reunion}C${b.course}${COLORS.RESET} | ` +
+                    `${COLORS.BOLD}${horseName.padEnd(14)}${COLORS.RESET} | ` +
+                    `COTE: ${COLORS.GOLD}${Number.isFinite(odds) ? String(odds).padEnd(4) : 'N/A'}${COLORS.RESET} | ` +
+                    `PROB: ${probPercent}% | ` +
+                    `${COLORS.GREEN}${COLORS.BOLD}EDGE: +${edgePercent}%${COLORS.RESET} | ` +
+                    `MISE: ${COLORS.BOLD}${b.mise ?? 'N/A'}€${COLORS.RESET}`
+                );
+            });
+        }
+
+        console.log('\n' + COLORS.DIM + 'Pressez Ctrl+C pour quitter. Actualisation: 30s' + COLORS.RESET);
+    } catch (error) {
+        logger.error(`Erreur d’actualisation du moniteur : ${error.message}`);
+    } finally {
+        tickInProgress = false;
     }
-
-    // Opportunity List
-    console.log(`${COLORS.GOLD}${COLORS.BOLD}Opportunités de Trading (Edge > 5%):${COLORS.RESET}\n`);
-
-    if (!bets || bets.length === 0) {
-        console.log(`${COLORS.DIM}  [0] Aucune pépite identifiée pour l'instant...${COLORS.RESET}`);
-    } else {
-        bets.sort((a, b) => b.edge - a.edge).forEach(b => {
-            const edgePercent = (b.edge * 100).toFixed(1);
-            const probPercent = (b.proba * 100).toFixed(1);
-            
-            console.log(
-                `${COLORS.CYAN}R${b.reunion}C${b.course}${COLORS.RESET} | ` +
-                `${COLORS.BOLD}${b.nom.padEnd(14)}${COLORS.RESET} | ` +
-                `COTE: ${COLORS.GOLD}${b.cote.toString().padEnd(4)}${COLORS.RESET} | ` +
-                `PROB: ${probPercent}% | ` +
-                `${COLORS.GREEN}${COLORS.BOLD}EDGE: +${edgePercent}%${COLORS.RESET} | ` +
-                `MISE: ${COLORS.BOLD}${b.mise}€${COLORS.RESET}`
-            );
-        });
-    }
-
-    console.log('\n' + COLORS.DIM + 'Pressez Ctrl+C pour quitter. Actualisation: 30s' + COLORS.RESET);
 }
 
 // Start

@@ -1,5 +1,6 @@
+import assert from 'node:assert/strict';
 import { calculerPrediction } from '../core/intelligence.mjs';
-import { initDB } from '../core/db.mjs';
+import { closeDB, initDB } from '../core/db.mjs';
 
 async function testEngines() {
     await initDB();
@@ -30,13 +31,12 @@ async function testEngines() {
         const score = await calculerPrediction(p, { discipline: d.name, prixCourse: 50000 });
         console.log(`ENGINE USED: ${p.active_engine}`);
         console.log(`SCORE: ${score} pts`);
-
-        if (p.active_engine !== d.expectedEngine) {
-            console.error(`FAIL: Expected ${d.expectedEngine}, got ${p.active_engine}`);
-        } else {
-            console.log("SUCCESS: Correct engine matched.");
-        }
+        assert.equal(p.active_engine, d.expectedEngine, `Moteur incorrect pour ${d.name}.`);
+        console.log("SUCCESS: Correct engine matched.");
     }
 }
 
-testEngines().catch(console.error);
+testEngines().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+}).finally(() => closeDB());

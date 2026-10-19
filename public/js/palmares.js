@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPalmares();
 });
 
+const escapePalmaresHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+})[char]);
+
 async function refreshData() {
     await loadPalmares();
 }
@@ -43,7 +47,7 @@ function renderTable(tableId, data) {
         const nameColor = index < 3 ? 'var(--accent-gold)' : 'var(--text-high)';
 
         tr.innerHTML = `
-            <td style="color: ${nameColor}; font-weight: 600;">${item.name}</td>
+            <td style="color: ${nameColor}; font-weight: 600;">${escapePalmaresHtml(item.name)}</td>
             <td style="text-align: right; font-family: 'JetBrains Mono';">${item.courses}</td>
             <td style="text-align: right; font-family: 'JetBrains Mono'; color: var(--accent-emerald);">${item.victoires}</td>
             <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 700;">${winRate}%</td>

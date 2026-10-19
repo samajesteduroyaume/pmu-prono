@@ -75,7 +75,7 @@
                     <div class="meta"><span class="live-indicator"></span> DÉTECTION DE SIGNAUX FAIBLES ET OPTIMISATION</div>
                 </div>
                 <div class="actions" style="display: flex; gap: 12px;">
-                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
+                    <button onclick="syncHistoryPrompt(event)" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
                         <i class="fas fa-history"></i>
                         <span>Synchro. Étendue</span>
                     </button>
@@ -146,6 +146,10 @@
     </div>
 
     <script>
+        const escapePatternsHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+
         async function loadPatterns() {
             const days = document.getElementById('days').value;
             document.getElementById('loader').style.display = 'block';
@@ -171,9 +175,9 @@
             const container = document.getElementById('golden-patterns');
             container.innerHTML = patterns.map(p => `
                 <div class="stat-card" style="margin-bottom: 12px; border-left: 4px solid var(--accent-emerald); padding: 20px; background: hsla(var(--h-emerald), 84%, 45%, 0.02);">
-                    <div style="font-weight: 800; font-size: 14px; color: var(--text-pure);">${p.pattern}</div>
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text-pure);">${escapePatternsHtml(p.pattern)}</div>
                     <div style="display: flex; gap: 24px; margin-top: 12px; font-family: 'JetBrains Mono'; font-size: 12px;">
-                        <span style="color: var(--accent-emerald); font-weight: 800;">ROI: +${p.roi}%</span>
+                        <span style="color: var(--accent-emerald); font-weight: 800;">ROI: ${p.roi == null ? '--' : '+' + p.roi + '%'}</span>
                         <span style="color: var(--text-med);">WIN: ${p.winRate}%</span>
                         <span style="color: var(--text-low);">N: ${p.count}</span>
                     </div>
@@ -185,9 +189,9 @@
             const container = document.getElementById('danger-patterns');
             container.innerHTML = patterns.map(p => `
                 <div class="stat-card" style="margin-bottom: 12px; border-left: 4px solid var(--accent-crimson); padding: 20px; background: hsla(var(--h-crimson), 84%, 60%, 0.02);">
-                    <div style="font-weight: 800; font-size: 14px; color: var(--text-pure);">${p.pattern}</div>
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text-pure);">${escapePatternsHtml(p.pattern)}</div>
                     <div style="display: flex; gap: 24px; margin-top: 12px; font-family: 'JetBrains Mono'; font-size: 12px;">
-                        <span style="color: var(--accent-crimson); font-weight: 800;">ROI: ${p.roi}%</span>
+                        <span style="color: var(--accent-crimson); font-weight: 800;">ROI: ${p.roi == null ? '--' : p.roi + '%'}</span>
                         <span style="color: var(--text-med);">WIN: ${p.winRate}%</span>
                         <span style="color: var(--text-low);">N: ${p.count}</span>
                     </div>
@@ -199,12 +203,12 @@
             const tbody = document.getElementById('patterns-body');
             tbody.innerHTML = patterns.map(p => `
                 <tr>
-                    <td style="font-weight: 700; color: var(--text-pure);">${p.pattern}</td>
+                    <td style="font-weight: 700; color: var(--text-pure);">${escapePatternsHtml(p.pattern)}</td>
                     <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${p.count}</td>
                     <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${p.winRate}%</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 800; color: ${p.roi >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)'}">${p.roi}%</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${p.profit} €</td>
-                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-indigo);">${p.qualityScore}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 800; color: ${p.roi == null ? 'var(--text-med)' : p.roi >= 0 ? 'var(--accent-emerald)' : 'var(--accent-crimson)'}">${p.roi == null ? '--' : p.roi + '%'}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 600;">${p.profit == null ? '--' : p.profit + ' €'}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-indigo);">${p.qualityScore == null ? '--' : p.qualityScore}</td>
                 </tr>
             `).join('');
         }

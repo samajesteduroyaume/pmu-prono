@@ -5,7 +5,6 @@ import { determinerChangementCategorie, calculerRegularite } from '../utils/engi
 // EXPORTS POUR COMPATIBILITÉ (FAÇADE)
 export { determinerChangementCategorie, calculerRegularite };
 
-import { calculateKellyMise } from './kelly.mjs';
 import { getSynergyScore } from './db.mjs';
 import { processAttelé } from './engines/attele_engine.mjs';
 import { processMonté } from './engines/monte_engine.mjs';
@@ -13,6 +12,7 @@ import { processPlat } from './engines/plat_engine.mjs';
 import { processObstacle } from './engines/obstacle_engine.mjs';
 import { detectInconsistencies, applyCorrection } from './inconsistency_checker.mjs';
 import { evaluerSignalGate } from './signal_gate.mjs';
+import { extractMusicPerformances, parseMusicPerformance } from '../utils/music.mjs';
 
 /**
  * MOTEUR D'INTELLIGENCE ARTIFICIELLE "ARCHITECT v30 - ELITE"
@@ -29,47 +29,44 @@ export function analyserFormeProfonde(musique, discipline = 'INCONNUE', avgHisto
     const yearMatches = musique.match(/\((\d+)\)/g);
     if (yearMatches) {
         const currentYearShort = new Date().getFullYear() % 100; // fix v48.1: déclaration unique (suppression du shadowing)
-        const years = yearMatches.map(m => parseInt(m.replace(/[()]/g, '')));
-        const lastRunYear = years[0];
-        
-        // Calcul de l'écart par rapport à l'année actuelle
-        const diff = (currentYearShort < lastRunYear) ? (currentYearShort + 100 - lastRunYear) : (currentYearShort - lastRunYear);
-        
-        if (diff > 2) rentreeMalus = CONFIG.architect.malus.rentreeLongue + 15; // Rentrée critique (> 2 ans)
-        else if (diff > 1) rentreeMalus = CONFIG.architect.malus.rentreeLongue; 
-        else if (diff === 1 && trimmedMusique.startsWith('(')) {
-            rentreeMalus = CONFIG.architect.malus.rentreeSaisonniere;
-        }
+        const years = yearMatches
+            .map(match => Number(match.replace(/[()]/g, '')))
+            .filter(Number.isInteger)
+            .map(year => year % 100);
+        if (years.length > 0) {
+            const lastRunYear = years[0];
 
-        // v48: Malus cumulatif si plusieurs années d'absence dans la musique (carrière hachée)
-        if (years.length >= 3) rentreeMalus += 10;
+            // Calcul de l'écart par rapport à l'année actuelle
+            const diff = (currentYearShort < lastRunYear) ? (currentYearShort + 100 - lastRunYear) : (currentYearShort - lastRunYear);
+
+            if (diff > 2) rentreeMalus = CONFIG.architect.malus.rentreeLongue + 15; // Rentrée critique (> 2 ans)
+            else if (diff > 1) rentreeMalus = CONFIG.architect.malus.rentreeLongue;
+            else if (diff === 1 && trimmedMusique.startsWith('(')) {
+                rentreeMalus = CONFIG.architect.malus.rentreeSaisonniere;
+            }
+
+            // v48: Malus cumulatif si plusieurs années d'absence dans la musique (carrière hachée)
+            if (years.length >= 3) rentreeMalus += 10;
+        }
     }
 
     // 2. Analyse Séquentielle Profonde
-    const cleanMusic = musique.replace(/\(\d+\)/g, '');
-    // v48.2: Regex robuste capturant rangs multi-chiffres et fautes variées
-    const perfs = cleanMusic.match(/([0-9]+|DA|DAI|DIST|T|A|ARR|R|RET|D)[a-zA-Z]?/gi) || [];
+    const perfs = extractMusicPerformances(musique);
 
     if (perfs.length === 0) return Math.max(0, 30 - rentreeMalus);
 
     let score = 0;
     let totalWeight = 0;
     const depth = Math.min(perfs.length, 10);
-    const isTrot = (discipline || '').includes('TROT') || (discipline || '').includes('ATTELE') || (discipline || '').includes('MONTE');
+    const disciplineCode = String(discipline || '').toUpperCase();
+    const isTrot = disciplineCode.includes('TROT') || disciplineCode.includes('ATTELE') || disciplineCode.includes('MONTE');
 
     // Bonus Victoire Récente (V27)
     let recentWinBonus = 0;
 
     for (let i = 0; i < depth; i++) {
         const perf = perfs[i].toUpperCase();
-        // Extraire la partie numérique ou faute (tout sauf la dernière lettre si c'est une discipline)
-        let val = perf;
-        let type = '';
-        const lastChar = perf.slice(-1).toLowerCase();
-        if (perf.length > 1 && 'apmhcrs'.includes(lastChar)) {
-            val = perf.slice(0, -1);
-            type = lastChar;
-        }
+        const { value: val, type } = parseMusicPerformance(perf);
 
         let points = 20;
 
@@ -103,9 +100,9 @@ export function analyserFormeProfonde(musique, discipline = 'INCONNUE', avgHisto
         }
 
         // Bonus Spécialisation (Discipline) - V31: Renforcé pour Spécialités
-        const currentType = isTrot ? (discipline.includes('MONTE') ? 'm' : 'a') : (discipline.includes('PLAT') ? 'p' : (discipline.includes('HAIE') ? 'h' : 's'));
+        const currentType = isTrot ? (disciplineCode.includes('MONTE') ? 'm' : 'a') : (disciplineCode.includes('PLAT') ? 'p' : (disciplineCode.includes('HAIE') ? 'h' : 's'));
         if (type === currentType) {
-            const specBonus = (discipline.includes('MONTE') || !isTrot) ? 1.25 : 1.15;
+            const specBonus = (disciplineCode.includes('MONTE') || !isTrot) ? 1.25 : 1.15;
             points *= specBonus;
         }
 
@@ -118,9 +115,10 @@ export function analyserFormeProfonde(musique, discipline = 'INCONNUE', avgHisto
 
     // 3. Détection d'Irrégularité (v43.1)
     let irregularityMalus = 0;
-    const recentRanks = perfs.slice(0, 3).map(p => {
-        const val = p.slice(0, -1).toUpperCase();
-        return isNaN(val) ? 10 : parseInt(val);
+    const recentRanks = perfs.slice(0, 3).map(perf => {
+        const { value } = parseMusicPerformance(perf);
+        const rank = Number(value);
+        return Number.isFinite(rank) ? rank : 10;
     });
     if (recentRanks.includes(1) && (recentRanks.includes(0) || recentRanks.some(r => r > 8))) {
         irregularityMalus = 15; // Cheval "Tout ou Rien"
@@ -175,24 +173,25 @@ export function analyserClasse(participant) {
 }
 
 export function analyserConfig(participant, discipline = '') {
-    const isTrot = discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE');
-    if (!isTrot) return 60; // Base neutre hors Trot
-
-    let score = 50;
+    const disc = (discipline || '').toUpperCase();
+    const isTrot = disc.includes('TROT') || disc.includes('ATTELE') || disc.includes('MONTE');
     const ferrage = (participant.ferrage || '').toUpperCase();
     const oeilleres = (participant.oeilleres || '').toUpperCase();
 
-    // v48.2: Support Oeillères pour PLAT/OBSTACLE
-    if (!discipline.includes('TROT') && !discipline.includes('ATTELE') && !discipline.includes('MONTE')) {
-        if (oeilleres.includes('OEILLERES_CLASSIQUES')) score = 85;
-        else if (oeilleres.includes('OEILLERES_AUSTRALIENNES')) score = 75;
-        else if (oeilleres.includes('PEAU_DE_MOUTON')) score = 70;
+    if (!isTrot) {
+        // v48.2: Support Oeillères pour PLAT/OBSTACLE
+        if (oeilleres.includes('OEILLERES_CLASSIQUES') || oeilleres.includes('CLASSIQUES') || oeilleres === 'O') return 85;
+        if (oeilleres.includes('OEILLERES_AUSTRALIENNES') || oeilleres.includes('AUSTRALIENNES') || oeilleres === 'A') return 75;
+        if (oeilleres.includes('PEAU_DE_MOUTON')) return 70;
+        return 60; // Base neutre hors Trot
     }
 
+    let score = 50;
+
     // V27: Impact Déferrage renforcé (TROT)
-    if (ferrage.includes('D4')) score = 100; // Optimal
-    else if (ferrage.includes('DA') || ferrage.includes('DP')) score = 80; // Bon
-    else if (ferrage.includes('PL')) score = 65; // Plaqué (correct)
+    if (ferrage.includes('D4') || ferrage.includes('DES_4')) score = 100; // Optimal
+    else if (ferrage.includes('DA') || ferrage.includes('DP') || ferrage.includes('ANTERIEUR') || ferrage.includes('POSTERIEUR')) score = 80; // Bon
+    else if (ferrage.includes('PL') || ferrage.includes('PLAQUE')) score = 65; // Plaqué (correct)
 
     return score;
 }
@@ -266,10 +265,10 @@ export async function preparerBaseScores(participant, contexteCourse, avgHistory
     };
 }
 
-export async function calculerPrediction(participant, contexteCourse, activePatterns = []) {
+export async function calculerPrediction(participant, contexteCourse, activePatterns = [], preCalculatedScores = null) {
     try {
         const disc = (contexteCourse.discipline || 'PLAT').toUpperCase();
-        const baseScores = await preparerBaseScores(participant, contexteCourse);
+        const baseScores = preCalculatedScores || await preparerBaseScores(participant, contexteCourse);
         const isElite = (baseScores.entourage >= 98); 
         const cote = parseFloat(participant.cote_ref);
 
@@ -482,9 +481,6 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
             participant.is_inconsistent = true;
         }
 
-        // --- SIGNAL GATE ---
-        participant.signal_gate = evaluerSignalGate(participant, contexteCourse, finalScoreRaw); 
-
         // v48: BARRIÈRE DE FORME ABSOLUE
         // Si le cheval est en méforme totale, il ne peut pas être une sélection élite (cap à 55)
         if (baseScores.forme < 35 && finalScoreRaw > 55) {
@@ -494,28 +490,20 @@ export async function calculerPrediction(participant, contexteCourse, activePatt
 
         // v48.1: BARRIÈRE D'INEXPÉRIENCE — Regex aligné sur analyserFormeProfonde()
         // On utilise le même extracteur de perfs que dans analyserFormeProfonde pour cohérence.
-        const cleanMusicBarre = (participant.musique || '').replace(/\(\d+\)/g, '');
-        const perfsBarre = cleanMusicBarre.match(/([0-9]|DA|DAI|Dist)[a-zA-Z]?/g) || [];
+        const perfsBarre = extractMusicPerformances(participant.musique);
         if (perfsBarre.length < 3 && finalScoreRaw > 75) {
             logger.warning(`[IA] Barrière Inexpérience activée pour ${participant.nom}: Score ${finalScoreRaw} -> 75 (${perfsBarre.length} perf(s))`);
             finalScoreRaw = 75;
         }
 
-        // --- STATS & KELLY (calculés APRÈS les barrières pour mises cohérentes) ---
-        // fix v48.1: Kelly calculé après barrières de forme/inexpérience pour éviter les mises excessives
-        if (cote > 1) {
-            const iaProb = finalScoreRaw / 100;
-            const marketProb = 1 / cote;
-            participant.edge_stat = parseFloat(((iaProb - marketProb) * 100).toFixed(2));
-            participant.market_prob = parseFloat((marketProb * 100).toFixed(2));
-            participant.kelly_suggestion = calculateKellyMise(cote, finalScoreRaw, 1000);
-        }
+        // Le Gate doit confirmer le score réellement retourné, après les barrières.
+        participant.signal_gate = evaluerSignalGate(participant, contexteCourse, finalScoreRaw);
 
         return Math.max(0, Math.min(100, finalScoreRaw));
 
     } catch (e) {
         logger.error(`IA Architecture Error: ${e.message}`);
-        return 50;
+        throw e;
     }
 }
 
@@ -540,7 +528,8 @@ export function genererArgumentsXAI(participant, baseScores, cat_trend) {
     if (isTrot && baseScores.config >= 90) {
         arguments_ia.push("Configuration de ferrage optimale (déferré des 4)");
     } else if (isPlat) {
-        if (parseInt(participant.corde) <= 4) arguments_ia.push("Excellent numéro de corde (avantage tactique)");
+        const corde = Number(participant.corde);
+        if (Number.isFinite(corde) && corde > 0 && corde <= 4) arguments_ia.push("Excellent numéro de corde (avantage tactique)");
         if (participant.oeilleres && participant.oeilleres !== 'SANS_OEILLERES') arguments_ia.push("Équipé d'œillères (concentration accrue)");
     } else if (isObstacle) {
         if (baseScores.forme >= 75) arguments_ia.push("Sauteur expérimenté et en pleine possession de ses moyens");

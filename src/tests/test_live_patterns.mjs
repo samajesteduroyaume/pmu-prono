@@ -1,5 +1,6 @@
+import assert from 'node:assert/strict';
 import { calculerPredictionHybride } from '../core/hybrid.mjs';
-import { initDB } from '../core/db.mjs';
+import { closeDB, initDB } from '../core/db.mjs';
 import logger from '../utils/logger.mjs';
 
 async function testLiveIntegration() {
@@ -35,13 +36,13 @@ async function testLiveIntegration() {
     const resWithPattern = await calculerPredictionHybride(participant, contexte, activePatterns);
     logger.info(`Score Avec Golden Pattern: ${resWithPattern.score}`);
 
-    if (resWithPattern.score > resNoPattern.score) {
-        logger.success('✅ Le score a été boosté par le Golden Pattern');
-    } else {
-        logger.error('❌ Le score n\'a pas bougé');
-    }
+    assert.ok(resWithPattern.score > resNoPattern.score, 'Le Golden Pattern doit augmenter le score.');
+    logger.success('✅ Le score a été boosté par le Golden Pattern');
 
     logger.header('FIN DES TESTS LIVE');
 }
 
-testLiveIntegration().catch(console.error);
+testLiveIntegration().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+}).finally(() => closeDB());

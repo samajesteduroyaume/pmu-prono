@@ -1,16 +1,12 @@
 // src/tests/test_inconsistencies.mjs
+import assert from 'node:assert/strict';
 import { calculerPrediction } from '../core/intelligence.mjs';
-import { initDB } from '../core/db.mjs';
-import logger from '../utils/logger.mjs';
+import { closeDB, initDB } from '../core/db.mjs';
 
 async function runTest() {
     console.log("--- TEST DÉTECTION INCOHÉRENCES (V42) ---");
     
-    try {
-        await initDB();
-    } catch (e) {
-        console.warn("DB already initialized or error, continuing...");
-    }
+    await initDB();
 
     const contexteCourse = {
         discipline: 'TROT ATTELE',
@@ -33,6 +29,7 @@ async function runTest() {
     console.log("\nCas 1: D4 sans forme (BAZIRE au sulky)");
     const score1 = await calculerPrediction(p1, contexteCourse);
     console.log(`Score Final: ${score1}`);
+    assert.equal(p1.is_inconsistent, true, 'D4 avec une forme critique doit être signalé.');
     if (p1.is_inconsistent) {
         console.log("ALERTE DÉTECTÉE :");
         p1.inconsistency_alerts.forEach(a => console.log(`- [${a.type}] ${a.message}`));
@@ -53,13 +50,14 @@ async function runTest() {
     console.log("\nCas 2: Crack Attelé qui débute en Monté");
     const score2 = await calculerPrediction(p2, contexteMonte);
     console.log(`Score Final: ${score2}`);
+    assert.equal(p2.is_inconsistent, true, 'Un favori sans référence dans sa discipline doit être signalé.');
     if (p2.is_inconsistent) {
         console.log("ALERTE DÉTECTÉE :");
         p2.inconsistency_alerts.forEach(a => console.log(`- [${a.type}] ${a.message}`));
     }
 }
 
-runTest().then(() => process.exit(0)).catch(err => {
+runTest().catch(err => {
     console.error(err);
-    process.exit(1);
-});
+    process.exitCode = 1;
+}).finally(() => closeDB());

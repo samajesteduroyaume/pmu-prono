@@ -2,6 +2,10 @@
   "type": "module",
   "scripts": {
     "start": "node src/server/app.mjs",
+    "test": "node src/tests/run.mjs",
+    "test:pmu": "node src/tests/test_connection.mjs",
+    "test:pmu:history": "node src/tests/test_past_dates.mjs",
+    "debug:filter": "node src/scripts/debug_filter.mjs",
     "sync": "node src/pipelines/sync.mjs",
     "sync:year": "node src/pipelines/sync.mjs 365",
     "sync:month": "node src/pipelines/sync.mjs 30",
@@ -9,7 +13,7 @@
     "sync:6m": "node src/pipelines/sync.mjs 180"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",

@@ -10,7 +10,7 @@ export const cache = {
      */
     get: (key) => {
         const value = appCache.get(key);
-        if (value) {
+        if (value !== undefined) {
             logger.info(`[CACHE] Hit: ${key}`);
             return value;
         }

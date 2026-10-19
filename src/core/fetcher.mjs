@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { formatDate } from '../utils/dateUtils.mjs';
 
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -53,12 +53,12 @@ export async function fetchApi(url, config = {}, retries = 3) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-            const response = await fetch(url, {
-                ...config,
-                headers,
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
+            let response;
+            try {
+                response = await fetch(url, { ...config, headers, signal: controller.signal });
+            } finally {
+                clearTimeout(timeoutId);
+            }
 
             if (response.status === 429 || response.status === 403) {
                 const waitTime = (i + 1) * 2000;
@@ -103,7 +103,9 @@ export async function fetchCourseRapports(dateStr, r, c) {
  * Récupère les données complètes pour un jour
  */
 export async function fetchDay(day, config = {}) {
-    const formattedDate = format(new Date(day), 'ddMMyyyy');
+    const isoDate = formatDate(day);
+    if (!isoDate) throw new Error(`Date de synchronisation invalide: ${day}`);
+    const formattedDate = isoDate.split('-').reverse().join('');
 
     // 1. Programme global
     const programmeUrl = `https://online.turfinfo.api.pmu.fr/rest/client/61/programme/${formattedDate}?meteo=true&specialisation=INTERNET`;

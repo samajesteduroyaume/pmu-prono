@@ -1,5 +1,6 @@
 import logger from '../utils/logger.mjs';
 import { getPlageHoraire } from './pattern_optimizer.mjs';
+import CONFIG from '../config/settings.mjs';
 
 /**
  * MODULE DE TENDANCES CUMULÉES AVANCÉES v1.0
@@ -23,13 +24,20 @@ export function calculerTendanceCumulee(historique) {
         return { tendance: 'NEUTRE', pente: 0 };
     }
 
+    const cumulativeValues = historique.map(entry =>
+        entry?.cumulative == null ? NaN : Number(entry.cumulative)
+    );
+    if (cumulativeValues.some(value => !Number.isFinite(value))) {
+        return { tendance: 'NEUTRE', pente: 0 };
+    }
+
     // Régression linéaire simple: y = ax + b
-    const n = historique.length;
+    const n = cumulativeValues.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
 
     historique.forEach((entry, index) => {
         const x = index;
-        const y = entry.cumulative || 0;
+        const y = cumulativeValues[index];
         sumX += x;
         sumY += y;
         sumXY += x * y;
@@ -48,39 +56,50 @@ export function calculerTendanceCumulee(historique) {
 
 /**
  * Calcule le momentum (0-100) basé sur la performance récente vs historique
- * @param {Array} historique - Tableau d'objets {date, cumulative}
+ * @param {Array} historique - Tableau d'objets {date, gain, mise}
  * @returns {number} Score de momentum entre 0 et 100
  */
 export function calculerMomentum(historique) {
     if (!historique || historique.length < 8) return 50;
-
-    // ROI des 7 derniers jours
-    const recent7 = historique.slice(-7);
-    const roiRecent = recent7.length > 1
-        ? ((recent7[recent7.length - 1].cumulative - recent7[0].cumulative) / Math.abs(recent7[0].cumulative || 1)) * 100
-        : 0;
-
-    // ROI des 30 derniers jours (ou tout l'historique si < 30)
-    const period30 = historique.slice(-30);
-    const roiPeriod = period30.length > 1
-        ? ((period30[period30.length - 1].cumulative - period30[0].cumulative) / Math.abs(period30[0].cumulative || 1)) * 100
-        : 0;
-
-    // Momentum = comparaison ROI récent vs ROI période
-    let momentum = 50; // Neutre par défaut
-
-    if (roiPeriod !== 0) {
-        const ratio = roiRecent / roiPeriod;
-        // Si ROI récent > ROI période = momentum positif
-        if (ratio > 1.5) momentum = 85;
-        else if (ratio > 1.2) momentum = 75;
-        else if (ratio > 1.0) momentum = 65;
-        else if (ratio > 0.8) momentum = 50;
-        else if (ratio > 0.5) momentum = 35;
-        else momentum = 20;
+    const daily = new Map();
+    for (const entry of historique) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date || '') || entry.gain == null) continue;
+        const parsedDate = new Date(`${entry.date}T12:00:00.000Z`);
+        if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== entry.date) continue;
+        const profit = Number(entry.gain);
+        const stake = Number(entry.mise);
+        if (!Number.isFinite(profit) || !Number.isFinite(stake) || stake <= 0) continue;
+        const day = daily.get(entry.date) || { profit: 0, stake: 0 };
+        day.profit += profit;
+        day.stake += stake;
+        daily.set(entry.date, day);
     }
+    if (!daily.size) return 50;
 
-    return Math.round(momentum);
+    const latestDate = [...daily.keys()].sort().at(-1);
+    const shiftDate = (value, days) => {
+        const date = new Date(`${value}T12:00:00.000Z`);
+        date.setUTCDate(date.getUTCDate() + days);
+        return date.toISOString().slice(0, 10);
+    };
+    const calculateRoi = cutoff => {
+        let profit = 0;
+        let stake = 0;
+        for (const [date, totals] of daily) {
+            if (date < cutoff || date > latestDate) continue;
+            profit += totals.profit;
+            stake += totals.stake;
+        }
+        return stake > 0 ? (profit / stake) * 100 : null;
+    };
+
+    // Fenêtres calendaires ancrées sur le dernier jour réglé, pas sur le nombre de courses.
+    const roiRecent = calculateRoi(shiftDate(latestDate, -6));
+    const roiPeriod = calculateRoi(shiftDate(latestDate, -29));
+    if (roiRecent === null || roiPeriod === null) return 50;
+
+    // Chaque amélioration de 10 points de ROI apporte 20 points de momentum.
+    return Math.round(Math.max(0, Math.min(100, 50 + (roiRecent - roiPeriod) * 2)));
 }
 
 /**
@@ -88,17 +107,23 @@ export function calculerMomentum(historique) {
  * @param {Array} historique - Tableau d'objets {date, cumulative}
  * @returns {Object} {current: number, max: number, currentPercent: number, maxPercent: number}
  */
-export function calculerDrawdown(historique) {
+export function calculerDrawdown(historique, initialCapital = CONFIG.engine_settings.finance.bankroll_default) {
     if (!historique || historique.length === 0) {
         return { current: 0, max: 0, currentPercent: 0, maxPercent: 0 };
     }
 
-    let peak = historique[0].cumulative || 0;
+    const startingCapital = Number.isFinite(Number(initialCapital)) && Number(initialCapital) > 0
+        ? Number(initialCapital)
+        : CONFIG.engine_settings.finance.bankroll_default;
+    // Le capital initial est le premier sommet du parcours : une première
+    // perte doit déjà apparaître dans le drawdown.
+    let peak = startingCapital;
     let maxDrawdown = 0;
+    let maxDrawdownPercent = 0;
     let currentDrawdown = 0;
 
     historique.forEach(entry => {
-        const value = entry.cumulative || 0;
+        const value = startingCapital + (Number(entry.cumulative) || 0);
 
         // Nouveau pic
         if (value > peak) {
@@ -112,18 +137,18 @@ export function calculerDrawdown(historique) {
         // Mise à jour du drawdown maximum
         if (dd > maxDrawdown) {
             maxDrawdown = dd;
+            maxDrawdownPercent = peak > 0 ? dd / peak : 1;
         }
     });
 
     // Calcul en pourcentage
-    const currentPercent = peak !== 0 ? (currentDrawdown / peak) : 0;
-    const maxPercent = peak !== 0 ? (maxDrawdown / peak) : 0;
+    const currentPercent = peak > 0 ? (currentDrawdown / peak) : (currentDrawdown > 0 ? 1 : 0);
 
     return {
         current: parseFloat(currentDrawdown.toFixed(2)),
         max: parseFloat(maxDrawdown.toFixed(2)),
         currentPercent: parseFloat(currentPercent.toFixed(4)),
-        maxPercent: parseFloat(maxPercent.toFixed(4))
+        maxPercent: parseFloat(maxDrawdownPercent.toFixed(4))
     };
 }
 
@@ -133,11 +158,12 @@ export function calculerDrawdown(historique) {
  * @returns {Object} {variance: number, ecartType: number}
  */
 export function calculerVariance(historique) {
-    if (!historique || historique.length < 2) {
+    const gains = (historique || [])
+        .map(entry => entry?.gain == null ? NaN : Number(entry.gain))
+        .filter(Number.isFinite);
+    if (gains.length < 2) {
         return { variance: 0, ecartType: 0 };
     }
-
-    const gains = historique.map(h => h.gain || 0);
     const moyenne = gains.reduce((a, b) => a + b, 0) / gains.length;
 
     const variance = gains.reduce((sum, gain) => {
@@ -159,9 +185,10 @@ export function calculerVariance(historique) {
  * @returns {number} Ratio de Sharpe
  */
 export function calculerRatioSharpe(historique, tauxSansRisque = 0.02) {
-    if (!historique || historique.length < 2) return 0;
-
-    const gains = historique.map(h => h.gain || 0);
+    const gains = (historique || [])
+        .map(entry => entry?.gain == null ? NaN : Number(entry.gain))
+        .filter(Number.isFinite);
+    if (gains.length < 2) return 0;
     const rendementMoyen = gains.reduce((a, b) => a + b, 0) / gains.length;
 
     const { ecartType } = calculerVariance(historique);
@@ -246,13 +273,12 @@ export function detecterPatterns(courses) {
     courses.forEach(c => {
         const disc = c.discipline || 'INCONNU';
         if (!parDiscipline[disc]) {
-            parDiscipline[disc] = { total: 0, wins: 0, gains: 0 };
+            parDiscipline[disc] = { total: 0, wins: 0 };
         }
         parDiscipline[disc].total++;
-        if (c.resultat === 'WIN' || (c.gain && c.gain > 0)) {
+        if (c.resultat === 'WIN' || (Number.isFinite(Number(c.gain)) && Number(c.gain) > 0)) {
             parDiscipline[disc].wins++;
         }
-        parDiscipline[disc].gains += (c.gain || 0);
     });
 
     let meilleureDiscipline = null;
@@ -270,13 +296,12 @@ export function detecterPatterns(courses) {
     courses.forEach(c => {
         const hippo = c.hippodrome || 'INCONNU';
         if (!parHippodrome[hippo]) {
-            parHippodrome[hippo] = { total: 0, wins: 0, gains: 0 };
+            parHippodrome[hippo] = { total: 0, wins: 0 };
         }
         parHippodrome[hippo].total++;
-        if (c.resultat === 'WIN' || (c.gain && c.gain > 0)) {
+        if (c.resultat === 'WIN' || (Number.isFinite(Number(c.gain)) && Number(c.gain) > 0)) {
             parHippodrome[hippo].wins++;
         }
-        parHippodrome[hippo].gains += (c.gain || 0);
     });
 
     const hippodromesPerformants = Object.keys(parHippodrome)
@@ -292,13 +317,16 @@ export function detecterPatterns(courses) {
     const parHeure = {};
     courses.forEach(c => {
         if (!c.heure) return;
-        const heure = parseInt(c.heure.split(':')[0]);
+        const match = /^(\d{1,2}):([0-5]\d)$/.exec(String(c.heure));
+        if (!match) return;
+        const heure = Number(match[1]);
+        if (heure > 23) return;
         const plage = getPlageHoraire(heure);
         if (!parHeure[plage]) {
             parHeure[plage] = { total: 0, wins: 0 };
         }
         parHeure[plage].total++;
-        if (c.resultat === 'WIN' || (c.gain && c.gain > 0)) {
+        if (c.resultat === 'WIN' || (Number.isFinite(Number(c.gain)) && Number(c.gain) > 0)) {
             parHeure[plage].wins++;
         }
     });
@@ -316,9 +344,11 @@ export function detecterPatterns(courses) {
     // Analyse par jour de la semaine
     const parJour = {};
     courses.forEach(c => {
-        if (!c.date) return;
-        const date = new Date(c.date);
-        const jour = date.toLocaleDateString('fr-FR', { weekday: 'long' });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date || '')) return;
+        const [year, month, day] = c.date.split('-').map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day, 12));
+        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return;
+        const jour = date.toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' });
         if (!parJour[jour]) {
             parJour[jour] = { total: 0, wins: 0 };
         }

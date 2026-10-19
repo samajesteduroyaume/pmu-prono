@@ -1,25 +1,19 @@
 // src/config/settings.mjs
+import 'dotenv/config';
+
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_TOKEN || '';
+const telegramChatId = process.env.TELEGRAM_CHAT_ID || '';
+const telegramConfigured = Boolean(
+    telegramBotToken && telegramBotToken !== 'YOUR_TELEGRAM_BOT_TOKEN' &&
+    telegramChatId && telegramChatId !== 'YOUR_CHAT_ID'
+);
+
 export const CONFIG = {
     // Profils d'experts (Drivers & Entraîneurs)
     experts: {
         drivers: ['BAZIRE', 'NIVARD', 'RAFFIN', 'ABRIVARD', 'ROCHARD', 'BARZALONA', 'SOUMILLON', 'GUYON', 'PASQUIER', 'DEMURO', 'MOUROT', 'MOTTIER', 'GELORMINI', 'LAGADEUC'],
         trainers: ['DUVALDESTIN', 'BAZIRE', 'GUARATO', 'ABRIVARD', 'ALLAIRE', 'LEVESQUE', 'SOULOY', 'ROUGET', 'FABRE', 'PANTALL']
     },
-
-    // Calibration empirique des probabilités (v43) — Alignée sur win rate réel (30.77%)
-    // Scores IA → probabilités de victoire observées en backtest
-    calibration: [
-        // Calibration v43.3 : alignée sur les win rates réels observés en backtest
-        // (Win Rate global 39%, mode Value Hunter ~25%)
-        // Un score IA représente TOUJOURS le meilleur cheval sélectionné dans la course.
-        { minScore: 95, prob: 0.40 }, // Top pick très fort → ~40% win rate réel
-        { minScore: 90, prob: 0.35 }, // Excellente sélection → ~35%
-        { minScore: 80, prob: 0.28 }, // Bonne sélection → ~28%
-        { minScore: 70, prob: 0.22 }, // Sélection correcte → ~22%
-        { minScore: 60, prob: 0.15 }, // Sélection incertaine → ~15%
-        { minScore: 50, prob: 0.09 }, // Faible conviction → ~9%
-        { minScore: 0,  prob: 0.05 }  // Plancher de sécurité
-    ],
 
     // Pondérations par défaut du moteur IA (Optimisées v43.2)
     weights: {
@@ -124,9 +118,9 @@ export const CONFIG = {
     // Notifications (V42)
     notifications: {
         telegram: {
-            enabled: !!process.env.TELEGRAM_TOKEN,
-            token: process.env.TELEGRAM_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN',
-            chatId: process.env.TELEGRAM_CHAT_ID || 'YOUR_CHAT_ID',
+            enabled: telegramConfigured,
+            token: telegramBotToken,
+            chatId: telegramChatId,
             priorityThreshold: 2 // ALERT_PRIORITY.MEDIUM par défaut
         }
     },
@@ -226,9 +220,7 @@ export const CONFIG = {
             golden_roi_threshold: 20,
             golden_winrate_threshold: 40,
             golden_count_threshold: 5,
-            danger_roi_threshold: -10,
-            smart_money_threshold: -20,
-            abandonment_threshold: 30
+            danger_roi_threshold: -10
         },
         tracking: {
             refresh_interval_ms: 300000, // 5 minutes

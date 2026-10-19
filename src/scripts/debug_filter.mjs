@@ -1,13 +1,16 @@
 import { fetchDay, initBrowser, closeBrowser } from '../core/fetcher.mjs';
 import { processDayRaces } from '../core/processor.mjs';
+import { initDB, closeDB } from '../db/db.mjs';
 import { CONFIG } from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
+import { isMainModule } from '../utils/isMainModule.mjs';
 
-(async () => {
+async function debugFilter() {
     logger.header('DEBUG FILTRE');
     
-    await initBrowser();
     try {
+        await initDB();
+        await initBrowser();
         const testDate = new Date();
         logger.info(`Test avec la date: ${testDate.toISOString().split('T')[0]}`);
         
@@ -20,7 +23,7 @@ import logger from '../utils/logger.mjs';
             logger.info(`Données brutes: ${allRaces.length} courses`);
             
             // Test du traitement
-            const processedRaces = processDayRaces(rawData, testDate, CONFIG.filters);
+            const processedRaces = await processDayRaces(rawData, testDate, CONFIG.filters);
             logger.info(`Après traitement: ${processedRaces.length} courses`);
             
             if (processedRaces.length > 0) {
@@ -50,8 +53,14 @@ import logger from '../utils/logger.mjs';
         
     } catch (error) {
         logger.error(`Erreur: ${error.message}`);
+        process.exitCode = 1;
     } finally {
+        await closeDB();
         await closeBrowser();
         logger.info('Debug terminé');
     }
-})(); 
+}
+
+if (isMainModule(import.meta.url)) debugFilter();
+
+export { debugFilter };

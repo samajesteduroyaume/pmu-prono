@@ -5,11 +5,12 @@ if (!util.isNullOrUndefined) {
 
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { calculerPrediction as calculerPredictionV14 } from './intelligence.mjs';
 import { CONFIG } from '../config/settings.mjs';
 import { extractBaseFeatures } from './features.mjs';
 
-const MODEL_PATH = './src/ml/model';
+const MODEL_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../ml/model');
 let model = null;
 let metadata = null;
 let tfModule = null;
@@ -41,14 +42,26 @@ export async function loadMLModel() {
         const modelPath = path.resolve(MODEL_PATH);
         const jsonPath = path.join(modelPath, 'model.json');
         const binPath = path.join(modelPath, 'weights.bin');
+        const metaPath = path.join(modelPath, 'metadata.json');
 
         if (!fs.existsSync(jsonPath)) {
             console.warn('[ML] Modèle non trouvé, utilisation de v14 uniquement');
             return false;
         }
 
+        let nextMetadata = null;
+        if (fs.existsSync(metaPath)) {
+            nextMetadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        }
+        if (nextMetadata?.trainingMethod !== 'immutable-pre-race-feature-snapshots') {
+            console.warn('[ML] Modèle historique ignoré : il n’a pas été entraîné sur des snapshots pré-course immuables. Utilisation de v14.');
+            if (!model) metadata = null;
+            return false;
+        }
+
+        let nextModel;
         try {
-            model = await tf.loadLayersModel(`file://${jsonPath}`);
+            nextModel = await tf.loadLayersModel(pathToFileURL(jsonPath).href);
         } catch (e1) {
             // Fallback IOHandler pour moteurs pure JS sans C++ native (ex: ARM64 Freebox Ultra, Alpine Docker, Raspberry Pi)
             const ioHandler = {
@@ -63,13 +76,20 @@ export async function loadMLModel() {
                     };
                 }
             };
-            model = await tf.loadLayersModel(ioHandler);
+            nextModel = await tf.loadLayersModel(ioHandler);
         }
 
-        const metaPath = path.join(modelPath, 'metadata.json');
-        if (fs.existsSync(metaPath)) {
-            metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-            console.log(`[ML] Modèle v15 chargé (Accuracy: ${(metadata.testAccuracy * 100).toFixed(2)}%)`);
+        const previousModel = model;
+        model = nextModel;
+        metadata = nextMetadata;
+        const mlHitRate = metadata.testMlTop1HitRate ?? metadata.testTop1HitRate;
+        const top1 = Number.isFinite(mlHitRate)
+            ? `Top 1 ML seul (test prospectif): ${(mlHitRate * 100).toFixed(2)}%`
+            : 'métrique Top 1 ML absente';
+        console.log(`[ML] Modèle chargé (${top1})`);
+        if (previousModel && previousModel !== nextModel) {
+            const cleanup = setTimeout(() => previousModel.dispose(), 60_000);
+            cleanup.unref?.();
         }
 
         return true;
@@ -81,6 +101,50 @@ export async function loadMLModel() {
 
 let isWatcherActive = false;
 let reloadDebounceTimeout = null;
+let modelWatchers = [];
+
+function watchModelFiles() {
+    for (const watcher of modelWatchers) watcher.close();
+    modelWatchers = [];
+    const modelDirPath = path.resolve(MODEL_PATH);
+    const parentDirPath = path.dirname(modelDirPath);
+    const modelDirName = path.basename(modelDirPath);
+
+    const scheduleReload = reason => {
+        if (reloadDebounceTimeout) clearTimeout(reloadDebounceTimeout);
+        reloadDebounceTimeout = setTimeout(async () => {
+            reloadDebounceTimeout = null;
+            if (!isWatcherActive) return;
+            console.log(`[ML Hot-Reload] Modification détectée (${reason}). Rechargement à chaud...`);
+            const success = await loadMLModel();
+            if (success) {
+                console.log('[ML Hot-Reload] Nouvelle génération chargée avec succès.');
+                // L'arrêt peut avoir eu lieu pendant le chargement asynchrone.
+                // Ne pas recréer les watchers après leur fermeture.
+                if (isWatcherActive) watchModelFiles();
+            }
+        }, 500);
+    };
+
+    try {
+        modelWatchers.push(fs.watch(parentDirPath, (eventType, filename) => {
+            if (String(filename || '') === modelDirName) scheduleReload('répertoire modèle remplacé');
+        }));
+    } catch (error) {
+        console.error('[ML Hot-Reload] Surveillance du répertoire parent impossible:', error.message);
+    }
+
+    if (fs.existsSync(modelDirPath)) {
+        try {
+            modelWatchers.push(fs.watch(modelDirPath, (eventType, filename) => {
+                const name = String(filename || '');
+                if (name.endsWith('.json') || name.endsWith('.bin')) scheduleReload(name);
+            }));
+        } catch (error) {
+            console.error('[ML Hot-Reload] Surveillance du modèle impossible:', error.message);
+        }
+    }
+}
 
 /**
  * Active la surveillance automatique du dossier modèle sur disque (Hot-Reloading à chaud)
@@ -88,23 +152,8 @@ let reloadDebounceTimeout = null;
 export function enableModelHotReload() {
     if (isWatcherActive) return;
 
-    const modelDirPath = path.resolve(MODEL_PATH);
-    if (!fs.existsSync(modelDirPath)) return;
-
     try {
-        fs.watch(modelDirPath, (eventType, filename) => {
-            if (!filename || (!filename.endsWith('.json') && !filename.endsWith('.bin'))) return;
-
-            if (reloadDebounceTimeout) clearTimeout(reloadDebounceTimeout);
-            reloadDebounceTimeout = setTimeout(async () => {
-                console.log(`[ML Hot-Reload] Modification détectée (${filename}). Rechargement à chaud des poids...`);
-                const success = await loadMLModel();
-                if (success) {
-                    console.log('[ML Hot-Reload] Nouveau modèle réentraîné chargé en mémoire avec succès sans interruption !');
-                }
-            }, 500);
-        });
-
+        watchModelFiles();
         isWatcherActive = true;
         console.log('[ML Hot-Reload] Surveillance automatique des mises à jour du modèle activée.');
     } catch (err) {
@@ -112,8 +161,18 @@ export function enableModelHotReload() {
     }
 }
 
-export async function extractMLFeatures(participant, course, allParticipants = []) {
-    const f = await extractBaseFeatures(participant, course);
+export function disableModelHotReload() {
+    if (reloadDebounceTimeout) {
+        clearTimeout(reloadDebounceTimeout);
+        reloadDebounceTimeout = null;
+    }
+    for (const watcher of modelWatchers) watcher.close();
+    modelWatchers = [];
+    isWatcherActive = false;
+}
+
+export async function extractMLFeatures(participant, course, allParticipants = [], preCalculatedBase = null) {
+    const f = preCalculatedBase || await extractBaseFeatures(participant, course);
 
     // v43: Rang de la côte parmi les partants (0=favori, 1=outsider)
     let rangCoteNorm = 0.5;
@@ -150,46 +209,55 @@ export async function extractMLFeatures(participant, course, allParticipants = [
 /**
  * Prédiction ML pure (V40+ avec 10 features)
  */
-async function predictML(participant, contexteCourse, allParticipants = []) {
+async function predictML(participant, contexteCourse, allParticipants = [], preCalculatedFeatures = null) {
     if (!model) return null;
 
     try {
-        const features = await extractMLFeatures(participant, contexteCourse, allParticipants);
+        const features = preCalculatedFeatures || await extractMLFeatures(participant, contexteCourse, allParticipants);
+        if (!Array.isArray(features) || features.length !== 15 || !features.every(Number.isFinite)) return null;
         const tf = await getTF();
         if (!tf) return null;
-        const tensor = tf.tensor2d([features]);
-        const prediction = model.predict(tensor);
-        const probability = await prediction.data();
-
-        tensor.dispose();
-        prediction.dispose();
-
-        // Convertir probabilité (0-1) en score (0-100)
-        let prob = probability[0];
-
-        // v43.3: Platt Scaling pour corriger le biais d'undersampling (ratio 1:1 vs réalité ~1:13)
-        // Ratio d'undersampling = 1 gagnant / 13 perdants approx = 0.075
-        const undersampling_ratio = 0.075;
-        prob = prob / (prob + (1 - prob) / undersampling_ratio);
-
-        let scoreML = 0;
-
-        // v43.1: Courbe de calibration lissée pour éviter les effets de seuil
-        if (prob >= 0.45) {
-            scoreML = 90 + ((prob - 0.45) / 0.55) * 10;
-        } else if (prob >= 0.35) {
-            scoreML = 80 + ((prob - 0.35) / 0.10) * 10;
-        } else if (prob >= 0.25) {
-            scoreML = 70 + ((prob - 0.25) / 0.10) * 10;
-        } else if (prob >= 0.15) {
-            scoreML = 55 + ((prob - 0.15) / 0.10) * 15;
-        } else if (prob >= 0.08) {
-            scoreML = 35 + ((prob - 0.08) / 0.07) * 20;
-        } else {
-            scoreML = (prob / 0.08) * 35;
+        let tensor;
+        let prediction;
+        let probability;
+        try {
+            tensor = tf.tensor2d([features]);
+            prediction = model.predict(tensor);
+            probability = await prediction.data();
+        } finally {
+            tensor?.dispose();
+            prediction?.dispose();
         }
 
-        return Math.min(100, Math.max(0, Math.round(scoreML)));
+        // Convertir probabilité (0-1) en score (0-100)
+        // Le train est équilibré à 50/50. Corrige le prior de la sortie du classifieur
+        // avec la fréquence réelle des gagnants observée dans le train brut.
+        const sampledPrior = 0.5;
+        const savedPrior = Number(metadata?.rawTrainWinnerRate);
+        const populationPrior = Number.isFinite(savedPrior) && savedPrior > 0 && savedPrior < 1
+            ? savedPrior
+            : 0.075;
+        const modelOutput = Number(probability?.[0]);
+        if (!Number.isFinite(modelOutput)) return null;
+        const raw = Math.min(1, Math.max(0, modelOutput));
+        const adjustedPositive = raw * populationPrior / sampledPrior;
+        const adjustedNegative = (1 - raw) * (1 - populationPrior) / (1 - sampledPrior);
+        const denominator = adjustedPositive + adjustedNegative;
+        if (!Number.isFinite(denominator) || denominator <= 0) return null;
+        const adjusted = adjustedPositive / denominator;
+        if (!Number.isFinite(adjusted)) return null;
+
+        // Transforme cette estimation en points de classement. Ce score n'est pas
+        // une probabilité affichable et ne doit servir qu'à ordonner les chevaux.
+        let points;
+        if (adjusted >= 0.45) points = 90 + ((adjusted - 0.45) / 0.55) * 10;
+        else if (adjusted >= 0.35) points = 80 + ((adjusted - 0.35) / 0.10) * 10;
+        else if (adjusted >= 0.25) points = 70 + ((adjusted - 0.25) / 0.10) * 10;
+        else if (adjusted >= 0.15) points = 55 + ((adjusted - 0.15) / 0.10) * 15;
+        else if (adjusted >= 0.08) points = 35 + ((adjusted - 0.08) / 0.07) * 20;
+        else points = (adjusted / 0.08) * 35;
+
+        return Math.min(100, Math.max(0, Math.round(points)));
     } catch (error) {
         console.error('[ML] Erreur prédiction:', error.message);
         return null;
@@ -205,27 +273,33 @@ export async function calculerPredictionHybride(participant, contexteCourse, act
     // Utiliser les scores pré-calculés si disponibles (Elite v43.3)
     const baseScores = preCalculatedBaseScores || await preparerBaseScores(participant, contexteCourse);
 
-    const f = await extractBaseFeatures(participant, contexteCourse);
-    const scoreV14 = await calculerPredictionV14(participant, contexteCourse, activePatterns);
+    const f = await extractBaseFeatures(participant, contexteCourse, baseScores);
+    const mlFeatures = await extractMLFeatures(participant, contexteCourse, tousParticipants, f);
+    const scoreV14 = await calculerPredictionV14(participant, contexteCourse, activePatterns, baseScores);
+    const numericScoreV14 = Number(scoreV14);
+    if (!Number.isFinite(numericScoreV14)) throw new Error('Le moteur heuristique n’a pas produit de score valide.');
+    const heuristicScore = Math.max(0, Math.min(100, numericScoreV14));
 
     // Si modèle ML non disponible, fallback sur v14
     if (!model) {
-        return { score: scoreV14, xai: f.xai };
+        return { score: heuristicScore, xai: f.xai, features: mlFeatures };
     }
 
-    const scoreML = await predictML(participant, contexteCourse, tousParticipants);
+    const scoreML = await predictML(participant, contexteCourse, tousParticipants, mlFeatures);
 
     if (scoreML === null) {
-        return { score: scoreV14, xai: f.xai };
+        return { score: heuristicScore, xai: f.xai, features: mlFeatures };
     }
 
     // fix v48.1: Poids paramétrables configés en 50% ML + 50% Heuristiques (v48, réduit depuis 70/30)
     const { mlWeight, heuristicWeight } = CONFIG.architect.hybride;
-    const scoreHybride = Math.round((scoreML * mlWeight) + (scoreV14 * heuristicWeight));
+    const scoreHybride = Math.max(0, Math.min(100,
+        Math.round((scoreML * mlWeight) + (heuristicScore * heuristicWeight))));
 
     return {
         score: scoreHybride,
-        xai: f.xai
+        xai: f.xai,
+        features: mlFeatures
     };
 }
 

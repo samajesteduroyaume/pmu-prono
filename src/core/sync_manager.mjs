@@ -2,12 +2,16 @@ import logger from '../utils/logger.mjs';
 import { fetchDay } from './fetcher.mjs';
 import { processDayRaces } from './processor.mjs';
 import { insertCourses } from './db.mjs';
+import { formatDate } from '../utils/dateUtils.mjs';
 
 /**
- * SYNC MANAGER v27.1
+ * SYNC MANAGER v27.2
  * Centralise la logique de synchronisation multi-jours et live.
  */
-export async function syncHistory(startDate, days = 1, onProgress = null) {
+async function runSyncHistory(startDate, days = 1, onProgress = null) {
+    if (!Number.isSafeInteger(days) || days < 1 || days > 3650) {
+        throw new RangeError('Le nombre de jours doit être un entier compris entre 1 et 3650.');
+    }
     const results = {
         totalDays: days,
         successfulDays: 0,
@@ -15,19 +19,28 @@ export async function syncHistory(startDate, days = 1, onProgress = null) {
         errors: []
     };
 
-    const targetDate = startDate ? new Date(startDate) : new Date();
+    // Date-only inputs are calendar dates; anchor them at UTC noon to avoid
+    // shifting to the previous/next day on hosts in another timezone.
+    const isDateOnly = typeof startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(startDate);
+    const targetDate = isDateOnly
+        ? new Date(`${startDate}T12:00:00.000Z`)
+        : (startDate ? new Date(startDate) : new Date());
+    if (!Number.isFinite(targetDate.getTime())
+        || (isDateOnly && targetDate.toISOString().slice(0, 10) !== startDate)) {
+        throw new TypeError('La date de début de synchronisation est invalide.');
+    }
 
     for (let i = 0; i < days; i++) {
         const current = new Date(targetDate);
-        current.setDate(current.getDate() - i);
-        const dateStr = current.toISOString().split('T')[0];
+        current.setUTCDate(current.getUTCDate() - i);
+        const dateStr = formatDate(current);
         let dayCount = 0;
 
         try {
             logger.info(`[SYNC MANAGER] Sync [${i + 1}/${days}] - ${dateStr}`);
             const data = await fetchDay(current);
-            
-            if (data && data.programme) {
+
+            if (Array.isArray(data?.programme?.reunions)) {
                 const processed = await processDayRaces(data, current);
                 dayCount = await insertCourses(processed);
                 results.totalCourses += dayCount;
@@ -35,6 +48,7 @@ export async function syncHistory(startDate, days = 1, onProgress = null) {
                 logger.info(`[SYNC MANAGER] OK: ${dateStr} - ${dayCount} courses synchronisées.`);
             } else {
                 logger.warn(`[SYNC MANAGER] No data for ${dateStr}`);
+                results.errors.push({ date: dateStr, error: 'Aucune donnée PMU valide reçue.' });
             }
         } catch (error) {
             logger.error(`[SYNC MANAGER] Error for ${dateStr}: ${error.message}`);
@@ -60,9 +74,48 @@ export async function syncHistory(startDate, days = 1, onProgress = null) {
     return results;
 }
 
+let activeSyncs = 0;
+const syncIdleWaiters = new Set();
+
+export async function syncHistory(startDate, days = 1, onProgress = null) {
+    activeSyncs++;
+    try {
+        return await runSyncHistory(startDate, days, onProgress);
+    } finally {
+        activeSyncs--;
+        if (activeSyncs === 0) {
+            for (const resolve of syncIdleWaiters) resolve();
+            syncIdleWaiters.clear();
+        }
+    }
+}
+
+export async function waitForSyncIdle() {
+    if (activeSyncs === 0) return;
+    await new Promise(resolve => syncIdleWaiters.add(resolve));
+}
+
 /**
- * Live Sync: Récupère uniquement les mises à jour pour aujourd'hui
+ * Live Sync: Récupère les mises à jour pour aujourd'hui (et optionnellement demain)
+ * @param {boolean} includeTomorrow - Si true, synchronise aussi le programme de demain s'il est déjà disponible
  */
-export async function syncLive() {
-    return await syncHistory(new Date(), 1);
+export async function syncLive(includeTomorrow = false) {
+    const todayResults = await syncHistory(new Date(), 1);
+
+    if (includeTomorrow) {
+        const tomorrow = new Date(`${formatDate(new Date())}T12:00:00.000Z`);
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        try {
+            logger.info(`[SYNC MANAGER] Sync anticipée pour demain (${formatDate(tomorrow)})...`);
+            const tomorrowResults = await syncHistory(tomorrow, 1);
+            todayResults.totalCourses += tomorrowResults.totalCourses;
+            todayResults.successfulDays += tomorrowResults.successfulDays;
+            todayResults.errors.push(...tomorrowResults.errors);
+        } catch (err) {
+            logger.warn(`[SYNC MANAGER] Impossibilité de sync demain: ${err.message}`);
+            todayResults.errors.push({ date: formatDate(tomorrow), error: err.message });
+        }
+    }
+
+    return todayResults;
 }

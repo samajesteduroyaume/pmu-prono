@@ -3,6 +3,7 @@
 
 import CONFIG from '../config/settings.mjs';
 import { calculerRegularite } from '../utils/engine_utils.mjs';
+import { extractMusicPerformances } from '../utils/music.mjs';
 
 const VH_CONFIG = CONFIG.engine_settings.value_hunter;
 
@@ -71,10 +72,9 @@ export function evaluerSignalGate(participant, contexte, predictionScore) {
     // Signal 6 — Momentum (v48.2 : Victoire ou Place très récente)
     // On extrait le premier token de la musique (dernière course)
     const musique = (participant.musique || '').trim();
-    const cleanMusic = musique.replace(/\(\d+\)/g, '');
-    const firstPerf = cleanMusic.match(/([0-9]+|DA|DAI|DIST|T|A|ARR|R|RET|D)[a-zA-Z]?/i);
+    const firstPerf = extractMusicPerformances(musique)[0];
     if (firstPerf) {
-        const val = firstPerf[1].toUpperCase();
+        const val = firstPerf.toUpperCase();
         const rank = parseInt(val);
         if (!isNaN(rank) && (rank === 1 || rank === 2)) {
             signals.momentum = true;

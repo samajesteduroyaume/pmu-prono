@@ -3,24 +3,24 @@
  * V29.1 Modernized Structure
  */
 
-import { initDB, closeDB } from '../db/db.mjs';
+import { getDB, initDB, closeDB } from '../db/db.mjs';
 import * as courseRepo from '../db/repositories/courseRepo.mjs';
 import * as statRepo from '../db/repositories/statRepo.mjs';
 import * as pariRepo from '../db/repositories/pariRepo.mjs';
 import * as portfolioRepo from '../db/repositories/portfolioRepo.mjs';
 
 // Export core functions
-export { initDB, closeDB };
+export { getDB, initDB, closeDB };
 
 // Proxy all repository functions
 export const {
     insertCourses,
     getAllCourses,
+    getCoursesPage,
     getAllCoursesWithResults,
     getCourseParticipants,
     getCourseQuinte,
     getCourseById,
-    getDisciplines,
     getParticipantId,
     getChevauxEnRetardDeGain,
     getHorseHistory
@@ -31,9 +31,7 @@ export const {
     getAdvancedStats,
     getPalmaresStats,
     getPerformanceParDiscipline,
-    getDriverStats,
     getSynergyScore,
-    getOptimizationSample,
     getTendancesCumulees,
     getEcuriesForm
 } = statRepo;
@@ -42,6 +40,7 @@ export const {
     getHistoriqueParis,
     getSequenceActuelle,
     recordShadowBet,
+    settleShadowBets,
     getShadowPerformance,
     recordCoteHistorique,
     getCotesHistorique

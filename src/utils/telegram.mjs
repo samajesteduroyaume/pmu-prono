@@ -1,15 +1,22 @@
 import logger from './logger.mjs';
 
+const botTokenEnv = process.env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_TOKEN || '';
+const chatIdEnv = process.env.TELEGRAM_CHAT_ID || '';
+const isConfigured = (botToken, chatId) => Boolean(
+    botToken && botToken !== 'YOUR_TELEGRAM_BOT_TOKEN' &&
+    chatId && chatId !== 'YOUR_CHAT_ID'
+);
+
 let telegramConfig = {
-    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-    chatId: process.env.TELEGRAM_CHAT_ID || '',
-    enabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
+    botToken: botTokenEnv,
+    chatId: chatIdEnv,
+    enabled: isConfigured(botTokenEnv, chatIdEnv)
 };
 
 export function setTelegramConfig({ botToken, chatId, enabled = true }) {
     if (botToken !== undefined) telegramConfig.botToken = botToken;
     if (chatId !== undefined) telegramConfig.chatId = chatId;
-    telegramConfig.enabled = enabled && Boolean(telegramConfig.botToken && telegramConfig.chatId);
+    telegramConfig.enabled = enabled && isConfigured(telegramConfig.botToken, telegramConfig.chatId);
     return telegramConfig;
 }
 
@@ -75,7 +82,7 @@ export async function sendQuinteTelegramAlert(quinteData) {
 
     text += `<b>Sélection de l'IA (Top 8) :</b>\n`;
     selection.forEach((p, idx) => {
-        text += `${idx + 1}. <b>#${p.numero} ${p.nom}</b> (Cote: ${p.cote_ref || '--'} | Score: ${p.score}%)\n`;
+        text += `${idx + 1}. <b>#${p.numero} ${p.nom}</b> (Cote: ${p.cote_ref || '--'} | Score: ${p.score}/100 pts)\n`;
     });
 
     if (tocard) {

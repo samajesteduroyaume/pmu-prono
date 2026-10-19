@@ -22,10 +22,16 @@ async function main() {
                 'Diff %': `+${t.diff_percent}%`
             })));
         }
-
-        await closeDB();
     } catch (e) {
-        logger.error(e);
+        logger.error(e?.stack || e);
+        process.exitCode = 1;
+    } finally {
+        try {
+            await closeDB();
+        } catch (closeError) {
+            logger.error(`Erreur fermeture base: ${closeError?.message || closeError}`);
+            process.exitCode = 1;
+        }
     }
 }
 

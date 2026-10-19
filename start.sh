@@ -12,19 +12,19 @@ BOLD='\033[1m'
 
 # Nettoyage à l'arrêt
 cleanup() {
+    trap - SIGINT SIGTERM
     echo -e "\n${RED}[SHUTDOWN] Arrêt des processus PMU PRONO...${RESET}"
-    # On cherche le PID du serveur tournant sur le port 3000
-    PID=$(lsof -t -i:3000)
-    if [ ! -z "$PID" ]; then
-        kill $PID 2>/dev/null
-        echo -e "${GREEN}[SYSTEM] Serveur arrêté proprement.${RESET}"
+    if [ -n "${SERVER_PID:-}" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+        kill "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
+        echo -e "${GREEN}[SYSTEM] Serveur lancé par ce script arrêté.${RESET}"
     fi
     echo -e "${CYAN}[SYSTEM] Fin de session. À bientôt.${RESET}"
     exit 0
 }
 
 # Capture du Ctrl+C
-trap cleanup SIGINT
+trap cleanup SIGINT SIGTERM
 
 # Animation ASCII de démarrage
 animate_loading() {
@@ -109,11 +109,10 @@ if ! node -e "import('sqlite3')" >/dev/null 2>&1; then
     fi
 fi
 
-# 2. Vérification Port 3000 (Nettoyage automatique au démarrage)
-if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
-    echo -e "${GOLD}[INFO] Un processus utilise déjà le port 3000 (Nettoyage...)${RESET}"
-    kill -9 $(lsof -t -i:3000) 2>/dev/null
-    sleep 1
+# 2. Vérification Port 3000
+if command -v lsof >/dev/null 2>&1 && lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo -e "${RED}[ERROR] Le port 3000 est déjà utilisé. Arrêtez le service concerné ou configurez un autre PORT.${RESET}"
+    exit 1
 fi
 
 # 2. Vérification Data
@@ -130,4 +129,8 @@ echo -e "------------------------------------------------------------"
 
 # Lancement effectif avec optimisation mémoire ARM64 / Freebox Ultra (Max 1024MB V8 Heap)
 export NODE_OPTIONS="--max-old-space-size=1024"
-node src/server/app.mjs
+node src/server/app.mjs &
+SERVER_PID=$!
+wait "$SERVER_PID"
+SERVER_STATUS=$?
+exit "$SERVER_STATUS"

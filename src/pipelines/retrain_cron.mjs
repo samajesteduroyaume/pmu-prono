@@ -1,37 +1,62 @@
 import { trainModel } from '../ml/train.mjs';
 import logger from '../utils/logger.mjs';
+import { loadMLModel } from '../core/hybrid.mjs';
+import { isMainModule } from '../utils/isMainModule.mjs';
 
 /**
  * AUTOMATED RETRAIN PIPELINE (V42)
  * Se recharge sur le dataset avec ses nouvelles features continues
  * Recommandé le Dimanche soir à 23h30
  */
-export async function autoRetrain() {
+export async function autoRetrain(options = {}) {
+    const { isStandalone = false } = options;
     logger.header('PIPELINE: APPRENTISSAGE MACHINE CONTINU (CRON)');
     logger.info('Démarrage du Deep Learning pour actualiser le modèle...');
     
     try {
-        const metadata = await trainModel();
+        const metadata = await trainModel({ closeDbAtEnd: isStandalone });
         logger.success('Apprentissage continu complété !');
-        logger.info(`Nouvelle Accuracy: ${(metadata.testAccuracy * 100).toFixed(2)}%`);
-        logger.info(`Perte Finale: ${metadata.testLoss.toFixed(4)}`);
+        const mlHitRate = metadata.testMlTop1HitRate ?? metadata.testTop1HitRate;
+        logger.info(`Top 1 ML seul sur ${metadata.testCourseCount} courses temporelles de test : ${(mlHitRate * 100).toFixed(2)}%`);
+        if (Number.isFinite(metadata.testForecastTop1HitRate)) {
+            logger.info(`Top 1 du pronostic hybride archivé : ${(metadata.testForecastTop1HitRate * 100).toFixed(2)}% (${metadata.testForecastCourseCount} courses)`);
+        }
+        if (Number.isFinite(metadata.testMarketTop1HitRate)) {
+            logger.info(`Favori marché archivé : ${(metadata.testMarketTop1HitRate * 100).toFixed(2)}% (${metadata.testMarketCourseCount} courses)`);
+        }
+        if (Number.isFinite(metadata.testMatchedForecastTop1HitRate) && Number.isFinite(metadata.testMatchedMarketTop1HitRate)) {
+            logger.info(`Comparaison sur les mêmes ${metadata.testMatchedCourseCount} courses : pronostic ${(metadata.testMatchedForecastTop1HitRate * 100).toFixed(2)}%, marché ${(metadata.testMatchedMarketTop1HitRate * 100).toFixed(2)}%`);
+        }
 
-        // Notification du serveur en ligne pour rechargement immédiat si actif
+        // Rechargement immédiat du modèle en mémoire dans le serveur actif
+        const reloaded = await loadMLModel();
+        if (reloaded) {
+            logger.success('[CRON] Nouveau modèle IA rechargé en mémoire avec succès !');
+        }
+
+        // Notification HTTP fallback
         try {
-            const res = await fetch('http://localhost:3000/api/ml/reload', { method: 'POST' });
+            const port = process.env.PORT || 3000;
+            const res = await fetch(`http://localhost:${port}/api/ml/reload`, { method: 'POST' });
             if (res.ok) {
                 logger.success('[CRON] Signal de Hot-Reload envoyé au serveur web actif.');
             }
         } catch (e) {
-            // Le serveur n'est probablement pas démarré (ce qui est normal si exécuté hors ligne)
+            // Le serveur n'est pas sur ce port ou est déjà rechargé en mémoire
         }
+
+        return metadata;
     } catch (err) {
         logger.error(`Erreur fatale de réentrainement ML: ${err.message}`);
-        process.exit(1);
+        if (isStandalone) {
+            process.exit(1);
+        } else {
+            throw err;
+        }
     }
 }
 
 // Exécution cron stand-alone
-if (import.meta.url === `file://${process.argv[1]}`) {
-    autoRetrain().then(() => process.exit(0));
+if (isMainModule(import.meta.url)) {
+    autoRetrain({ isStandalone: true }).then(() => process.exit(0));
 }

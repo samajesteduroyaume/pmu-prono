@@ -3,6 +3,7 @@ import { fetchApi, fetchCourseParticipants } from '../core/fetcher.mjs';
 import CONFIG from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
 import { format } from 'date-fns';
+import { isMainModule } from '../utils/isMainModule.mjs';
 
 /**
  * SMART MONEY TRACKER - ARCHITECT v27.1
@@ -72,7 +73,7 @@ function sleep(ms) {
 }
 
 // Auto-run
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
     trackLiveOdds().catch(err => {
         console.error('Lancement Tracker fatal:', err);
         process.exit(1);

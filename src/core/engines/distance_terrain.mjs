@@ -1,6 +1,12 @@
 // src/core/engines/distance_terrain.mjs
 // ARCHITECT v43.1 — Module Distance & Terrain (Performance Data-Driven)
 
+function parseDistance(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+    const normalized = String(value ?? '').trim().replace(/[\s_]/g, '').replace(/m$/i, '');
+    return normalized ? Number(normalized) : NaN;
+}
+
 /**
  * Analyse si un cheval a des références à une distance similaire.
  * Utilise distances_history (JSON stocké depuis API PMU) en priorité.
@@ -11,10 +17,11 @@
  */
 export function analyserDistance(participant, distanceCourse, discipline) {
     if (!distanceCourse) return 0;
-    const dist = parseInt(distanceCourse);
-    if (isNaN(dist) || dist <= 0) return 0;
+    const dist = parseDistance(distanceCourse);
+    if (!Number.isFinite(dist) || dist <= 0) return 0;
 
-    const isTrot = discipline && (discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE'));
+    const disciplineNorm = String(discipline || '').toUpperCase();
+    const isTrot = ['TROT', 'ATTELE', 'MONTE'].some(code => disciplineNorm.includes(code));
     const tolerance = isTrot ? 300 : 600;
 
     // Priorité 1 : Historique réel (distances_history JSON stocké en DB)
@@ -25,16 +32,19 @@ export function analyserDistance(participant, distanceCourse, discipline) {
                 : participant.distances_history;
 
             if (Array.isArray(historique) && historique.length > 0) {
+                const validHistory = historique.map(entry => {
+                    const distance = parseDistance(typeof entry === 'object' && entry !== null ? entry.d : entry);
+                    const rank = typeof entry === 'object' && entry !== null ? Number(entry.p) : NaN;
+                    return { distance, rank };
+                }).filter(entry => Number.isFinite(entry.distance) && entry.distance > 0);
+
                 // v43.1 : Filtrage intelligent (Refs à la distance)
-                const refs = historique.filter(h => {
-                    const hDist = typeof h === 'object' ? h.d : h;
-                    return Math.abs(hDist - dist) <= tolerance;
-                });
+                const refs = validHistory.filter(entry => Math.abs(entry.distance - dist) <= tolerance);
 
                 if (refs.length > 0) {
                     // Calculer le taux de réussite à cette distance (si données dispo)
-                    const winsAtDist = refs.filter(h => typeof h === 'object' && h.p === 1).length;
-                    const placesAtDist = refs.filter(h => typeof h === 'object' && h.p > 1 && h.p <= 3).length;
+                    const winsAtDist = refs.filter(entry => entry.rank === 1).length;
+                    const placesAtDist = refs.filter(entry => entry.rank > 1 && entry.rank <= 3).length;
 
                     if (winsAtDist >= 1) return 20;   // Déjà gagné sur la distance
                     if (placesAtDist >= 1) return 12; // Déjà placé sur la distance
@@ -43,23 +53,16 @@ export function analyserDistance(participant, distanceCourse, discipline) {
                 }
 
                 // Historique existant mais aucune référence à cette distance
-                if (historique.length >= 4) return -12;
+                if (validHistory.length >= 4) return -12;
             }
         } catch (e) {
             // JSON invalide, continuer avec fallback
         }
     }
 
-    // Priorité 2 : distance_course stockée en DB (distance de la dernière course)
-    const distRef = parseInt(participant.distance_course || 0);
-    if (distRef > 0) {
-        const ecart = Math.abs(distRef - dist);
-        if (ecart <= tolerance) return 8;
-        if (ecart <= tolerance * 2) return 0;
-        return -8;
-    }
-
-    return 0; // Pas d'information = neutre
+    // distance_course est la distance de la course évaluée, pas une référence
+    // passée. Sans historique daté, le signal doit rester neutre.
+    return 0;
 }
 
 /**
@@ -78,16 +81,18 @@ export function analyserTerrain(participant, terrain) {
     const musique = participant.musique || '';
 
     // Correspondance terrains similaires
-    const famillesBon    = ['TRES_BON', 'BON', 'BON_SOUPLE'];
-    const famillesSouple = ['BON_SOUPLE', 'SOUPLE'];
-    const famillesLourd  = ['LOURD', 'TRES_LOURD'];
+    const famillesBon         = ['TRES_BON', 'BON', 'BON_SOUPLE'];
+    const famillesSouple      = ['BON_SOUPLE', 'SOUPLE', 'TRES_SOUPLE'];
+    const famillesLourd       = ['LOURD', 'TRES_LOURD', 'COLLANT'];
+    const famillesSynthetique = ['SYNTHETIQUE', 'PSF', 'SABLE'];
     const isSameFamille  = (a, b, famille) => famille.some(f => a.includes(f)) && famille.some(f => b.includes(f));
 
     if (prefTerrain) {
         // Terrain idéal : même famille
-        if (isSameFamille(terrainNorm, prefTerrain, famillesBon))    return 10;
-        if (isSameFamille(terrainNorm, prefTerrain, famillesSouple)) return 10;
-        if (isSameFamille(terrainNorm, prefTerrain, famillesLourd))  return 14;
+        if (isSameFamille(terrainNorm, prefTerrain, famillesBon))         return 10;
+        if (isSameFamille(terrainNorm, prefTerrain, famillesSouple))      return 10;
+        if (isSameFamille(terrainNorm, prefTerrain, famillesLourd))       return 14;
+        if (isSameFamille(terrainNorm, prefTerrain, famillesSynthetique)) return 12;
 
         // Incompatibilités claires
         if (famillesLourd.some(f => terrainNorm.includes(f)) &&

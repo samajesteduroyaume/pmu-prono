@@ -1,5 +1,6 @@
+import assert from 'node:assert/strict';
 import { calculerPrediction } from '../core/intelligence.mjs';
-import { initDB } from '../core/db.mjs';
+import { closeDB, initDB } from '../core/db.mjs';
 
 async function testShield() {
     await initDB();
@@ -41,12 +42,11 @@ async function testShield() {
         const p = { ...c.participant };
         const score = await calculerPrediction(p, c.contexte);
         console.log(`SCORE FINAL: ${score} pts`);
-        console.log(`IS SHIELDED? ${p.is_shielded ? "YES 🛡️" : "NO"}`);
-
-        if (score > 60) {
-            console.warn("WARNING: Le bouclier n'a peut-être pas assez impacté le score.");
-        }
+        assert.ok(score <= 60, `Le profil à risque ${c.name} dépasse le plafond attendu (60).`);
     }
 }
 
-testShield().catch(console.error);
+testShield().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+}).finally(() => closeDB());

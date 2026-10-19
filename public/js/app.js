@@ -1,5 +1,19 @@
 const API_URL = '/api/courses';
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
+function getParisDateString(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
 // State Management
 let allCourses = [];
 let currentView = 'dashboard';
@@ -32,9 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // WebSockets Setup
     if (typeof io !== 'undefined') {
         const socket = io();
-        socket.on('smart_money_alert', (data) => {
-            console.log("SMART MONEY ALERT RECEIVED", data);
-            showSmartMoneyNotification(data);
+        socket.on('value_opportunity_alert', (data) => {
+            console.log("VALUE OPPORTUNITY ALERT RECEIVED", data);
+            showValueOpportunityNotification(data);
         });
 
         socket.on('sync_update', (data) => {
@@ -91,7 +105,10 @@ function showNotification(message, type = 'info') {
     const borderColor = type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-blue)';
     
     toast.style.cssText = `padding: 12px 20px; border-left: 4px solid ${borderColor}; background: ${bgColor}; backdrop-filter: blur(10px); color: var(--text-pure); font-size: 13px; font-weight: 600; min-width: 250px; animation: slideIn 0.3s ease-out;`;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}" style="margin-right: 10px; color: ${borderColor}"></i> ${message}`;
+    const icon = document.createElement('i');
+    icon.className = `fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}`;
+    icon.style.cssText = `margin-right: 10px; color: ${borderColor}`;
+    toast.append(icon, document.createTextNode(` ${message}`));
     
     container.appendChild(toast);
     setTimeout(() => {
@@ -102,6 +119,11 @@ function showNotification(message, type = 'info') {
 }
 
 function showSyncProgressBar(data) {
+    const currentDay = Number.isFinite(Number(data?.currentDay)) ? Math.max(0, Math.trunc(Number(data.currentDay))) : 0;
+    const totalDays = Number.isFinite(Number(data?.totalDays)) ? Math.max(0, Math.trunc(Number(data.totalDays))) : 0;
+    const totalCourses = Number.isFinite(Number(data?.totalCourses)) ? Math.max(0, Math.trunc(Number(data.totalCourses))) : 0;
+    const percent = Number.isFinite(Number(data?.percent)) ? Math.max(0, Math.min(100, Number(data.percent))) : 0;
+    const date = escapeHtml(data?.date ?? '');
     let bar = document.getElementById('sync-progress-banner');
     if (!bar) {
         bar = document.createElement('div');
@@ -112,14 +134,14 @@ function showSyncProgressBar(data) {
     bar.innerHTML = `
         <div style="display: flex; align-items: center; gap: 10px;">
             <i class="fas fa-sync fa-spin" style="color: var(--accent-blue);"></i>
-            <span>Synchronisation PMU : <strong>${data.currentDay}/${data.totalDays} jours</strong> (${data.date})</span>
+            <span>Synchronisation PMU : <strong>${currentDay}/${totalDays} jours</strong> (${date})</span>
         </div>
         <div style="display: flex; align-items: center; gap: 15px;">
-            <span style="color: var(--accent-gold); font-size: 12px;">+${data.totalCourses} courses</span>
+            <span style="color: var(--accent-gold); font-size: 12px;">+${totalCourses} courses</span>
             <div style="width: 140px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
-                <div style="width: ${data.percent}%; height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-emerald)); transition: width 0.3s ease;"></div>
+                <div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-emerald)); transition: width 0.3s ease;"></div>
             </div>
-            <span style="font-weight: 700; color: var(--accent-emerald); width: 35px; text-align: right;">${data.percent}%</span>
+            <span style="font-weight: 700; color: var(--accent-emerald); width: 35px; text-align: right;">${percent}%</span>
         </div>
     `;
 }
@@ -133,7 +155,7 @@ function removeSyncProgressBar() {
     }
 }
 
-function showSmartMoneyNotification(data) {
+function showValueOpportunityNotification(data) {
     if (!data || data.length === 0) return;
     
     // Create toast container if it doesn't exist
@@ -148,24 +170,25 @@ function showSmartMoneyNotification(data) {
     data.forEach(horse => {
         const toast = document.createElement('div');
         toast.className = 'opportunity-card';
-        toast.style.cssText = 'width: 320px; padding: 16px; background: rgba(20, 10, 40, 0.95); border-color: var(--accent-purple); box-shadow: 0 10px 30px rgba(160, 50, 255, 0.4); border-left: 4px solid var(--accent-purple); cursor: pointer;';
+        toast.style.cssText = 'width: 320px; padding: 16px; background: rgba(20, 10, 40, 0.95); border-color: var(--accent-emerald); box-shadow: 0 10px 30px rgba(50, 200, 130, 0.25); border-left: 4px solid var(--accent-emerald); cursor: pointer;';
         toast.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                <i class="fas fa-rocket" style="color: var(--accent-purple); font-size: 20px;"></i>
+                <i class="fas fa-chart-line" style="color: var(--accent-emerald); font-size: 20px;"></i>
                 <div>
-                    <div style="font-weight: 800; color: var(--text-pure); font-size: 14px;">ALERTE SMART MONEY</div>
-                    <div style="font-size: 11px; color: var(--text-low);">Chute de cote massive détectée</div>
+                    <div style="font-weight: 800; color: var(--text-pure); font-size: 14px;">OPPORTUNITÉ DE VALEUR</div>
+                    <div style="font-size: 11px; color: var(--text-low);">Écart estimé avec le marché</div>
                 </div>
             </div>
-            <div style="font-size: 16px; font-weight: 700; color: var(--text-pure);">${horse.nom}</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--text-pure);">${escapeHtml(horse.nom)}</div>
             <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px;">
-                <span style="color: var(--text-med);">Cote: <strong style="color: var(--accent-gold);">${horse.cote || '--'}</strong></span>
-                <span style="color: var(--text-med);">Edge: <strong style="color: var(--accent-emerald);">+${horse.edge}%</strong></span>
+                <span style="color: var(--text-med);">Cote: <strong style="color: var(--accent-gold);">${escapeHtml(horse.cote || '--')}</strong></span>
+                <span style="color: var(--text-med);">Avantage: <strong style="color: var(--accent-emerald);">+${escapeHtml(horse.edge)} pts</strong></span>
             </div>
         `;
         
         toast.onclick = () => {
-            if(horse.participant_id) showDetails(horse.participant_id);
+            const courseId = horse.course_id || horse.courseId || horse.participant_id;
+            if (courseId) showDetails(courseId);
             toast.remove();
         };
         
@@ -186,11 +209,7 @@ function showSmartMoneyNotification(data) {
 
 function initUI() {
     const today = new Date();
-    // Format YYYY-MM-DD pour input type date
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const todayStr = getParisDateString(today);
     
     const cal = document.getElementById('calendar-filter');
     if (cal) cal.value = todayStr;
@@ -199,9 +218,11 @@ function initUI() {
 }
 
 function updateDateDisplay(date) {
-    const d = date ? new Date(date) : new Date();
-    const isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
-    const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+    const d = date ? new Date(`${date}T12:00:00Z`) : new Date();
+    const isToday = (date || getParisDateString()) === getParisDateString();
+    const dateStr = d.toLocaleDateString('fr-FR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris'
+    }).toUpperCase();
     
     const display = document.getElementById('current-date');
     if (display) {
@@ -240,7 +261,12 @@ async function renderNavStats() {
         const winrateEl = document.getElementById('stat-winrate-display');
         if (winrateEl && data.windows && data.windows['7j']) {
             const winPct = data.windows['7j'].win_pct;
-            animateValue('stat-winrate-display', winPct.toFixed(1) + '%');
+            if (winPct == null) {
+                winrateEl.textContent = '--';
+                winrateEl.title = 'Pas encore assez de résultats réglés parmi les snapshots enregistrés.';
+                return;
+            }
+            animateValue('stat-winrate-display', Number(winPct).toFixed(1) + '%');
             
             // Color based on performance
             if (winPct >= 30) winrateEl.style.color = 'var(--accent-emerald)';
@@ -351,15 +377,18 @@ function renderTableSkeleton(rows, cols) {
 }
 
 // Dashboard Renderer
-async function renderDashboard(days = 30) {
+async function renderDashboard() {
     try {
-        const url = days ? `/api/performance?days=${days}` : '/api/performance';
-        const res = await fetch(url);
-        const perf = await res.json();
-        const global = perf.global;
+        const res = await fetch('/api/finance');
+        if (!res.ok) throw new Error(`Finance API: HTTP ${res.status}`);
+        const portfolio = await res.json();
 
         const bankrollEl = document.getElementById('stat-bankroll-display');
-        if (bankrollEl) animateValue('stat-bankroll-display', global.total_profit.toFixed(2) + ' €');
+        if (bankrollEl) {
+            const balance = Number(portfolio.shadow);
+            bankrollEl.textContent = Number.isFinite(balance) ? `${balance.toFixed(2)} €` : '--';
+            bankrollEl.title = 'Capital du portefeuille simulé (shadow).';
+        }
 
         renderQuinte();
     } catch (e) {
@@ -384,37 +413,40 @@ async function renderQuinte() {
     const date = cal ? cal.value : null;
 
     try {
-        const url = date ? `/api/courses/quinte/prediction?date=${date}` : '/api/courses/quinte/prediction';
+        const url = date ? `/api/courses/quinte/prediction?date=${encodeURIComponent(date)}` : '/api/courses/quinte/prediction';
         const res = await fetch(url);
         if (res.status === 404) {
-            container.innerHTML = `<div class="stat-card" style="text-align: center; color: var(--text-med); padding: 60px;">Aucun Quinté+ détecté pour le ${date || "aujourd'hui"}.</div>`;
+            container.innerHTML = `<div class="stat-card" style="text-align: center; color: var(--text-med); padding: 60px;">Aucun Quinté+ détecté pour le ${escapeHtml(date || "aujourd'hui")}.</div>`;
             return;
         }
         const data = await res.json();
+        if (!res.ok || !data?.course || !Array.isArray(data.selection)) {
+            throw new Error(data?.error || 'Réponse Quinté+ invalide');
+        }
         const { course, selection, tocard } = data;
 
         const meteoIcon = getMeteoIcon(course.meteo);
-        const terrainBadge = course.terrain ? `<span class="badge badge-warning" style="margin-left: 10px; font-size: 9px; vertical-align: middle;">${course.terrain.replace('_', ' ')}</span>` : '';
+        const terrainBadge = course.terrain ? `<span class="badge badge-warning" style="margin-left: 10px; font-size: 9px; vertical-align: middle;">${escapeHtml(course.terrain.replace('_', ' '))}</span>` : '';
 
         container.innerHTML = `
             <div class="stat-card" style="border-left: 4px solid var(--accent-gold); margin-bottom: 32px; animation: fadeIn 0.8s ease-out;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                     <div>
                         <span class="badge badge-warning" style="margin-bottom: 12px;">ÉVÉNEMENT QUINTÉ+</span>
-                        <h2 style="font-size: 32px; color: var(--text-pure); letter-spacing: -1px;">${course.hippodrome} ${terrainBadge}</h2>
+                        <h2 style="font-size: 32px; color: var(--text-pure); letter-spacing: -1px;">${escapeHtml(course.hippodrome)} ${terrainBadge}</h2>
                         <div style="color: var(--text-med); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 12px;">
-                            <span>R${course.reunionNum} C${course.courseNum} • ${course.heure}</span>
+                            <span>R${escapeHtml(course.reunionNum)} C${escapeHtml(course.courseNum)} • ${escapeHtml(course.heure)}</span>
                             <span style="width: 1px; height: 12px; background: var(--glass-border);"></span>
-                            <span>${course.discipline} • ${course.distance}m</span>
+                            <span>${escapeHtml(course.discipline)} • ${escapeHtml(course.distance)}m</span>
                             <span style="width: 1px; height: 12px; background: var(--glass-border);"></span>
-                            <span>${course.partants} PARTANTS</span>
+                            <span>${escapeHtml(course.partants)} PARTANTS</span>
                             <span style="width: 1px; height: 12px; background: var(--glass-border);"></span>
-                            <span>${meteoIcon} ${course.meteo?.temperature ? course.meteo.temperature + '°C' : ''}</span>
+                            <span>${meteoIcon} ${course.meteo?.temperature ? `${escapeHtml(course.meteo.temperature)}°C` : ''}</span>
                         </div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 11px; color: var(--text-low); font-weight: 800; letter-spacing: 1px;">PRIX TOTAL</div>
-                        <div style="font-size: 24px; font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono';">${course.prix.toLocaleString()} €</div>
+                        <div style="font-size: 24px; font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono';">${Number(course.prix || 0).toLocaleString()} €</div>
                     </div>
                 </div>
 
@@ -434,23 +466,23 @@ async function renderQuinte() {
                                 <tbody>
                                     ${selection.map((p, i) => `
                                         <tr style="${i === 0 ? 'background: hsla(var(--h-indigo), 84%, 67%, 0.05);' : ''}">
-                                            <td style="font-weight: 800; color: var(--accent-indigo); font-family: 'JetBrains Mono'">${p.numero}</td>
+                                            <td style="font-weight: 800; color: var(--accent-indigo); font-family: 'JetBrains Mono'">${escapeHtml(p.numero)}</td>
                                             <td>
                                                 <div style="font-weight: 700; color: var(--text-pure); display: flex; align-items: center; gap: 8px; font-size: 16px;">
-                                                    ${p.numero}. ${p.nom}
+                                                    ${escapeHtml(p.numero)}. ${escapeHtml(p.nom)}
                                                     ${p.is_smart_money_alert || p.is_smart_money ? '<i class="fas fa-rocket" style="color: var(--accent-purple); font-size: 12px;" title="Vélocité Smart Money"></i>' : ''}
                                                     ${p.is_swimmer ? '<i class="fas fa-water" style="color: var(--accent-blue); font-size: 12px;" title="Spécialiste Terrain Lourd"></i>' : ''}
                                                     ${p.is_hot_trainer ? '<i class="fas fa-fire" style="color: var(--accent-crimson); font-size: 12px;" title="Écurie en Pleine Forme"></i>' : ''}
                                                     ${p.is_trap ? '<i class="fas fa-skull-crossbones" style="color: var(--accent-crimson); font-size: 12px;" title="Faux Favori (Piège)"></i>' : ''}
                                                     ${p.is_bad_draw ? '<i class="fas fa-exclamation-triangle" style="color: var(--accent-gold); font-size: 12px;" title="Mauvais Tirage/Recul"></i>' : ''}
                                                 </div>
-                                                <div style="font-size: 11px; color: var(--text-low); font-style: italic; margin-top: 4px;">${p.musique || '--'}</div>
+                                                <div style="font-size: 11px; color: var(--text-low); font-style: italic; margin-top: 4px;">${escapeHtml(p.musique || '--')}</div>
                                             </td>
-                                            <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'">${p.cote_ref || '--'}</td>
+                                            <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'">${escapeHtml(p.cote_ref || '--')}</td>
                                             <td>
-                                                <div class="badge ${p.score > 75 ? 'badge-success' : 'badge-warning'}">${p.score}%</div>
+                                                <div class="badge ${p.score == null ? 'badge-warning' : Number(p.score) > 75 ? 'badge-success' : 'badge-warning'}">${p.score == null ? '--' : escapeHtml(p.score) + '/100 pts'}</div>
                                                 <div class="progress-container" style="width: 60px;">
-                                                    <div class="progress-bar" style="width: ${p.score}%; background: ${p.score > 75 ? 'var(--accent-emerald)' : 'var(--accent-gold)'}"></div>
+                                                    <div class="progress-bar" style="width: ${Math.max(0, Math.min(100, Number(p.score) || 0))}%; background: ${Number(p.score) > 75 ? 'var(--accent-emerald)' : 'var(--accent-gold)'}"></div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -464,9 +496,9 @@ async function renderQuinte() {
                         <div class="stat-card" style="background: hsla(var(--h-gold), 96%, 60%, 0.02); border-color: hsla(var(--h-gold), 96%, 60%, 0.2); padding: 24px;">
                             <label style="color: var(--accent-gold)">Le Tocard de l'IA</label>
                             ${tocard ? `
-                                <div style="font-size: 24px; font-weight: 800; color: var(--text-pure);">${tocard.numero}. ${tocard.nom}</div>
-                                <div style="font-size: 14px; color: var(--text-med); margin-top: 8px;">Cote: <span style="color: var(--accent-gold); font-weight: 800;">${tocard.cote_ref}</span></div>
-                                <div style="margin-top: 16px; font-size: 11px; color: var(--accent-emerald); font-weight: 800; letter-spacing: 1px;">ALERTE SPÉCULATION +${tocard.score}%</div>
+                                <div style="font-size: 24px; font-weight: 800; color: var(--text-pure);">${escapeHtml(tocard.numero)}. ${escapeHtml(tocard.nom)}</div>
+                                <div style="font-size: 14px; color: var(--text-med); margin-top: 8px;">Cote: <span style="color: var(--accent-gold); font-weight: 800;">${escapeHtml(tocard.cote_ref)}</span></div>
+                                <div style="margin-top: 16px; font-size: 11px; color: var(--accent-emerald); font-weight: 800; letter-spacing: 1px;">ALERTE SPÉCULATION • SCORE ${escapeHtml(tocard.score)}/100</div>
                             ` : '<div style="color: var(--text-low);">Aucun tocard détecté.</div>'}
                         </div>
 
@@ -482,6 +514,7 @@ async function renderQuinte() {
         `;
     } catch (e) {
         console.error("Quinté Render Error:", e);
+        container.textContent = 'Impossible de charger les pronostics Quinté+ pour le moment.';
     }
 }
 
@@ -576,7 +609,7 @@ function renderScanner() {
         const row = document.createElement('tr');
         row.style.animation = `fadeIn 0.5s ease-out ${index * 0.04}s both`;
         
-        const iaScore = c.ia_score || 0;
+        const iaScore = Number(c.ia_score);
         const meteoIcon = getMeteoIcon(c.meteo);
         const terrainText = c.terrain ? c.terrain.replace('_', ' ') : 'Standard';
 
@@ -586,34 +619,34 @@ function renderScanner() {
                     <i class="fas fa-search-plus" style="margin-right: 4px;"></i> DÉTAILS
                 </button>
             </td>
-            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${c.heure}</td>
+            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${escapeHtml(c.heure)}</td>
             <td>
-                <div style="font-weight: 700; color: var(--text-pure); font-size: 15px;">${c.hippodrome}</div>
-                <div style="font-size: 11px; color: var(--text-med); font-weight: 600;">R${c.reunionNum} C${c.courseNum} • ${c.discipline}</div>
+                <div style="font-weight: 700; color: var(--text-pure); font-size: 15px;">${escapeHtml(c.hippodrome)}</div>
+                <div style="font-size: 11px; color: var(--text-med); font-weight: 600;">R${escapeHtml(c.reunionNum)} C${escapeHtml(c.courseNum)} • ${escapeHtml(c.discipline)}</div>
             </td>
             <td>
                 <div style="font-size: 12px; font-weight: 700; color: var(--text-high); display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-ruler-horizontal" style="font-size: 10px; color: var(--text-med);"></i> ${c.distance}m
+                    <i class="fas fa-ruler-horizontal" style="font-size: 10px; color: var(--text-med);"></i> ${escapeHtml(c.distance)}m
                 </div>
                 <div style="font-size: 11px; color: var(--text-med); margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                    ${meteoIcon} <span style="text-transform: capitalize;">${terrainText.toLowerCase()}</span>
+                    ${meteoIcon} <span style="text-transform: capitalize;">${escapeHtml(terrainText.toLowerCase())}</span>
                 </div>
             </td>
             <td>
                 <div style="font-weight: 800; color: var(--text-pure); display: flex; align-items: center; gap: 10px; font-size: 15px;">
-                    ${c.top_horse || '---'}
+                    ${escapeHtml(c.top_horse || '---')}
                     ${c.cat_trend === 'DOWN' ? '<span class="badge badge-success" style="font-size: 8px; padding: 4px 8px;">DÉCLASSÉ</span>' : ''}
                 </div>
             </td>
             <td>
-                <div class="badge ${iaScore >= 75 ? 'badge-success' : 'badge-warning'}">${iaScore}%</div>
+                <div class="badge ${!Number.isFinite(iaScore) ? 'badge-warning' : iaScore >= 75 ? 'badge-success' : 'badge-warning'}">${Number.isFinite(iaScore) ? escapeHtml(iaScore) + '/100 pts' : '--'}</div>
             </td>
-            <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'; font-size: 15px;">${c.fav_cote || '--'}</td>
+            <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'; font-size: 15px;">${escapeHtml(c.fav_cote || '--')}</td>
             <td>
-                <div style="font-weight: 700; color: var(--text-high); font-family: 'JetBrains Mono'; font-size: 13px;">${c.prix ? c.prix.toLocaleString() + ' €' : '--'}</div>
-                <div style="font-size: 10px; color: var(--text-med); font-weight: 600;">${c.partants} PARTANTS</div>
+                <div style="font-weight: 700; color: var(--text-high); font-family: 'JetBrains Mono'; font-size: 13px;">${Number.isFinite(Number(c.prix)) && Number(c.prix) !== 0 ? Number(c.prix).toLocaleString() + ' €' : '--'}</div>
+                <div style="font-size: 10px; color: var(--text-med); font-weight: 600;">${escapeHtml(c.partants)} PARTANTS</div>
             </td>
-            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${c.ordre_arrivee || 'À VENIR'}</td>
+            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${escapeHtml(c.ordre_arrivee || 'À VENIR')}</td>
         `;
         tbody.appendChild(row);
     });
@@ -625,25 +658,22 @@ window.exportScannerCSV = () => {
         return;
     }
     
+    const csvCell = value => {
+        let text = String(value ?? '');
+        if (/^[\u0000-\u0020]*[=+\-@]/.test(text)) text = `'${text}`;
+        return `"${text.replace(/"/g, '""')}"`;
+    };
     const headers = ["Heure", "Hippodrome", "Reunion", "Course", "Discipline", "Distance", "Top Cheval", "Score IA", "Cote Fav", "Prix"];
     const rows = allCourses.map(c => [
-        `"${c.heure || ''}"`,
-        `"${c.hippodrome || ''}"`,
-        `"${c.reunionNum || ''}"`,
-        `"${c.courseNum || ''}"`,
-        `"${c.discipline || ''}"`,
-        `"${c.distance || ''}"`,
-        `"${c.top_horse || ''}"`,
-        `"${c.ia_score || ''}"`,
-        `"${c.fav_cote || ''}"`,
-        `"${c.prix || ''}"`
-    ]);
+        c.heure, c.hippodrome, c.reunionNum, c.courseNum, c.discipline,
+        c.distance, c.top_horse, c.ia_score, c.fav_cote, c.prix
+    ].map(csvCell));
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.map(csvCell).join(","), ...rows.map(row => row.join(","))].join("\n");
+    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `PMU_Scanner_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `PMU_Scanner_Export_${getParisDateString()}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -660,7 +690,7 @@ function animateValue(id, value) {
 }
 
 // Sync Utilities
-window.syncHistoryPrompt = async () => {
+window.syncHistoryPrompt = async (event) => {
     const daysStr = prompt("Profondeur de synchronisation (en jours, jusqu'à 180 jours / 6 mois) :", "30");
     if (!daysStr || isNaN(daysStr)) return;
 
@@ -683,7 +713,9 @@ window.syncHistoryPrompt = async () => {
             body: JSON.stringify({ days })
         });
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.async) {
+            showNotification(data.message || `Synchronisation de ${data.days} jours démarrée en arrière-plan.`, 'info');
+        } else if (data.success) {
             showNotification(`Synchronisation réussie : ${data.count} courses traitées sur ${data.daysProcessed} jours.`, 'success');
             refreshData();
         } else {
@@ -698,22 +730,28 @@ window.syncHistoryPrompt = async () => {
 };
 
 window.syncMarket = async (silent = false) => {
-    const btn = document.querySelector('.fa-sync-alt')?.parentElement;
     const icon = document.querySelector('.fa-sync-alt');
     if (!silent && icon) icon.className = 'fas fa-spinner fa-spin';
     
+    const cal = document.getElementById('calendar-filter');
+    const selectedDate = cal ? cal.value : null;
+
     try {
         const res = await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ days: 1 })
+            body: JSON.stringify({ date: selectedDate || undefined, days: 1 })
         });
         const data = await res.json();
         if (data.success) {
+            if (!silent) showNotification(`Actualisation réussie : ${data.count} courses actualisées`, 'success');
             refreshData();
+        } else {
+            if (!silent) showNotification(`Erreur d'actualisation : ${data.error || 'Erreur inconnue'}`, 'error');
         }
     } catch (e) {
         console.error("Sync Error:", e);
+        if (!silent) showNotification(`Erreur de connexion lors de l'actualisation`, 'error');
     } finally {
         if (!silent && icon) icon.className = 'fas fa-sync-alt';
     }
@@ -751,18 +789,18 @@ window.showDetails = async (id) => {
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
                     <div>
                         <h3 style="font-size: 12px; color: var(--accent-indigo); text-transform: uppercase; font-weight: 800; letter-spacing: 2px;">Contexte de Course</h3>
-                        <div style="font-size: 24px; font-weight: 800; color: var(--text-pure); margin-top: 8px;">${data.course.hippodrome} • ${data.course.discipline}</div>
+                        <div style="font-size: 24px; font-weight: 800; color: var(--text-pure); margin-top: 8px;">${escapeHtml(data.course.hippodrome)} • ${escapeHtml(data.course.discipline)}</div>
                         <div style="font-size: 13px; color: var(--text-med); margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 12px;">
-                            <span>${data.course.distance}m</span>
+                            <span>${escapeHtml(data.course.distance)}m</span>
                             <span style="width: 1px; height: 10px; background: var(--glass-border);"></span>
-                            <span>${data.course.terrain || 'Standard'}</span>
+                            <span>${escapeHtml(data.course.terrain || 'Standard')}</span>
                             <span style="width: 1px; height: 10px; background: var(--glass-border);"></span>
-                            <span>${data.course.prix.toLocaleString()} €</span>
+                            <span>${Number(data.course.prix || 0).toLocaleString()} €</span>
                             <span style="width: 1px; height: 10px; background: var(--glass-border);"></span>
-                            <span>${data.course.partants} PARTANTS</span>
+                            <span>${escapeHtml(data.course.partants)} PARTANTS</span>
                             <span style="width: 1px; height: 10px; background: var(--glass-border);"></span>
-                            <span>${meteoIcon} ${data.course.meteo?.temperature ? data.course.meteo.temperature + '°C' : ''}</span>
-                            ${data.course.corde ? `<span style="width: 1px; height: 10px; background: var(--glass-border);"></span><span>CORDE ${data.course.corde}</span>` : ''}
+                            <span>${meteoIcon} ${data.course.meteo?.temperature ? `${escapeHtml(data.course.meteo.temperature)}°C` : ''}</span>
+                            ${data.course.corde ? `<span style="width: 1px; height: 10px; background: var(--glass-border);"></span><span>CORDE ${escapeHtml(data.course.corde)}</span>` : ''}
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -787,27 +825,29 @@ window.showDetails = async (id) => {
                         </thead>
                         <tbody>
                             ${data.participants.map(p => {
-                                const forme = p.baseScores ? p.baseScores.forme : 50;
-                                const entourage = p.baseScores ? p.baseScores.entourage : 50;
+                                const forme = Math.max(0, Math.min(100, Number(p.baseScores?.forme) || 50));
+                                const entourage = Math.max(0, Math.min(100, Number(p.baseScores?.entourage) || 50));
+                                const gains = Number(p.gains);
+                                const predictionScore = Number(p.prediction_score);
                                 const riskColor = p.is_trap ? 'var(--accent-crimson)' : 'var(--accent-emerald)';
                                 
                                 return `
                                 <tr>
-                                    <td style="font-weight: 800; color: var(--accent-indigo); font-family: 'JetBrains Mono'">${p.numero}</td>
+                                    <td style="font-weight: 800; color: var(--accent-indigo); font-family: 'JetBrains Mono'">${escapeHtml(p.numero)}</td>
                                     <td>
                                         <div style="font-weight: 700; color: var(--text-pure); font-size: 16px; display: flex; align-items: center; gap: 6px;">
-                                            ${p.numero}. ${p.nom}
+                                            ${escapeHtml(p.numero)}. ${escapeHtml(p.nom)}
                                             ${p.is_smart_money_alert ? '<i class="fas fa-rocket" style="color: var(--accent-purple); font-size: 11px;" title="Smart Money Velocity"></i>' : ''}
                                             ${p.is_swimmer ? '<i class="fas fa-water" style="color: var(--accent-blue); font-size: 11px;" title="Spécialiste Terrain"></i>' : ''}
                                             ${p.is_hot_trainer ? '<i class="fas fa-fire" style="color: var(--accent-crimson); font-size: 11px;" title="Écurie Hot Streak"></i>' : ''}
                                             ${p.is_trap ? '<i class="fas fa-skull-crossbones" style="color: var(--accent-crimson); font-size: 11px;" title="Faux Favori"></i>' : ''}
                                             ${p.is_bad_draw ? '<i class="fas fa-exclamation-triangle" style="color: var(--accent-gold); font-size: 11px;" title="Désavantage Balistique"></i>' : ''}
                                         </div>
-                                        <div style="font-size: 10px; color: var(--text-low); font-family: 'JetBrains Mono'; margin-top: 4px;">${p.musique}</div>
+                                        <div style="font-size: 10px; color: var(--text-low); font-family: 'JetBrains Mono'; margin-top: 4px;">${escapeHtml(p.musique)}</div>
                                     </td>
                                     <td>
-                                        <div style="font-weight: 600; color: var(--text-pure); font-size: 13px;">${p.driver}</div>
-                                        <div style="font-size: 11px; color: var(--text-low); margin-top: 2px;">T: ${p.entraineur}</div>
+                                        <div style="font-weight: 600; color: var(--text-pure); font-size: 13px;">${escapeHtml(p.driver)}</div>
+                                        <div style="font-size: 11px; color: var(--text-low); margin-top: 2px;">T: ${escapeHtml(p.entraineur)}</div>
                                     </td>
                                     <td style="width: 150px;">
                                         <div style="margin-bottom: 4px;">
@@ -824,18 +864,18 @@ window.showDetails = async (id) => {
                                         </div>
                                     </td>
                                     <td>
-                                        <div style="font-weight: 700; color: var(--accent-gold); font-family: 'JetBrains Mono'; font-size: 13px;">${p.gains ? (p.gains).toLocaleString() + ' €' : '0 €'}</div>
-                                        <div style="font-size: 10px; color: var(--text-low); margin-top: 2px;">${p.nb_courses} C / ${p.nb_victoires} V</div>
+                                        <div style="font-weight: 700; color: var(--accent-gold); font-family: 'JetBrains Mono'; font-size: 13px;">${Number.isFinite(gains) ? gains.toLocaleString() : '0'} €</div>
+                                        <div style="font-size: 10px; color: var(--text-low); margin-top: 2px;">${escapeHtml(p.nb_courses)} C / ${escapeHtml(p.nb_victoires)} V</div>
                                     </td>
                                     <td>
                                         <div style="display: flex; flex-direction: column; gap: 4px;">
-                                            ${(p.arguments_ia || []).map(arg => `<div style="font-size: 10px; color: var(--text-med); background: hsla(0,0%,100%,0.03); padding: 2px 6px; border-radius: 4px; border: 1px solid hsla(0,0%,100%,0.05);">${arg}</div>`).join('')}
+                                            ${(p.arguments_ia || []).map(arg => `<div style="font-size: 10px; color: var(--text-med); background: hsla(0,0%,100%,0.03); padding: 2px 6px; border-radius: 4px; border: 1px solid hsla(0,0%,100%,0.05);">${escapeHtml(arg)}</div>`).join('')}
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="badge ${p.prediction_score > 75 ? 'badge-success' : 'badge-warning'}">${p.prediction_score}%</div>
+                                        <div class="badge ${p.prediction_score == null ? 'badge-warning' : predictionScore > 75 ? 'badge-success' : 'badge-warning'}">${p.prediction_score == null ? '--' : escapeHtml(p.prediction_score) + '/100 pts'}</div>
                                     </td>
-                                    <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'">${p.cote_ref || '--'}</td>
+                                    <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono'">${escapeHtml(p.cote_ref || '--')}</td>
                                     <td>
                                         ${p.cat_trend === 'DOWN' ? '<span style="color: var(--accent-emerald); font-weight: 800; font-size: 11px;"><i class="fas fa-arrow-down"></i> DOWN</span>' : '<span style="color: var(--text-low); font-size: 11px;">STABLE</span>'}
                                     </td>
@@ -904,18 +944,20 @@ window.startVoiceSearch = (targetInputId) => {
 window.exportQuintePDF = () => {
     showNotification("Génération de la fiche PDF en cours...", "info");
     const printWindow = window.open('', '_blank');
-    const todayStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const todayStr = new Date(`${getParisDateString()}T12:00:00Z`).toLocaleDateString('fr-FR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris'
+    });
     
     let tableRowsHtml = '';
     if (allCourses && allCourses.length > 0) {
         tableRowsHtml = allCourses.slice(0, 15).map(c => `
             <tr>
-                <td><b>${c.heure || '--'}</b></td>
-                <td><b>${c.hippodrome || '--'}</b><br><small>R${c.reunionNum} C${c.courseNum} - ${c.discipline}</small></td>
-                <td>${c.top_horse || 'Non analysé'}</td>
-                <td><b>${c.ia_score || 0}%</b></td>
-                <td>${c.fav_cote || '--'}</td>
-                <td>${c.prix ? c.prix.toLocaleString() + ' €' : '--'}</td>
+                <td><b>${escapeHtml(c.heure || '--')}</b></td>
+                <td><b>${escapeHtml(c.hippodrome || '--')}</b><br><small>R${escapeHtml(c.reunionNum)} C${escapeHtml(c.courseNum)} - ${escapeHtml(c.discipline)}</small></td>
+                <td>${escapeHtml(c.top_horse || 'Non analysé')}</td>
+                <td><b>${escapeHtml(c.ia_score || 0)}/100 pts</b></td>
+                <td>${escapeHtml(c.fav_cote || '--')}</td>
+                <td>${c.prix ? Number(c.prix).toLocaleString() + ' €' : '--'}</td>
             </tr>
         `).join('');
     } else {
@@ -970,15 +1012,20 @@ window.exportQuintePDF = () => {
 // ----------------------------------------------------
 window.testTelegramPrompt = async () => {
     const token = prompt("Entrez votre Token de Bot Telegram (ou laissez vide pour utiliser l'existant):");
-    const chatId = prompt("Entrez votre Chat ID Telegram (ex: 123456789):");
+    const chatId = prompt("Entrez votre Chat ID Telegram (laissez vide pour conserver l'existant):");
     
     if (token !== null && chatId !== null) {
         try {
-            await fetch('/api/alerts/telegram/config', {
+            const config = { enabled: true };
+            if (token.trim()) config.botToken = token.trim();
+            if (chatId.trim()) config.chatId = chatId.trim();
+            const configResponse = await fetch('/api/alerts/telegram/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ botToken: token, chatId: chatId, enabled: true })
+                body: JSON.stringify(config)
             });
+            const configResult = await configResponse.json();
+            if (!configResponse.ok || !configResult.success) throw new Error(configResult.error || 'Configuration Telegram refusée');
             showNotification("Configuration Telegram enregistrée. Envoi du message de test...", "info");
             
             const res = await fetch('/api/alerts/telegram/test', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
@@ -1043,7 +1090,7 @@ window.openEcuriesModal = async () => {
                             ${ecuries.map((e, idx) => `
                                 <tr>
                                     <td style="font-weight: 800; color: var(--accent-gold); font-family: 'JetBrains Mono';">#${idx + 1}</td>
-                                    <td style="font-weight: 700; color: var(--text-pure);">${e.nom_ecurie}</td>
+                                    <td style="font-weight: 700; color: var(--text-pure);">${escapeHtml(e.nom_ecurie)}</td>
                                     <td style="font-family: 'JetBrains Mono';">${e.total_engagements}</td>
                                     <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono';">${e.victoires} V</td>
                                     <td style="font-weight: 700; color: var(--accent-indigo); font-family: 'JetBrains Mono';">${e.podiums} P</td>

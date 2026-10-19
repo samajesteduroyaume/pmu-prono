@@ -1,13 +1,13 @@
 import { initDB, closeDB, getDB } from '../db/db.mjs';
 import logger from '../utils/logger.mjs';
+import { isMainModule } from '../utils/isMainModule.mjs';
 
 async function backfill() {
-    await initDB();
-    const db = getDB();
-
-    logger.header('DÉBUT DU BACKFILL TECHNIQUE (v43.1)');
-
     try {
+        await initDB();
+        const db = getDB();
+        logger.header('DÉBUT DU BACKFILL TECHNIQUE (v43.1)');
+
         // 1. Mise à jour de distance_course (provient de la table courses)
         logger.info('Mise à jour des distances de course...');
         await new Promise((resolve, reject) => {
@@ -32,7 +32,10 @@ async function backfill() {
                     SELECT c.terrain
                     FROM participants p2
                     JOIN courses c ON p2.course_id = c.id
-                    WHERE p2.nom = participants.nom AND p2.classement = 1 AND c.terrain IS NOT NULL
+                    WHERE p2.nom = participants.nom
+                      AND CAST(p2.classement AS INTEGER) = 1
+                      AND COALESCE(c.ordre_arrivee, '') <> ''
+                      AND c.terrain IS NOT NULL AND c.terrain <> ''
                     GROUP BY c.terrain
                     ORDER BY COUNT(*) DESC
                     LIMIT 1
@@ -44,9 +47,17 @@ async function backfill() {
 
     } catch (error) {
         logger.error(`Erreur backfill : ${error.message}`);
+        process.exitCode = 1;
     } finally {
         await closeDB();
     }
 }
 
-backfill();
+if (isMainModule(import.meta.url)) {
+    backfill().catch(error => {
+        logger.error(`Erreur fatale backfill : ${error.message}`);
+        process.exitCode = 1;
+    });
+}
+
+export { backfill };

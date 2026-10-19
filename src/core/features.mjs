@@ -8,24 +8,33 @@ import {
 } from './intelligence.mjs';
 import { CONFIG } from '../config/settings.mjs';
 
+function finiteNumber(value, fallback) {
+    if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return fallback;
+    const normalized = typeof value === 'string'
+        ? value.trim().replace(/[\s_]/g, '').replace(',', '.').replace(/m$/i, '')
+        : value;
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : fallback;
+}
+
 /**
  * MOTEUR DE FEATURES IA - UNIFIÉ v30
  */
 
-export async function extractBaseFeatures(participant, course) {
+export async function extractBaseFeatures(participant, course, preCalculatedScores = null) {
     const discipline = (course.discipline || 'PLAT').toUpperCase();
     const isTrot = discipline.includes('TROT') || discipline.includes('ATTELE') || discipline.includes('MONTE');
 
     // 1. Forme Profonde (Logic v30)
-    const scoreForme = analyserFormeProfonde(participant.musique, discipline);
+    const scoreForme = preCalculatedScores?.forme ?? analyserFormeProfonde(participant.musique, discipline);
     const labelForme = scoreForme >= 80 ? "Forme Exceptionnelle" : (scoreForme >= 60 ? "Bonne Forme" : (scoreForme >= 40 ? "Forme Stable" : "Forme Douteuse"));
 
     // 2. Classe Calibrée (Logic v30)
-    const scoreClasse = analyserClasse(participant);
+    const scoreClasse = preCalculatedScores?.aptitude ?? analyserClasse(participant);
     const labelClasse = scoreClasse >= 70 ? "Classe Supérieure" : (scoreClasse >= 40 ? "Catégorie Adaptée" : "Classe Limite");
 
     // 3. Configuration (Logic v30)
-    const scoreConfig = analyserConfig(participant, discipline);
+    const scoreConfig = preCalculatedScores?.config ?? analyserConfig(participant, discipline);
     let labelConfig = "Configuration Standard";
     if (isTrot) {
         if (scoreConfig >= 90) labelConfig = "Déferré des 4 (Optimal)";
@@ -38,7 +47,7 @@ export async function extractBaseFeatures(participant, course) {
     }
 
     // 4. Entourage (Experts v30 - UNIFIÉ v43.1)
-    const scoreEntourage = await calculerScoreEntourage(participant);
+    const scoreEntourage = preCalculatedScores?.entourage ?? await calculerScoreEntourage(participant);
     const labelEntourage = scoreEntourage >= 90 ? "Entourage Elite" : (scoreEntourage >= 75 ? "Expert Détecté" : "Entourage Standard");
 
     // 5. Régularité
@@ -46,7 +55,7 @@ export async function extractBaseFeatures(participant, course) {
     const labelReg = scoreReg >= 50 ? "Trés Régulier" : (scoreReg >= 30 ? "Régulier" : "Irrégulier");
 
     // 6. Confiance Marché (Cote - UNIFIÉ v43.1)
-    const scoreConfiance = calculerScoreConfiance(participant.cote_ref);
+    const scoreConfiance = preCalculatedScores?.confiance ?? calculerScoreConfiance(participant.cote_ref);
     const labelConfiance = scoreConfiance >= 80 ? "Favori Solide" : (scoreConfiance >= 50 ? "Appui Marché" : "Outsider");
 
     const shieldMalus = checkShieldStatus(participant, course);
@@ -111,22 +120,26 @@ export async function extractBaseFeatures(participant, course) {
             let baseDist = 2700;
             if (discipline.includes('PLAT')) baseDist = 1600;
             else if (discipline.includes('OBSTACLE') || discipline.includes('HAIE')) baseDist = 3800;
-            return Math.max(0, Math.min(1.0, (participant.distance_course || baseDist) / (baseDist * 1.5)));
+            const parsedDistance = finiteNumber(participant.distance_course, baseDist);
+            const distance = parsedDistance > 0 ? parsedDistance : baseDist;
+            return Math.max(0, Math.min(1.0, distance / (baseDist * 1.5)));
         })(),
         cordeNorm: (() => {
-            if (isTrot || !participant.corde) return 0.5;
-            return Math.max(0, Math.min(1.0, parseInt(participant.corde) / 20));
+            if (isTrot) return 0.5;
+            const corde = finiteNumber(participant.corde, NaN);
+            if (!(corde > 0)) return 0.5;
+            return Math.max(0, Math.min(1.0, corde / 20));
         })(),
         poidsNorm: (() => {
-            if (!participant.poids) return 0.5;
-            const p = parseFloat(participant.poids);
+            const p = finiteNumber(participant.poids, NaN);
+            if (!(p > 0)) return 0.5;
             let norm = 0.5;
             if (discipline.includes('PLAT')) norm = (p - 50) / 12;
             else if (discipline.includes('OBSTACLE') || discipline.includes('HAIE')) norm = (p - 62) / 10;
             else norm = (p - 50) / 20;
             return Math.max(0, Math.min(1.0, norm));
         })(),
-        reculNorm: Math.max(0, Math.min(1.0, (participant.recul || 0) / 100)),
+        reculNorm: Math.max(0, Math.min(1.0, finiteNumber(participant.recul, 0) / 100)),
         // Labels XAI Enrichis v30
         xai: {
             labels: {

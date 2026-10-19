@@ -15,7 +15,7 @@ export function detectInconsistencies(participant, contexte, baseScores, finalSc
     // Un cheval D4 (tous pieds nus) est censé être prêt, mais si sa forme est < 30, 
     // c'est souvent un signe d'incohérence ou de bluff.
     const ferrage = (participant.ferrage || '').toUpperCase();
-    if (isTrot && ferrage === 'D4' && baseScores.forme < 30 && finalScore > 60) {
+    if (isTrot && (ferrage === 'D4' || ferrage.includes('D4') || ferrage.includes('DES_4')) && baseScores.forme < 30 && finalScore > 60) {
         alerts.push({
             type: 'FAKE_INTENT',
             severity: 'HIGH',

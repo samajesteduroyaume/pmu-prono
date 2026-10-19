@@ -31,13 +31,16 @@ Le nouveau `Sync Manager` sépare la récupération des données de la logique s
 - Le serveur (`app.mjs`) utilise désormais des routes simplifiées via `sync_manager.mjs`.
 
 ### Backtesting
-Le moteur de backtest est désormais aligné sur vos paramètres financiers réels.
+L'évaluation utilise uniquement les pronostics capturés avant le départ dans `prediction_snapshots`.
 - `node src/ml/backtest.mjs [DATE_DEBUT] [DATE_FIN]`
-- Permet de comparer les stratégies Kelly (Statique vs Adaptatif) avec vos propres seuils.
+- Les courses antérieures à l'activation des captures sont exclues; elles ne sont pas recalculées avec le modèle courant.
+- Les évaluations Kelly et Monte Carlo basées sur les anciens recalculs historiques sont désactivées.
 
 ### Entraînement IA
 - `node src/ml/train.mjs`
-- Entraîne le modèle TensorFlow.js avec une architecture optimisée [128, 64, 32, 1].
+- Utilise les variables figées au moment du pronostic et les arrivées officielles.
+- Nécessite au moins 30 dates distinctes et 120 courses capturées; avant ce seuil, le réentraînement est refusé.
+- Entraîne le modèle TensorFlow.js avec une architecture [128, 64, 32, 1].
 
 ---
 *Documentation générée par Antigravity pour la version Architect v27.1.*

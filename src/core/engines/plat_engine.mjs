@@ -33,8 +33,13 @@ export async function processPlat(participant, contexte, baseScores) {
 
     // 4. APTITUDE AU TERRAIN & HIPPO
     const hippodrome = (contexte.hippodrome || '').toUpperCase();
-    if (hippodrome.includes('LONGCHAMP') || hippodrome.includes('CHANTILLY') || hippodrome.includes('DEAUVILLE')) {
-        expertise += SETTINGS.hippo_bonus;
+    const isGrandHippo = hippodrome.includes('LONGCHAMP') || hippodrome.includes('CHANTILLY') || hippodrome.includes('DEAUVILLE');
+    if (isGrandHippo) {
+        if (gains >= 20000 || participant.nb_victoires > 0) {
+            expertise += SETTINGS.hippo_bonus;
+        } else if (participant.nb_courses > 5 && gains < 5000) {
+            expertise -= 5; // Manque de classe avéré pour les hippodromes parisiens d'élite
+        }
     }
 
     // 4. THE SHIELD (V33)

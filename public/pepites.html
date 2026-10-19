@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ARCHITECT v43.3 - Suivi des Pépites IA (Score >= 60, Edge > 5%).">
+    <meta name="description" content="ARCHITECT - Suivi des pépites IA (score >= 65 points, avantage estimé > 5 points de probabilité).">
     <meta name="theme-color" content="#0a0f14">
     <title>ARCHITECT | Pépites IA</title>
     
@@ -72,10 +72,10 @@
             <header class="stage-header">
                 <div class="title-group">
                     <h1>Pépites & Opportunités</h1>
-                    <div class="meta"><span class="live-indicator"></span> FILTRE : SCORE IA ≥ 60% ET AVANTAGE > 5%</div>
+                    <div class="meta"><span class="live-indicator"></span> FILTRE : SCORE IA ≥ 65 POINTS ET AVANTAGE ESTIMÉ > 5 POINTS DE PROBABILITÉ</div>
                 </div>
                 <div class="actions" style="display: flex; gap: 12px;">
-                    <button onclick="syncHistoryPrompt()" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
+                    <button onclick="syncHistoryPrompt(event)" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px;">
                         <i class="fas fa-history"></i>
                         <span>Synchro. Étendue</span>
                     </button>
@@ -133,6 +133,10 @@
 
     <script src="js/app.js"></script>
     <script>
+        const escapePepitesHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+
         // Override for Pepites page
         async function refreshData() {
             const container = document.getElementById('pepites-container');
@@ -148,11 +152,13 @@
         async function loadPerformance() {
             try {
                 const res = await fetch('/api/courses/pepites/performance');
+                if (!res.ok) throw new Error(`API performance: HTTP ${res.status}`);
                 const stats = await res.json();
                 
-                document.getElementById('stat-roi').textContent = `${stats.roi || '0.0'}%`;
+                document.getElementById('stat-roi').textContent = stats.roi == null ? '--' : `${stats.roi}%`;
                 document.getElementById('stat-winrate').textContent = `${stats.winRate || '0.0'}%`;
-                document.getElementById('stat-profit').textContent = `${stats.profit} €`;
+                document.getElementById('stat-profit').textContent = stats.profit == null ? '--' : `${stats.profit} €`;
+                document.getElementById('stat-roi').title = stats.roiUnavailableReason || '';
                 document.getElementById('stat-total').textContent = stats.totalBets;
                 
                 document.getElementById('performance-banner').style.display = 'block';
@@ -162,7 +168,9 @@
         async function loadPepites() {
             try {
                 const res = await fetch('/api/courses/pepites');
+                if (!res.ok) throw new Error(`API Pépites: HTTP ${res.status}`);
                 const data = await res.json();
+                if (!Array.isArray(data)) throw new Error('Réponse Pépites invalide');
                 const container = document.getElementById('pepites-container');
                 container.innerHTML = '';
 
@@ -178,13 +186,13 @@
                     card.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                             <span class="badge ${c.confidence === 'MAXIMALE' ? 'confidence-MAXIMALE' : 'confidence-ÉLITE'}">${c.confidence}</span>
-                            <div style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-indigo); font-size: 16px;">${c.heure}</div>
+                            <div style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-indigo); font-size: 16px;">${escapePepitesHtml(c.heure)}</div>
                         </div>
                         
                         <div style="margin-bottom: 20px;">
-                            <div class="horse-name">${c.ia_nom}</div>
+                            <div class="horse-name">${escapePepitesHtml(c.ia_nom)}</div>
                             <div style="color: var(--text-low); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                                <i class="fas fa-map-marker-alt" style="color: var(--accent-indigo)"></i> ${c.hippodrome} • R${c.reunionNum} C${c.courseNum}
+                                <i class="fas fa-map-marker-alt" style="color: var(--accent-indigo)"></i> ${escapePepitesHtml(c.hippodrome)} • R${escapePepitesHtml(c.reunionNum)} C${escapePepitesHtml(c.courseNum)}
                             </div>
                         </div>
 
@@ -193,13 +201,12 @@
                             ${c.cat_trend === 'DOWN' ? '<span class="badge" style="background: hsla(var(--h-emerald), 84%, 45%, 0.2); color: var(--accent-emerald); border: 1px solid var(--accent-emerald-glow); font-size: 9px;"><i class="fas fa-level-down-alt"></i> DÉCLASSÉ</span>' : ''}
                             ${c.is_swimmer ? '<span class="badge" style="background: hsla(var(--h-blue), 80%, 50%, 0.2); color: var(--accent-blue); border: 1px solid var(--accent-blue); font-size: 9px;"><i class="fas fa-water"></i> SPÉCIALISTE TERRAIN</span>' : ''}
                             ${c.is_bad_draw ? '<span class="badge" style="background: hsla(var(--h-gold), 96%, 60%, 0.2); color: var(--accent-gold); border: 1px solid var(--accent-gold); font-size: 9px;"><i class="fas fa-exclamation-triangle"></i> MAUVAIS TIRAGE</span>' : ''}
-                            ${c.is_trap ? '<span class="badge" style="background: hsla(var(--h-crimson), 80%, 50%, 0.2); color: var(--accent-crimson); border: 1px solid var(--accent-crimson); font-size: 9px;"><i class="fas fa-skull-crossbones"></i> FAUX FAVORI</span>' : ''}
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 32px;">
                             <div style="background: hsla(0, 0%, 100%, 0.03); padding: 16px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--glass-border);">
                                 <label style="display: block; font-size: 9px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800;">Score IA</label>
-                                <div style="font-size: 20px; font-weight: 800; color: ${c.ia_score >= 75 ? 'var(--accent-emerald)' : 'var(--accent-gold)'}; font-family: 'JetBrains Mono';">${c.ia_score}%</div>
+                                <div style="font-size: 20px; font-weight: 800; color: ${c.ia_score >= 75 ? 'var(--accent-emerald)' : 'var(--accent-gold)'}; font-family: 'JetBrains Mono';">${c.ia_score}/100 pts</div>
                             </div>
                             <div style="background: hsla(0, 0%, 100%, 0.03); padding: 16px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--glass-border);">
                                 <label style="display: block; font-size: 9px; color: var(--text-low); text-transform: uppercase; margin-bottom: 8px; font-weight: 800;">Cote</label>
@@ -215,14 +222,18 @@
                             <div style="font-size: 11px; font-weight: 800; color: var(--accent-gold); letter-spacing: 0.5px;">
                                 <i class="fas fa-terminal"></i> RECOMMENDATION : MISE ${c.recommendation}
                             </div>
-                            <button onclick="showDetails(${c.id})" class="nav-item" style="padding: 10px 16px; font-size: 11px; background: transparent; border: 1px solid var(--glass-border); border-radius: 8px;">
+                            <button onclick="showDetails(${c.course_id})" class="nav-item" style="padding: 10px 16px; font-size: 11px; background: transparent; border: 1px solid var(--glass-border); border-radius: 8px;">
                                 ANALYSE
                             </button>
                         </div>
                     `;
                     container.appendChild(card);
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                const container = document.getElementById('pepites-container');
+                if (container) container.textContent = 'Impossible de charger les pépites pour le moment.';
+            }
         }
 
         window.addEventListener('load', refreshData);

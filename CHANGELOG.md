@@ -9,11 +9,19 @@ Ce journal décrit les changements visibles dans le dépôt. Les anciennes notes
 - Suite locale unifiée via `npm test` et commandes explicites pour les vérifications d’intégration PMU du jour et de dates historiques.
 - Documentation d’installation, d’évaluation prospective, de configuration et de déploiement réécrite à partir du code et des commandes présents.
 - Route `GET /api/ml/status` et avertissement sur le tableau de bord pour distinguer le modèle ML actif du repli heuristique.
-- Garde de promotion des modèles comparant le Top 1 au pronostic archivé et au favori du marché sur un minimum de 100 courses communes.
+- Garde de promotion des modèles évaluant le score hybride déployé (sortie ML recalibrée et mélangée à l’heuristique), face au pronostic archivé et au favori du marché sur au moins 100 courses complètes communes.
+- Archivage du composant heuristique dans les snapshots pré-course afin que l’entraînement reproduise exactement le classement hybride de production.
+- Correction des labels : les chevaux abandonnés ou disqualifiés après le départ restent dans le dataset comme partants; seuls les non-partants et forfaits sont exclus.
+- Valeur terrain ML neutre quand la préférence ou le terrain de course est absent, au lieu de traiter deux valeurs manquantes comme une compatibilité maximale.
+- Validation équilibrée au même prior que l’entraînement pour le callback d’arrêt anticipé; le jeu de test chronologique conserve la fréquence réelle des gagnants.
+- Versionnement du schéma d’entrée des 15 variables et refus des modèles dont le schéma ne correspond plus au code courant.
+- Versionnement également des vecteurs de features archivés; les anciennes captures restent disponibles à l’évaluation, mais ne sont pas mélangées au prochain entraînement.
 - Stockage configurable des poids, avec chemin Docker persistant sous `data/ml-model` pour les conserver lors des reconstructions.
 
 ### Modifié
 
+- L’entraînement utilise TensorFlow natif quand disponible, puis retombe sur TensorFlow.js pur JavaScript comme l’inférence.
+- Les chevaux déclarés non-partants après la capture sont marqués et exclus de l’entraînement et des évaluations; le meilleur rang restant sert de choix de référence.
 - Les tests locaux utilisent une base temporaire et couvrent plusieurs suites de régression.
 - Les appels manuels à `syncHistoryPrompt` transmettent explicitement l’événement déclencheur.
 - Corrections de fiabilité dans les assertions et nettoyages de tests, et de compatibilité de fuseau dans un test de dates.

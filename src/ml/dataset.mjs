@@ -4,6 +4,7 @@ import { CONFIG } from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
 import { isMainModule } from '../utils/isMainModule.mjs';
 import { MIN_CAPTURED_COURSES, splitCourseGroups } from './course_split.mjs';
+import { ML_FEATURE_SCHEMA_VERSION } from './model_compatibility.mjs';
 
 function shuffleWithSeed(items, seed) {
     let state = seed >>> 0;
@@ -20,7 +21,7 @@ function shuffleWithSeed(items, seed) {
     return result;
 }
 
-function balanceTrainingSet(samples, seed) {
+export function balanceTrainingSet(samples, seed) {
     const winners = samples.filter(sample => sample.label === 1);
     const nonWinners = samples.filter(sample => sample.label === 0);
     if (winners.length === 0 || nonWinners.length === 0) {
@@ -39,11 +40,12 @@ export async function prepareDataset({ seed = 42 } = {}) {
         const rows = await new Promise((resolve, reject) => {
             db.all(`
                 SELECT course_id, course_date, horse_number, feature_vector_json, outcome_rank, settled_at,
-                       prediction_rank, market_rank
+                       prediction_rank, market_rank, heuristic_score, feature_schema_version
                 FROM prediction_snapshots
                 WHERE course_id IN (
                     SELECT DISTINCT course_id FROM prediction_snapshots WHERE settled_at IS NOT NULL
                 )
+                  AND COALESCE(is_non_runner, 0) = 0
                 ORDER BY course_date, course_id, horse_number
             `, (error, result) => error ? reject(error) : resolve(result));
         }).finally(() => new Promise(resolve => db.close(() => resolve())));
@@ -54,6 +56,7 @@ export async function prepareDataset({ seed = 42 } = {}) {
                 byCourse.set(row.course_id, { course_id: row.course_id, date: row.course_date, samples: [], invalidFeatureCount: 0, invalidOutcomeCount: 0 });
             }
             const course = byCourse.get(row.course_id);
+            if (Number(row.feature_schema_version) !== ML_FEATURE_SCHEMA_VERSION) course.invalidFeatureCount++;
             if (row.settled_at == null || row.outcome_rank == null) course.invalidOutcomeCount++;
             let features;
             try { features = JSON.parse(row.feature_vector_json); } catch { features = null; }
@@ -68,6 +71,7 @@ export async function prepareDataset({ seed = 42 } = {}) {
                 numero: row.horse_number,
                 predictionRank: row.prediction_rank == null ? null : Number(row.prediction_rank),
                 marketRank: row.market_rank == null ? null : Number(row.market_rank),
+                heuristicScore: row.heuristic_score == null ? null : Number(row.heuristic_score),
                 features,
                 label: Number(row.outcome_rank) === 1 ? 1 : 0
             });
@@ -88,16 +92,17 @@ export async function prepareDataset({ seed = 42 } = {}) {
         }
         const { trainCourses, validationCourses, testCourses } = splitCourseGroups(eligibleCourses);
         const trainRaw = trainCourses.flatMap(course => course.samples);
-        const validationData = validationCourses.flatMap(course => course.samples);
+        const validationRaw = validationCourses.flatMap(course => course.samples);
         const testData = testCourses.flatMap(course => course.samples);
 
         const trainPrior = trainRaw.filter(sample => sample.label === 1).length / trainRaw.length;
         const trainData = balanceTrainingSet(trainRaw, seed);
+        const validationData = balanceTrainingSet(validationRaw, seed ^ 0x85ebca6b);
 
         logger.info(`Snapshots pré-course séparés chronologiquement : ${trainCourses.length} train, ${validationCourses.length} validation, ${testCourses.length} test.`);
-        logger.info(`Train équilibré pour l’apprentissage ; validation/test gardent la fréquence réelle des gagnants (${(trainPrior * 100).toFixed(2)}% dans train brut).`);
+        logger.info(`Train et validation équilibrés à 50/50 pour l’apprentissage et l’arrêt anticipé; le test garde la fréquence réelle des gagnants (${(trainPrior * 100).toFixed(2)}% dans train brut).`);
         if (rejectedCourseCount > 0) logger.warn(`${rejectedCourseCount} courses écartées : variables incomplètes ou aucun gagnant étiqueté.`);
-        logger.success(`Échantillons : ${trainData.length} train, ${validationData.length} validation, ${testData.length} test.`);
+        logger.success(`Échantillons : ${trainData.length} train, ${validationData.length}/${validationRaw.length} validation équilibrés/bruts, ${testData.length} test.`);
 
         return {
             trainData,
@@ -107,7 +112,9 @@ export async function prepareDataset({ seed = 42 } = {}) {
             courseCounts: { train: trainCourses.length, validation: validationCourses.length, test: testCourses.length, rejected: rejectedCourseCount }
         };
     } catch (error) {
-        await closeDB();
+        // This module may run inside the application process, where the
+        // connection is shared with request handlers. The caller that owns
+        // the lifecycle (trainModel or the CLI) decides when to close it.
         throw error;
     }
 }

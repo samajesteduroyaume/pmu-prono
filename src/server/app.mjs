@@ -226,7 +226,7 @@ async function startServer() {
         logger.info('[STARTUP] Exécution de la synchronisation initiale au démarrage...');
         trackBackgroundTask(async () => {
             const results = await syncLive();
-            const logSync = results.errors.length === 0 ? logger.success : logger.warn;
+            const logSync = results.errors.length === 0 ? logger.success.bind(logger) : logger.warn.bind(logger);
             logSync(`[STARTUP] Sync initiale: ${results.totalCourses} courses, ${results.errors.length} erreur(s).`);
             if (results.totalCourses > 0) {
                 io.emit('sync_update', { count: results.totalCourses, timestamp: new Date() });
@@ -256,7 +256,7 @@ async function startServer() {
                             try {
                                 logger.info('[CRON MATIN RETRY] Tentative de re-synchronisation à 06h45...');
                                 results = await syncLive(true);
-                                const logSync = results.errors.length === 0 ? logger.success : logger.warn;
+                                const logSync = results.errors.length === 0 ? logger.success.bind(logger) : logger.warn.bind(logger);
                                 logSync(`[CRON MATIN RETRY] ${results.totalCourses} courses, ${results.errors.length} erreur(s).`);
                                 io.emit('sync_update', { count: results.totalCourses, timestamp: new Date() });
                             } catch (err) {
@@ -264,7 +264,7 @@ async function startServer() {
                             }
                         }, 15 * 60 * 1000);
                     } else {
-                        const logSync = results.errors.length === 0 ? logger.success : logger.warn;
+                        const logSync = results.errors.length === 0 ? logger.success.bind(logger) : logger.warn.bind(logger);
                         logSync(`[CRON MATIN] Synchronisation matinale : ${results.totalCourses} courses, ${results.errors.length} erreur(s).`);
                         io.emit('sync_update', { count: results.totalCourses, timestamp: new Date() });
                     }

@@ -12,6 +12,9 @@ import { extractBaseFeatures } from './features.mjs';
 import { MIN_PROMOTION_TEST_COURSES } from '../ml/promotion_gate.mjs';
 import { MODEL_PATH } from '../ml/model_paths.mjs';
 import { MIN_CAPTURED_COURSES, MIN_CAPTURE_DATES } from '../ml/course_split.mjs';
+import { loadTensorFlowBackend } from '../ml/tensorflow_runtime.mjs';
+import { mlProbabilityToPoints, combineHybridScores } from '../ml/scoring.mjs';
+import { getModelCompatibilityReason } from '../ml/model_compatibility.mjs';
 let model = null;
 let metadata = null;
 let tfModule = null;
@@ -28,7 +31,12 @@ function updateModelStatus(reason, active = Boolean(model), details = {}) {
         checkedAt: new Date().toISOString(),
         version: active ? metadata?.version || null : null,
         trainedAt: active ? metadata?.trainedAt || null : null,
+        // Keep the legacy key explicitly tied to the ML-only metric; expose
+        // the deployed hybrid metric separately to prevent mislabeling it.
         testTop1HitRate: active ? metadata?.testMlTop1HitRate ?? metadata?.testTop1HitRate ?? null : null,
+        testMlOnlyTop1HitRate: active ? metadata?.testMlTop1HitRate ?? metadata?.testTop1HitRate ?? null : null,
+        testDeployedHybridTop1HitRate: active ? metadata?.testMatchedCandidateTop1HitRate ?? null : null,
+        testComparableCourseCount: active ? metadata?.testMatchedCourseCount ?? null : null,
         testCourseCount: active ? metadata?.testCourseCount ?? null : null,
         ...details
     };
@@ -37,16 +45,13 @@ function updateModelStatus(reason, active = Boolean(model), details = {}) {
 async function getTF() {
     if (tfModule) return tfModule;
     try {
-        tfModule = await import('@tensorflow/tfjs-node');
+        const runtime = await loadTensorFlowBackend();
+        tfModule = runtime.tf;
+        if (runtime.backend === 'javascript') console.warn('[ML] Backend TensorFlow natif indisponible, moteur JavaScript utilisé.');
         return tfModule;
-    } catch (e) {
-        try {
-            tfModule = await import('@tensorflow/tfjs');
-            return tfModule;
-        } catch (e2) {
-            console.warn('[ML] TensorFlow non disponible, mode v14 actif.');
-            return null;
-        }
+    } catch (error) {
+        console.warn('[ML] TensorFlow non disponible, mode v14 actif:', error.message);
+        return null;
     }
 }
 
@@ -76,10 +81,15 @@ export async function loadMLModel() {
         if (fs.existsSync(metaPath)) {
             nextMetadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
         }
-        if (nextMetadata?.trainingMethod !== 'immutable-pre-race-feature-snapshots') {
-            console.warn('[ML] Modèle historique ignoré : il n’a pas été entraîné sur des snapshots pré-course immuables. Utilisation de v14.');
-            updateModelStatus('unverified-training-provenance', Boolean(model), {
-                candidateVersion: nextMetadata?.version || null
+        const compatibilityReason = getModelCompatibilityReason(nextMetadata);
+        if (compatibilityReason) {
+            const provenanceMismatch = compatibilityReason === 'unverified-training-provenance';
+            console.warn(provenanceMismatch
+                ? '[ML] Modèle historique ignoré : il n’a pas été entraîné sur des snapshots pré-course immuables. Utilisation de v14.'
+                : '[ML] Modèle ignoré : son schéma de caractéristiques ne correspond pas à celui du code courant. Utilisation de v14.');
+            updateModelStatus(compatibilityReason, Boolean(model), {
+                candidateVersion: nextMetadata?.version || null,
+                candidateFeatureSchemaVersion: nextMetadata?.featureSchemaVersion ?? null
             });
             return false;
         }
@@ -108,10 +118,10 @@ export async function loadMLModel() {
         model = nextModel;
         metadata = nextMetadata;
         updateModelStatus('active', true);
-        const mlHitRate = metadata.testMlTop1HitRate ?? metadata.testTop1HitRate;
-        const top1 = Number.isFinite(mlHitRate)
-            ? `Top 1 ML seul (test prospectif): ${(mlHitRate * 100).toFixed(2)}%`
-            : 'métrique Top 1 ML absente';
+        const hybridHitRate = metadata.testMatchedCandidateTop1HitRate;
+        const top1 = Number.isFinite(hybridHitRate)
+            ? `Top 1 hybride déployé (test prospectif commun): ${(hybridHitRate * 100).toFixed(2)}% sur ${metadata.testMatchedCourseCount} courses`
+            : 'métrique Top 1 hybride absente';
         console.log(`[ML] Modèle chargé (${top1})`);
         if (previousModel && previousModel !== nextModel) {
             const cleanup = setTimeout(() => previousModel.dispose(), 60_000);
@@ -223,8 +233,13 @@ export async function extractMLFeatures(participant, course, allParticipants = [
         if (idx !== -1) rangCoteNorm = idx / Math.max(1, sorted.length - 1);
     }
 
-    // v43.1: Aptitude terrain (0=Inconnu/Douteux, 1=Préféré)
-    const aptitudeTerrain = (participant.terrain_prefere === course.terrain) ? 1.0 : 0.5;
+    // v43.1: Aptitude terrain (0.5=neutre/inconnu, 1=préféré).
+    // Two missing values are not evidence that the horse prefers this ground.
+    const terrainPrefere = String(participant.terrain_prefere || '').trim().toUpperCase();
+    const terrainCourse = String(course.terrain || '').trim().toUpperCase();
+    const terrainsConnus = value => value && !['?', 'INCONNU', 'UNKNOWN', 'NON_RENSEIGNE', 'N/A'].includes(value);
+    const aptitudeTerrain = terrainsConnus(terrainPrefere) && terrainsConnus(terrainCourse)
+        && terrainPrefere === terrainCourse ? 1.0 : 0.5;
 
     return [
         f.forme,
@@ -246,7 +261,7 @@ export async function extractMLFeatures(participant, course, allParticipants = [
 }
 
 /**
- * Prédiction ML pure (V40+ avec 10 features)
+ * Prédiction ML pure (15 caractéristiques figées à la capture pré-course)
  */
 async function predictML(participant, contexteCourse, allParticipants = [], preCalculatedFeatures = null) {
     if (!model) return null;
@@ -268,35 +283,15 @@ async function predictML(participant, contexteCourse, allParticipants = [], preC
             prediction?.dispose();
         }
 
-        // Convertir probabilité (0-1) en score (0-100)
-        // Le train est équilibré à 50/50. Corrige le prior de la sortie du classifieur
-        // avec la fréquence réelle des gagnants observée dans le train brut.
-        const sampledPrior = 0.5;
+        // Recalibrer la sortie du classifieur entraîné sur un jeu équilibré,
+        // puis la convertir vers la même échelle de points que l'heuristique.
         const savedPrior = Number(metadata?.rawTrainWinnerRate);
         const populationPrior = Number.isFinite(savedPrior) && savedPrior > 0 && savedPrior < 1
             ? savedPrior
             : 0.075;
         const modelOutput = Number(probability?.[0]);
         if (!Number.isFinite(modelOutput)) return null;
-        const raw = Math.min(1, Math.max(0, modelOutput));
-        const adjustedPositive = raw * populationPrior / sampledPrior;
-        const adjustedNegative = (1 - raw) * (1 - populationPrior) / (1 - sampledPrior);
-        const denominator = adjustedPositive + adjustedNegative;
-        if (!Number.isFinite(denominator) || denominator <= 0) return null;
-        const adjusted = adjustedPositive / denominator;
-        if (!Number.isFinite(adjusted)) return null;
-
-        // Transforme cette estimation en points de classement. Ce score n'est pas
-        // une probabilité affichable et ne doit servir qu'à ordonner les chevaux.
-        let points;
-        if (adjusted >= 0.45) points = 90 + ((adjusted - 0.45) / 0.55) * 10;
-        else if (adjusted >= 0.35) points = 80 + ((adjusted - 0.35) / 0.10) * 10;
-        else if (adjusted >= 0.25) points = 70 + ((adjusted - 0.25) / 0.10) * 10;
-        else if (adjusted >= 0.15) points = 55 + ((adjusted - 0.15) / 0.10) * 15;
-        else if (adjusted >= 0.08) points = 35 + ((adjusted - 0.08) / 0.07) * 20;
-        else points = (adjusted / 0.08) * 35;
-
-        return Math.min(100, Math.max(0, Math.round(points)));
+        return mlProbabilityToPoints(modelOutput, populationPrior);
     } catch (error) {
         console.error('[ML] Erreur prédiction:', error.message);
         return null;
@@ -304,7 +299,7 @@ async function predictML(participant, contexteCourse, allParticipants = [], preC
 }
 
 /**
- * Prédiction Hybride : 70% ML + 30% Heuristiques v14
+ * Prédiction hybride : pondération ML/heuristique configurable
  */
 export async function calculerPredictionHybride(participant, contexteCourse, activePatterns = [], tousParticipants = [], preCalculatedBaseScores = null) {
     const { preparerBaseScores } = await import('./intelligence.mjs');
@@ -321,22 +316,24 @@ export async function calculerPredictionHybride(participant, contexteCourse, act
 
     // Si modèle ML non disponible, fallback sur v14
     if (!model) {
-        return { score: heuristicScore, xai: f.xai, features: mlFeatures };
+        return { score: heuristicScore, heuristicScore, mlScore: null, xai: f.xai, features: mlFeatures };
     }
 
     const scoreML = await predictML(participant, contexteCourse, tousParticipants, mlFeatures);
 
     if (scoreML === null) {
-        return { score: heuristicScore, xai: f.xai, features: mlFeatures };
+        return { score: heuristicScore, heuristicScore, mlScore: null, xai: f.xai, features: mlFeatures };
     }
 
-    // fix v48.1: Poids paramétrables configés en 50% ML + 50% Heuristiques (v48, réduit depuis 70/30)
+    // Le mélange utilise la même pondération que l'évaluation des candidats.
     const { mlWeight, heuristicWeight } = CONFIG.architect.hybride;
-    const scoreHybride = Math.max(0, Math.min(100,
-        Math.round((scoreML * mlWeight) + (heuristicScore * heuristicWeight))));
+    const scoreHybride = combineHybridScores(scoreML, heuristicScore, { mlWeight, heuristicWeight });
+    if (scoreHybride === null) return { score: heuristicScore, heuristicScore, mlScore: null, xai: f.xai, features: mlFeatures };
 
     return {
         score: scoreHybride,
+        heuristicScore,
+        mlScore: scoreML,
         xai: f.xai,
         features: mlFeatures
     };

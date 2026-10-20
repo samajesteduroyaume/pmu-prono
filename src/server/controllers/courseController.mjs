@@ -6,6 +6,7 @@ import cache from '../../utils/cache.mjs';
 import logger from '../../utils/logger.mjs';
 import { formatDate, formatHeure } from '../../utils/dateUtils.mjs';
 import { getDB } from '../../db/db.mjs';
+import { isNonRunnerStatus, NON_RUNNER_STATUS_SQL } from '../../core/runner_status.mjs';
 
 async function getCourseSnapshots(courseId) {
     const db = getDB();
@@ -60,9 +61,7 @@ function applyFrozenPredictions(participants, snapshots) {
 }
 
 function isRunner(participant) {
-    return !['NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE'].includes(
-        String(participant.statut || '').trim().toUpperCase()
-    );
+    return !isNonRunnerStatus(participant.statut);
 }
 
 function averageHistoryPrize(history) {
@@ -542,8 +541,7 @@ export async function getPepites(req, res) {
               AND ps.odds_at_prediction > 1
               AND ps.market_probability IS NOT NULL AND ps.market_probability > 0
               AND ps.model_version = ?
-              AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN
-                  ('NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE')
+              AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN (${NON_RUNNER_STATUS_SQL})
               AND (c.date > ? OR (c.date = ? AND time(c.heure) > time(?)))
               AND COALESCE(c.ordre_arrivee, '') = ''
               AND UPPER(COALESCE(c.statut, '')) NOT LIKE '%ARRIV%'

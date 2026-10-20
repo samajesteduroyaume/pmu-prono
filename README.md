@@ -50,6 +50,8 @@ Ne commitez pas `.env`, les jetons ou des données personnelles. Le chemin `DB_P
 | `npm test` | Suite locale isolée avec base temporaire, sans appel PMU |
 | `npm run test:pmu` | Vérification réseau/API PMU du jour; nécessite Internet et interroge le service réel |
 | `npm run test:pmu:history` | Vérification API sur des dates historiques prédéfinies; nécessite Internet |
+
+Lancez ces contrôles depuis la machine qui héberge l’application. Dans un environnement sans DNS sortant, `ENOTFOUND` signifie que le nom de domaine n’a pas été résolu localement; ce n’est pas une réponse de l’API PMU.
 | `npm run sync` | Pipeline de synchronisation historique (consulter les journaux et le script avant une collecte volumineuse) |
 | `npm run sync:month` / `sync:year` | Même pipeline sur la période indiquée par le script |
 
@@ -77,8 +79,9 @@ Routes de compatibilité supplémentaires (dont palmarès, tendances, patterns, 
 
 - SQLite est initialisé/migré par l’application. Gardez une sauvegarde avant toute opération de maintenance.
 - Le moteur combine des heuristiques métier et, si un modèle valide est disponible, une composante ML. En l’absence de modèle utilisable, un chemin heuristique de repli est disponible; l’interface de statut du modèle fait foi.
-- L’entraînement demande au moins 120 courses prospectives réglées sur 30 dates, puis au moins 100 courses dans le test chronologique commun. Le statut ML affiche aussi le nombre de courses qui tomberaient dans ce test, car atteindre le premier seuil ne suffit pas. Un candidat n’est installé que s’il bat à la fois le pronostic archivé et le favori du marché en Top 1. Ce contrôle limite les promotions sur petit échantillon, sans garantir la rentabilité.
+- L’entraînement demande au moins 120 courses prospectives réglées sur 30 dates, puis au moins 100 courses comparables dans le test chronologique commun. Seuls les snapshots à jour avec le schéma de variables courant sont utilisés; les anciens restent consultables, mais ne sont pas mélangés au nouvel entraînement. Le statut ML affiche aussi le nombre de courses admissibles dans le test, car atteindre le premier seuil ne suffit pas. Un candidat n’est installé que si le score hybride qu’il produirait en service bat le pronostic hybride archivé et le favori du marché en Top 1. Seuls les vrais non-partants sont exclus; un cheval ayant couru puis abandonné ou été disqualifié reste un partant. Ces contrôles limitent les promotions sur petit échantillon, sans garantir la rentabilité.
 - Un historique de résultats seul ne permet pas de reconstruire un pronostic pré-course. Le tableau de bord d’évaluation exclut donc les courses sans snapshot enregistré à temps.
+- Une synchronisation historique, même sur 180 jours, n’ajoute pas de snapshots pré-course pour les courses passées. Laissez le serveur démarré pour capturer les prochaines courses et associer ensuite leurs résultats; après une mise à jour du code, redémarrez-le pour appliquer les migrations.
 - Les courses encore à courir restent en attente; elles ne comptent pas comme gagnées ou perdues. Les résultats non officiels ou manquants ne doivent pas être interprétés comme des pertes.
 - Les mises ou portefeuilles sont des outils de simulation. Ne misez pas sur la seule base d’un score affiché.
 

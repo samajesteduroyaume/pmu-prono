@@ -2,6 +2,7 @@ import { calculerPredictionHybride, getMLMetadata } from './hybrid.mjs';
 import { determinerChangementCategorie } from '../utils/engine_utils.mjs';
 import { getHorseHistory } from './db.mjs';
 import { formatDate, formatHeure } from '../utils/dateUtils.mjs';
+import { isNonRunnerStatus } from './runner_status.mjs';
 
 // ============================================================
 // v43: HELPERS EXTRACTION DONNÉES PMU API — TERRAIN & DISTANCE
@@ -19,11 +20,6 @@ function normaliserFerrage(deferre) {
     if (d.includes('PLAQUE') || d.includes('PL')) return 'PL';
     if (d.includes('PROTEGE') || d.includes('STANDARD') || d.includes('FERRE')) return 'FERRE';
     return d;
-}
-
-function estNonPartant(statut) {
-    return ['NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE']
-        .includes(String(statut || '').toUpperCase().trim());
 }
 
 function parseDistance(value) {
@@ -158,7 +154,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
         const distanceCourse = parseDistance(race.distance);
 
         // v43: Pré-extraction des cotes pour le rang ML (Feature de comparaison relative)
-        const allParticipantsCotes = (race.participants || []).filter(p => !estNonPartant(p.statut)).map(p => ({
+        const allParticipantsCotes = (race.participants || []).filter(p => !isNonRunnerStatus(p.statut)).map(p => ({
             nom: p.nom,
             cote_ref: p.dernierRapportDirect?.rapport || 0
         }));
@@ -236,6 +232,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
             try {
                 const result = await calculerPredictionHybride(participantObj, predictionContext, [], allParticipantsCotes);
                 participantObj.prediction_score = result.score;
+                participantObj.prediction_heuristic_score = Number.isFinite(result.heuristicScore) ? result.heuristicScore : null;
                 participantObj.prediction_features = Array.isArray(result.features)
                     && result.features.length === 15
                     && result.features.every(Number.isFinite)
@@ -243,6 +240,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
             } catch (err) {
                 console.error(`[PROCESSOR] Hybridation échouée pour ${participantObj.nom}:`, err.message);
                 participantObj.prediction_score = 0;
+                participantObj.prediction_heuristic_score = null;
                 participantObj.prediction_features = null;
             }
         }));

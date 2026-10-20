@@ -1,4 +1,5 @@
 import { getDB } from '../db/db.mjs';
+import { ML_FEATURE_SCHEMA_VERSION } from '../ml/model_compatibility.mjs';
 
 const all = (db, sql, params = []) => new Promise((resolve, reject) => {
     db.all(sql, params, (error, rows) => error ? reject(error) : resolve(rows || []));
@@ -80,14 +81,22 @@ export async function getForecastEvaluation({ startDate, endDate } = {}) {
         grouped.get(row.course_id).push(row);
     }
     const courses = [...grouped.values()];
+    const activeCourses = courses.map(rows => rows.filter(row => Number(row.is_non_runner) !== 1)).filter(rows => rows.length);
     const modelVersions = [...new Set(snapshots.map(row => row.model_version).filter(Boolean))];
-    const trainingEligibleCourses = courses.filter(rows =>
+    const trainingEligibleCourses = activeCourses.filter(rows =>
         rows.length > 0
         && rows.every(row => row.settled_at && row.outcome_rank !== null && row.outcome_rank !== undefined && hasValidFeatureVector(row))
+        && rows.every(row => Number(row.feature_schema_version) === ML_FEATURE_SCHEMA_VERSION)
         && rows.some(row => Number(row.outcome_rank) === 1)
     ).length;
-    const topPicks = courses.map(rows => rows.find(row => Number(row.prediction_rank) === 1)).filter(Boolean);
-    const marketPicks = courses.map(rows => rows.find(row => Number(row.market_rank) === 1)).filter(Boolean);
+    const topPicks = activeCourses.map(rows => rows
+        .filter(row => Number.isInteger(Number(row.prediction_rank)) && Number(row.prediction_rank) > 0)
+        .reduce((best, row) => !best || Number(row.prediction_rank) < Number(best.prediction_rank) ? row : best, null))
+        .filter(Boolean);
+    const marketPicks = activeCourses.map(rows => rows
+        .filter(row => Number.isInteger(Number(row.market_rank)) && Number(row.market_rank) > 0)
+        .reduce((best, row) => !best || Number(row.market_rank) < Number(best.market_rank) ? row : best, null))
+        .filter(Boolean);
     // Comparer IA et favori marché sur exactement les mêmes courses. Sinon,
     // l'IA peut sembler meilleure ou pire simplement parce que des courses
     // sans cote exploitable n'entrent que dans son échantillon.
@@ -142,12 +151,14 @@ export async function getForecastEvaluation({ startDate, endDate } = {}) {
         quality: {
             capturedCourses: courses.length,
             capturedRunners: snapshots.length,
+            nonRunnerSnapshots: snapshots.filter(row => Number(row.is_non_runner) === 1).length,
             trainingEligibleCourses,
             settledCourses: settledCount,
             pendingCourses: topPicks.length - settledCount,
             settlementCoverage: topPicks.length ? Number((settledCount * 100 / topPicks.length).toFixed(1)) : null,
             runnersWithoutOdds: snapshots.filter(row => !(Number(row.odds_at_prediction) > 0)).length,
             runnersWithoutFrozenFeatures: snapshots.filter(row => !row.feature_vector_json).length,
+            runnersWithIncompatibleFeatureSchema: snapshots.filter(row => Number(row.feature_schema_version) !== ML_FEATURE_SCHEMA_VERSION).length,
             topPicksWithoutOdds: missingOdds,
             topPicksWithoutForm: topPicks.filter(row => !row.has_form).length,
             topPicksWithoutDriver: topPicks.filter(row => !row.has_driver).length,

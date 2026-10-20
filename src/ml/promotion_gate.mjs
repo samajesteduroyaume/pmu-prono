@@ -25,9 +25,9 @@ export function evaluateModelPromotion({
     if (!(mlHitRate > heuristicHitRate && mlHitRate > marketHitRate)) {
         return {
             promote: false,
-            reason: 'Le Top 1 ML ne dépasse pas à la fois le pronostic heuristique archivé et le favori du marché sur les mêmes courses.'
+            reason: 'Le Top 1 du candidat hybride déployable ne dépasse pas à la fois le pronostic archivé et le favori du marché sur les mêmes courses.'
         };
     }
 
-    return { promote: true, reason: 'Le Top 1 ML dépasse les deux références sur le test chronologique commun.' };
+    return { promote: true, reason: 'Le Top 1 du candidat hybride déployable dépasse les deux références sur le test chronologique commun.' };
 }

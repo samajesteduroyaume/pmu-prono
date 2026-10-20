@@ -4,6 +4,7 @@ import { calculateKellyAdaptatif, calibrateProbability, refreshProspectiveCalibr
 import CONFIG from '../config/settings.mjs';
 import logger from '../utils/logger.mjs';
 import { formatDate, formatHeure } from '../utils/dateUtils.mjs';
+import { isNonRunnerStatus } from './runner_status.mjs';
 
 const VH_CONFIG = CONFIG.engine_settings.value_hunter;
 const FINANCE = CONFIG.engine_settings.finance;
@@ -47,10 +48,7 @@ export async function detectOpportunities(date = formatDate(new Date())) {
     for (const course of todayCourses) {
         const status = String(course.statut || '').toUpperCase();
         if (course.ordre_arrivee || /ARRIV|TERMINE|FIN_COURSE|EN_COURS|PARTI|DEPART|ANNULE|NON_PARTANT/.test(status)) continue;
-        const participants = (await getCourseParticipants(course.id)).filter(p =>
-            !['NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE']
-                .includes(String(p.statut || '').trim().toUpperCase())
-        );
+        const participants = (await getCourseParticipants(course.id)).filter(p => !isNonRunnerStatus(p.statut));
         if (!participants.length) continue;
 
         const courseContext = {

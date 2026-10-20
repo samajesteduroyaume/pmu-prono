@@ -1,6 +1,6 @@
 # Installation et exploitation sur Ubuntu
 
-Parcours de déploiement recommandé : Ubuntu Server 22.04 ou 24.04 LTS, architecture x86_64, Node.js 20. Le projet utilise `sqlite3` et `@tensorflow/tfjs-node`, deux dépendances comportant des composants natifs. Cette cible réduit les incertitudes de compilation; si votre Ubuntu est ARM, vérifiez d’abord `npm ci` et le chargement du modèle sur la machine cible.
+Parcours de déploiement recommandé : Ubuntu Server 22.04 ou 24.04 LTS, architecture x86_64, Node.js 20. Le projet utilise `sqlite3` et `@tensorflow/tfjs-node`, deux dépendances comportant des composants natifs. L’inférence et l’entraînement retombent sur TensorFlow.js pur JavaScript si le backend natif ne charge pas; ce mode peut être plus lent. Si votre Ubuntu est ARM, vérifiez d’abord `npm ci` et le chargement du modèle sur la machine cible.
 
 ## 1. Installer les prérequis
 
@@ -38,7 +38,7 @@ Avant d’exposer le service, faites un contrôle local :
 npm test
 ```
 
-Le démarrage du serveur lance une synchronisation PMU et les tâches planifiées; les tests ci-dessus n’en ont pas besoin. Les vérifications d’API PMU réelles sont facultatives et détaillées dans le README.
+Le démarrage du serveur lance une synchronisation PMU et les tâches planifiées; les tests ci-dessus n’en ont pas besoin. Les vérifications d’API PMU réelles sont facultatives et détaillées dans le README. Exécutez-les depuis le serveur Ubuntu : `ENOTFOUND` dans un environnement sans DNS sortant ne signale pas une erreur HTTP PMU.
 
 ## 3. Lancer temporairement
 
@@ -95,7 +95,7 @@ sudo systemctl status pmu-prono
 sudo journalctl -u pmu-prono -f
 ```
 
-Le service appelle l’API PMU au démarrage et toutes les cinq minutes, programme une synchronisation quotidienne à 06:30 et un réentraînement le dimanche à 23:30 (heure locale du système). Prévoyez un accès réseau sortant, de l’espace disque, et surveillez les journaux.
+Le service appelle l’API PMU au démarrage et toutes les cinq minutes, programme une synchronisation quotidienne à 06:30 et un réentraînement le dimanche à 23:30 (heure locale du système). Cette collecte en continu capture les prochaines courses avant leur départ et règle ensuite les snapshots avec les résultats officiels. Une synchronisation d’historique ne recrée pas ces pronostics passés. Après chaque mise à jour du code, redémarrez le service pour appliquer les migrations. Prévoyez un accès réseau sortant, de l’espace disque, et surveillez les journaux.
 
 ## 5. Sauvegarder et mettre à jour
 

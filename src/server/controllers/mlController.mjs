@@ -2,8 +2,9 @@ import logger from '../../utils/logger.mjs';
 import cache from '../../utils/cache.mjs';
 import { parseDays } from '../../utils/requestParams.mjs';
 import { getDB } from '../../db/db.mjs';
-import { countChronologicalCourseSplits } from '../../ml/course_split.mjs';
+import { countChronologicalCourseSplits, splitCourseGroups } from '../../ml/course_split.mjs';
 import { MIN_PROMOTION_TEST_COURSES } from '../../ml/promotion_gate.mjs';
+import { ML_FEATURE_SCHEMA_VERSION } from '../../ml/model_compatibility.mjs';
 
 function validEvaluationPeriod(startDate, endDate) {
     const validDate = value => {
@@ -122,32 +123,50 @@ export async function getMLStatusController(req, res) {
         const status = getMLStatus();
         const db = getDB();
         const rows = await new Promise((resolve, reject) => db.all(`
-            SELECT course_id, course_date, feature_vector_json, outcome_rank, settled_at
+            SELECT course_id, course_date, feature_vector_json, outcome_rank, settled_at, captured_at, is_non_runner,
+                   heuristic_score, prediction_rank, market_rank, feature_schema_version
             FROM prediction_snapshots
-            WHERE course_id IN (
-                SELECT DISTINCT course_id FROM prediction_snapshots WHERE settled_at IS NOT NULL
-            )
             ORDER BY course_date, course_id
         `, (error, result) => error ? reject(error) : resolve(result || [])));
         const grouped = new Map();
+        const captureGroups = new Map();
         for (const row of rows) {
-            if (!grouped.has(row.course_id)) {
-                grouped.set(row.course_id, { date: row.course_date, invalidFeatures: false, invalidOutcome: false, hasWinner: false, samples: 0 });
+            if (!captureGroups.has(row.course_id)) {
+                captureGroups.set(row.course_id, { total: 0, settled: 0, invalidFeatures: false, incompatibleFeatureSchema: false });
             }
-            const course = grouped.get(row.course_id);
+            const captureCourse = captureGroups.get(row.course_id);
+            captureCourse.total++;
             let features;
             try { features = JSON.parse(row.feature_vector_json); } catch { features = null; }
+            if (!Array.isArray(features) || features.length !== 15 || !features.every(Number.isFinite)) captureCourse.invalidFeatures = true;
+            if (Number(row.feature_schema_version) !== ML_FEATURE_SCHEMA_VERSION) captureCourse.incompatibleFeatureSchema = true;
+            if (row.settled_at != null && row.outcome_rank != null) captureCourse.settled++;
+
+            if (Number(row.is_non_runner) === 1) continue;
+            if (!grouped.has(row.course_id)) {
+                grouped.set(row.course_id, { date: row.course_date, invalidFeatures: false, incompatibleFeatureSchema: false, invalidOutcome: false, hasWinner: false, samples: 0, settledSamples: 0, completeHeuristic: true, hasForecastPick: false, hasMarketPick: false });
+            }
+            const course = grouped.get(row.course_id);
+            if (row.heuristic_score == null || !Number.isFinite(Number(row.heuristic_score))) course.completeHeuristic = false;
+            if (Number(row.prediction_rank) > 0) course.hasForecastPick = true;
+            if (Number(row.market_rank) > 0) course.hasMarketPick = true;
             if (!Array.isArray(features) || features.length !== 15 || !features.every(Number.isFinite)) course.invalidFeatures = true;
+            if (Number(row.feature_schema_version) !== ML_FEATURE_SCHEMA_VERSION) course.incompatibleFeatureSchema = true;
             if (row.settled_at == null || row.outcome_rank == null) course.invalidOutcome = true;
             else {
                 course.samples++;
+                course.settledSamples++;
                 if (Number(row.outcome_rank) === 1) course.hasWinner = true;
             }
         }
         const eligible = [...grouped.values()].filter(course =>
-            !course.invalidFeatures && !course.invalidOutcome && course.samples > 0 && course.hasWinner
+            !course.invalidFeatures && !course.incompatibleFeatureSchema
+            && !course.invalidOutcome && course.samples > 0 && course.hasWinner
         );
         const splitCounts = countChronologicalCourseSplits(eligible);
+        const testCourseIds = splitCounts.splittable ? new Set(splitCourseGroups(eligible).testCourses.map(course => course.course_id)) : new Set();
+        const comparableTestCourses = eligible.filter(course => testCourseIds.has(course.course_id)
+            && course.completeHeuristic && course.hasForecastPick && course.hasMarketPick).length;
         const { minimumSettledCourses, minimumDistinctDates } = status.trainingRequirements;
         status.trainingReadiness = {
             eligibleCourses: eligible.length,
@@ -156,9 +175,23 @@ export async function getMLStatusController(req, res) {
             requiredDates: minimumDistinctDates,
             chronologicalSplit: splitCounts,
             requiredTestCourses: MIN_PROMOTION_TEST_COURSES,
+            comparableTestCourses,
             ready: eligible.length >= minimumSettledCourses
                 && splitCounts.splittable
-                && splitCounts.test >= MIN_PROMOTION_TEST_COURSES
+                && comparableTestCourses >= MIN_PROMOTION_TEST_COURSES
+        };
+        const fullySettledCourses = [...captureGroups.values()].filter(course =>
+            course.total > 0 && course.settled === course.total
+        ).length;
+        status.captureHealth = {
+            capturedCourses: captureGroups.size,
+            capturedRunners: rows.length,
+            fullySettledCourses,
+            awaitingResultsCourses: captureGroups.size - fullySettledCourses,
+            coursesWithInvalidFeatures: [...captureGroups.values()].filter(course => course.invalidFeatures).length,
+            coursesWithIncompatibleFeatureSchema: [...captureGroups.values()].filter(course => course.incompatibleFeatureSchema).length,
+            nonRunnerSnapshots: rows.filter(row => Number(row.is_non_runner) === 1).length,
+            lastCaptureAt: rows.reduce((latest, row) => row.captured_at && (!latest || row.captured_at > latest) ? row.captured_at : latest, null)
         };
         res.json(status);
     } catch (error) {

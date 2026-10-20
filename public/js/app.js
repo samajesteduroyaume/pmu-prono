@@ -17,6 +17,11 @@ function getParisDateString(date = new Date()) {
 // State Management
 let allCourses = [];
 let currentView = 'dashboard';
+let visibleScannerCourses = [];
+let activeDetailCourseId = null;
+let detailRequestToken = 0;
+let scannerPagination = { page: 1, totalPages: 1, total: 0 };
+let coursesLoadError = null;
 
 // Mobile Navigation Toggle
 window.toggleNavRail = () => {
@@ -74,6 +79,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Escape Key Listener to unblur and close modal
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            const modal = document.getElementById('modal-details');
+            const target = e.target;
+            const isTyping = target instanceof HTMLElement
+                && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+            if (modal?.style.display === 'flex' && !isTyping) {
+                e.preventDefault();
+                window.navigateScannerCourse(e.key === 'ArrowRight' ? 1 : -1);
+            }
+        }
     });
 
     // Live Sync Polling (Configurable)
@@ -88,18 +103,30 @@ async function refreshMLStatus() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const status = await response.json();
         const readiness = status.trainingReadiness;
+        const capture = status.captureHealth;
+        const lastCapture = capture?.lastCaptureAt
+            ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(capture.lastCaptureAt))
+            : 'aucune';
         const readinessText = readiness
-            ? ` Données prospectives : ${readiness.eligibleCourses}/${readiness.requiredCourses} courses, ${readiness.eligibleDates}/${readiness.requiredDates} dates et ${readiness.chronologicalSplit?.test || 0}/${readiness.requiredTestCourses} courses de test chronologique.`
+            ? ` Collecte : ${capture?.capturedCourses || 0} courses capturées, ${capture?.fullySettledCourses || 0} réglées, ${capture?.awaitingResultsCourses || 0} en attente, ${capture?.nonRunnerSnapshots || 0} non-partants exclus, ${capture?.coursesWithInvalidFeatures || 0} avec variables incomplètes, ${capture?.coursesWithIncompatibleFeatureSchema || 0} avec un ancien schéma de variables. Dernière capture : ${lastCapture}. ML : ${readiness.eligibleCourses}/${readiness.requiredCourses} courses admissibles, ${readiness.eligibleDates}/${readiness.requiredDates} dates, test chronologique ${readiness.chronologicalSplit?.test || 0} courses dont ${readiness.comparableTestCourses || 0}/${readiness.requiredTestCourses} comparables pour la promotion.`
             : '';
         banner.hidden = false;
         if (status.active) {
             banner.style.borderColor = 'var(--accent-emerald)';
             banner.style.background = 'hsla(150, 70%, 35%, 0.10)';
-            banner.textContent = `Modèle ML actif : ${status.version || 'version inconnue'}. Le score reste un score de classement, pas une probabilité.${readinessText}`;
+            const hybridMetric = Number.isFinite(status.testDeployedHybridTop1HitRate)
+                ? ` Top 1 hybride déployé sur le test de promotion : ${(status.testDeployedHybridTop1HitRate * 100).toFixed(1)}% (${status.testComparableCourseCount} courses).`
+                : '';
+            const mlMetric = Number.isFinite(status.testMlOnlyTop1HitRate)
+                ? ` Top 1 ML seul : ${(status.testMlOnlyTop1HitRate * 100).toFixed(1)}%.`
+                : '';
+            banner.textContent = `Modèle ML actif : ${status.version || 'version inconnue'}.${hybridMetric}${mlMetric} Le score affiché reste un score de classement, pas une probabilité.${readinessText}`;
             return;
         }
         banner.textContent = status.reason === 'unverified-training-provenance'
             ? `Modèle ML inactif : provenance d’entraînement non vérifiée. Les pronostics utilisent le moteur heuristique; le score sur 100 n’est pas une probabilité.${readinessText}`
+            : status.reason === 'unsupported-feature-schema'
+                ? `Modèle ML inactif : les variables du modèle sont incompatibles avec la version de l’application. Les pronostics utilisent le moteur heuristique.${readinessText}`
             : `Modèle ML inactif. Les pronostics utilisent le moteur heuristique; le score sur 100 n’est pas une probabilité.${readinessText}`;
     } catch (error) {
         banner.hidden = false;
@@ -246,13 +273,17 @@ function initUI() {
 }
 
 function updateDateDisplay(date) {
+    const display = document.getElementById('current-date');
+    if (!date) {
+        if (display) display.innerHTML = '<span class="live-indicator" style="background: var(--text-low); animation: none;"></span> ARCHIVES • TOUTES LES DATES';
+        return;
+    }
     const d = date ? new Date(`${date}T12:00:00Z`) : new Date();
-    const isToday = (date || getParisDateString()) === getParisDateString();
+    const isToday = date === getParisDateString();
     const dateStr = d.toLocaleDateString('fr-FR', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris'
     }).toUpperCase();
     
-    const display = document.getElementById('current-date');
     if (display) {
         display.innerHTML = `
             <span class="live-indicator" style="${isToday ? '' : 'background: var(--text-low); animation: none;'}"></span> 
@@ -261,7 +292,22 @@ function updateDateDisplay(date) {
     }
 }
 
-async function refreshData() {
+window.shiftScannerDate = (days) => {
+    const calendar = document.getElementById('calendar-filter');
+    if (!calendar) return;
+    if (days === 0) {
+        calendar.value = getParisDateString();
+    } else {
+        const base = calendar.value || getParisDateString();
+        const date = new Date(`${base}T12:00:00Z`);
+        if (Number.isNaN(date.getTime())) return;
+        date.setUTCDate(date.getUTCDate() + days);
+        calendar.value = date.toISOString().slice(0, 10);
+    }
+    refreshData();
+};
+
+async function refreshData(page = 1) {
     const cal = document.getElementById('calendar-filter');
     const date = cal ? cal.value : null;
 
@@ -276,7 +322,7 @@ async function refreshData() {
         if (tbody) tbody.innerHTML = renderTableSkeleton(8, 9);
     }
 
-    await loadData(1, { date });
+    await loadData(page, { date });
     updateUI();
     renderNavStats();
 }
@@ -307,6 +353,7 @@ async function renderNavStats() {
 }
 
 async function loadData(page = 1, filters = {}) {
+    coursesLoadError = null;
     try {
         const cleanFilters = {};
         for (const [key, val] of Object.entries(filters)) {
@@ -319,15 +366,26 @@ async function loadData(page = 1, filters = {}) {
         if (!res.ok) {
             console.error("Data Load HTTP Error:", res.status);
             allCourses = [];
-            return;
+            scannerPagination = { page: 1, totalPages: 1, total: 0 };
+            coursesLoadError = `HTTP ${res.status}`;
+            return false;
         }
         const response = await res.json();
         allCourses = response.data || [];
         window.currentPage = page;
         window.totalPages = response.pagination?.totalPages || 1;
+        scannerPagination = {
+            page: Number(response.pagination?.page) || page,
+            totalPages: Number(response.pagination?.totalPages) || 1,
+            total: Number(response.pagination?.total) || 0
+        };
+        return true;
     } catch (e) {
         console.error("Data Load Error:", e);
         allCourses = [];
+        scannerPagination = { page: 1, totalPages: 1, total: 0 };
+        coursesLoadError = e.message || 'Erreur réseau';
+        return false;
     }
 }
 
@@ -431,6 +489,26 @@ function getMeteoIcon(meteo) {
     if (code.includes('NUAGE') || code.includes('COUVERT')) return '<i class="fas fa-cloud" style="color: var(--text-med)"></i>';
     if (code.includes('PLUIE')) return '<i class="fas fa-cloud-showers-heavy" style="color: var(--accent-blue)"></i>';
     return '<i class="fas fa-cloud-sun" style="color: var(--text-med)"></i>';
+}
+
+function getScannerStatus(course) {
+    if (course.ordre_arrivee) return `ARRIVÉE · ${course.ordre_arrivee}`;
+    const status = String(course.statut || '').toUpperCase();
+    if (status.includes('ANNUL')) return 'ANNULÉE';
+    if (status.includes('EN_COURS') || status.includes('PARTI') || status.includes('DEPART')) return 'EN COURS';
+    if (status.includes('ARRIV') || status.includes('TERMINE') || status.includes('FIN_COURSE')) return 'RÉSULTAT EN ATTENTE';
+    return 'À VENIR';
+}
+
+function getScannerStatusColor(course) {
+    const status = String(course.statut || '').toUpperCase();
+    if (course.ordre_arrivee) return 'var(--accent-gold)';
+    if (status.includes('ANNUL')) return 'var(--accent-crimson)';
+    if (status.includes('EN_COURS') || status.includes('PARTI') || status.includes('DEPART')
+        || status.includes('ARRIV') || status.includes('TERMINE') || status.includes('FIN_COURSE')) {
+        return 'var(--accent-gold)';
+    }
+    return 'var(--accent-emerald-bright)';
 }
 
 async function renderQuinte() {
@@ -584,9 +662,9 @@ function renderScanner() {
     let filtered = allCourses.filter(c => {
         // Search filter
         if (search) {
-            const matchesCheval = c.top_horse && c.top_horse.toLowerCase().includes(search);
-            const matchesHippo = c.hippodrome && c.hippodrome.toLowerCase().includes(search);
-            if (!matchesCheval && !matchesHippo) return false;
+            const searchText = [c.top_horse, c.hippodrome, c.discipline, c.reunionNum, c.courseNum,
+                `R${c.reunionNum} C${c.courseNum}`].map(value => String(value ?? '').toLowerCase());
+            if (!searchText.some(value => value.includes(search))) return false;
         }
 
         // Discipline filter
@@ -605,20 +683,45 @@ function renderScanner() {
         return true;
     });
 
-    const sorted = [...filtered].sort((a, b) => (a.heure || '').localeCompare(b.heure || ''));
+    const sorted = [...filtered].sort((a, b) =>
+        String(b.date || '').localeCompare(String(a.date || ''))
+        || (a.heure || '').localeCompare(b.heure || '')
+        || String(a.reunionNum || '').localeCompare(String(b.reunionNum || ''), 'fr', { numeric: true })
+        || String(a.courseNum || '').localeCompare(String(b.courseNum || ''), 'fr', { numeric: true })
+    );
+    visibleScannerCourses = sorted;
+    const count = document.getElementById('scanner-course-count');
+    if (count) {
+        const tracks = new Set(sorted.map(course => `${course.reunionNum ?? ''}`)).size;
+        const pageLabel = scannerPagination.totalPages > 1
+            ? ` • page ${scannerPagination.page}/${scannerPagination.totalPages} (${scannerPagination.total} au total)`
+            : '';
+        count.textContent = `${sorted.length} course${sorted.length === 1 ? '' : 's'} affichée${sorted.length === 1 ? '' : 's'}${tracks ? ` • ${tracks} réunion${tracks === 1 ? '' : 's'}` : ''}${pageLabel}`;
+    }
+    renderScannerCourseStrip(sorted);
+    renderScannerPagination();
 
     if (sorted.length === 0) {
         if (allCourses.length > 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="9" style="text-align: center; color: var(--text-med); padding: 40px; font-weight: 600;">
-                        <div style="font-size: 14px; margin-bottom: 8px; color: var(--text-high);">Aucune course ne correspond à vos filtres actuels (${allCourses.length} courses chargées au total).</div>
+                        <div style="font-size: 14px; margin-bottom: 8px; color: var(--text-high);">Aucune course ne correspond à vos filtres actuels (${allCourses.length} courses chargées sur cette page${scannerPagination.totalPages > 1 ? `, ${scannerPagination.total} au total` : ''}).</div>
                         <button onclick="resetScannerFilters()" class="nav-item" style="margin-top: 10px; padding: 6px 16px; font-size: 12px; border: 1px solid var(--accent-gold); color: var(--accent-gold); background: hsla(var(--h-gold), 100%, 50%, 0.1);">
                             <i class="fas fa-undo" style="margin-right: 6px;"></i> Réinitialiser les filtres
                         </button>
                     </td>
                 </tr>`;
         } else {
+            if (coursesLoadError) {
+                tbody.innerHTML = `
+                    <tr><td colspan="9" style="text-align: center; color: var(--text-med); padding: 40px;">
+                        <div style="font-size: 15px; margin-bottom: 8px; color: var(--accent-crimson);">Impossible de charger le programme.</div>
+                        <div style="font-size: 12px; margin-bottom: 16px;">Vérifiez le serveur et la connexion, puis réessayez.</div>
+                        <button onclick="refreshData()" class="scanner-retry-button"><i class="fas fa-redo"></i> Réessayer</button>
+                    </td></tr>`;
+                return;
+            }
             tbody.innerHTML = `
                 <tr>
                     <td colspan="9" style="text-align: center; color: var(--text-med); padding: 40px; font-weight: 600;">
@@ -636,6 +739,19 @@ function renderScanner() {
     sorted.forEach((c, index) => {
         const row = document.createElement('tr');
         row.style.animation = `fadeIn 0.5s ease-out ${index * 0.04}s both`;
+        row.classList.add('scanner-course-row');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `Ouvrir l’analyse de ${c.hippodrome}, réunion ${c.reunionNum}, course ${c.courseNum}`);
+        row.addEventListener('click', event => {
+            if (!event.target.closest('button, a')) window.showDetails(c.id);
+        });
+        row.addEventListener('keydown', event => {
+            if (event.target !== row) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                window.showDetails(c.id);
+            }
+        });
         
         const iaScore = Number(c.ia_score);
         const meteoIcon = getMeteoIcon(c.meteo);
@@ -674,14 +790,57 @@ function renderScanner() {
                 <div style="font-weight: 700; color: var(--text-high); font-family: 'JetBrains Mono'; font-size: 13px;">${Number.isFinite(Number(c.prix)) && Number(c.prix) !== 0 ? Number(c.prix).toLocaleString() + ' €' : '--'}</div>
                 <div style="font-size: 10px; color: var(--text-med); font-weight: 600;">${escapeHtml(c.partants)} PARTANTS</div>
             </td>
-            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: var(--accent-emerald-bright)">${escapeHtml(c.ordre_arrivee || 'À VENIR')}</td>
+            <td style="font-family: 'JetBrains Mono'; font-weight: 800; color: ${getScannerStatusColor(c)}">${escapeHtml(getScannerStatus(c))}</td>
         `;
         tbody.appendChild(row);
     });
 }
 
+function renderScannerPagination() {
+    const container = document.getElementById('scanner-pagination');
+    if (!container) return;
+    const hasMultiplePages = scannerPagination.totalPages > 1;
+    container.hidden = !hasMultiplePages;
+    if (!hasMultiplePages) {
+        container.innerHTML = '';
+        return;
+    }
+    container.innerHTML = `
+        <button type="button" onclick="changeScannerPage(-1)" ${scannerPagination.page <= 1 ? 'disabled' : ''} aria-label="Page précédente">
+            <i class="fas fa-chevron-left"></i><span>Précédent</span>
+        </button>
+        <span>Page <strong>${scannerPagination.page}</strong> sur ${scannerPagination.totalPages} · ${scannerPagination.total} courses</span>
+        <button type="button" onclick="changeScannerPage(1)" ${scannerPagination.page >= scannerPagination.totalPages ? 'disabled' : ''} aria-label="Page suivante">
+            <span>Suivant</span><i class="fas fa-chevron-right"></i>
+        </button>`;
+}
+
+window.changeScannerPage = (offset) => {
+    const nextPage = scannerPagination.page + offset;
+    if (nextPage < 1 || nextPage > scannerPagination.totalPages) return;
+    refreshData(nextPage);
+};
+
+function renderScannerCourseStrip(courses) {
+    const strip = document.getElementById('scanner-course-strip');
+    if (!strip) return;
+    if (!courses.length) {
+        strip.innerHTML = '<span class="scanner-course-strip-empty">Aucune course selon les filtres actuels.</span>';
+        return;
+    }
+    const showDate = document.getElementById('calendar-filter')?.value === '';
+    strip.innerHTML = courses.map((course, index) => `
+        <button class="scanner-course-chip${String(course.id) === String(activeDetailCourseId) ? ' is-active' : ''}"
+            data-course-id="${escapeHtml(course.id)}" onclick="showDetails(${Number(course.id)})"
+            aria-label="Course ${index + 1} : ${escapeHtml(course.hippodrome)}, réunion ${escapeHtml(course.reunionNum)}, course ${escapeHtml(course.courseNum)} à ${escapeHtml(course.heure || 'heure inconnue')}">
+            <span class="scanner-course-chip-time">${showDate ? `${escapeHtml(String(course.date || '').slice(5).split('-').reverse().join('/'))} · ` : ''}${escapeHtml(course.heure || '--:--')}</span>
+            <strong>R${escapeHtml(course.reunionNum)} · C${escapeHtml(course.courseNum)}</strong>
+            <span class="scanner-course-chip-venue">${escapeHtml(course.hippodrome || 'Hippodrome')}</span>
+        </button>`).join('');
+}
+
 window.exportScannerCSV = () => {
-    if (!allCourses || allCourses.length === 0) {
+    if (!visibleScannerCourses || visibleScannerCourses.length === 0) {
         showNotification("Aucune donnée à exporter", "info");
         return;
     }
@@ -691,10 +850,10 @@ window.exportScannerCSV = () => {
         if (/^[\u0000-\u0020]*[=+\-@]/.test(text)) text = `'${text}`;
         return `"${text.replace(/"/g, '""')}"`;
     };
-    const headers = ["Heure", "Hippodrome", "Reunion", "Course", "Discipline", "Distance", "Top Cheval", "Score IA", "Cote Fav", "Prix"];
-    const rows = allCourses.map(c => [
+    const headers = ["Heure", "Hippodrome", "Reunion", "Course", "Discipline", "Distance", "Top Cheval", "Score IA", "Cote Fav", "Prix", "Statut"];
+    const rows = visibleScannerCourses.map(c => [
         c.heure, c.hippodrome, c.reunionNum, c.courseNum, c.discipline,
-        c.distance, c.top_horse, c.ia_score, c.fav_cote, c.prix
+        c.distance, c.top_horse, c.ia_score, c.fav_cote, c.prix, getScannerStatus(c)
     ].map(csvCell));
 
     const csvContent = [headers.map(csvCell).join(","), ...rows.map(row => row.join(","))].join("\n");
@@ -785,20 +944,99 @@ window.syncMarket = async (silent = false) => {
     }
 };
 
+function renderScannerDetailNavigation(id) {
+    const index = visibleScannerCourses.findIndex(course => String(course.id) === String(id));
+    if (index < 0) return '';
+    const course = visibleScannerCourses[index];
+    const canGoPrevious = index > 0 || scannerPagination.page > 1;
+    const canGoNext = index < visibleScannerCourses.length - 1 || scannerPagination.page < scannerPagination.totalPages;
+    return `
+        <nav class="scanner-detail-navigation" aria-label="Navigation entre les courses">
+            <button type="button" onclick="navigateScannerCourse(-1)" ${canGoPrevious ? '' : 'disabled'}>
+                <i class="fas fa-arrow-left"></i><span>Précédente</span>
+            </button>
+            <div class="scanner-detail-position">
+                <strong>Course ${index + 1} <span>/ ${visibleScannerCourses.length}</span></strong>
+                <span>${escapeHtml(String(course.date || '').split('-').reverse().join('/'))} · ${escapeHtml(course.heure || '--:--')} · R${escapeHtml(course.reunionNum)} C${escapeHtml(course.courseNum)} · ${escapeHtml(course.hippodrome)}</span>
+                <small>Utilisez ← et → pour parcourir les courses</small>
+            </div>
+            <button type="button" onclick="navigateScannerCourse(1)" ${canGoNext ? '' : 'disabled'}>
+                <span>Suivante</span><i class="fas fa-arrow-right"></i>
+            </button>
+        </nav>`;
+}
+
+let isNavigatingScannerCourse = false;
+
+window.navigateScannerCourse = async (offset) => {
+    const index = visibleScannerCourses.findIndex(course => String(course.id) === String(activeDetailCourseId));
+    if (index < 0 || isNavigatingScannerCourse) return;
+    const next = visibleScannerCourses[index + offset];
+    if (next) {
+        await window.showDetails(next.id);
+        return;
+    }
+
+    const nextPage = scannerPagination.page + offset;
+    if (nextPage < 1 || nextPage > scannerPagination.totalPages) return;
+    isNavigatingScannerCourse = true;
+    const originalPage = scannerPagination.page;
+    const totalPages = scannerPagination.totalPages;
+    const originalCourseId = activeDetailCourseId;
+    const calendar = document.getElementById('calendar-filter');
+    try {
+        let page = nextPage;
+        while (page >= 1 && page <= totalPages) {
+            const loaded = await loadData(page, { date: calendar?.value });
+            if (!loaded) break;
+            updateUI();
+            const pageCourses = visibleScannerCourses;
+            const boundaryCourse = offset > 0 ? pageCourses[0] : pageCourses.at(-1);
+            if (boundaryCourse) {
+                await window.showDetails(boundaryCourse.id);
+                return;
+            }
+            page += offset;
+        }
+
+        await loadData(originalPage, { date: calendar?.value });
+        updateUI();
+        if (originalCourseId != null) await window.showDetails(originalCourseId);
+    } finally {
+        isNavigatingScannerCourse = false;
+    }
+};
+
 window.closeModal = () => {
+    const closeToken = ++detailRequestToken;
+    activeDetailCourseId = null;
+    document.querySelectorAll('.scanner-course-chip.is-active').forEach(chip => chip.classList.remove('is-active'));
     const modal = document.getElementById('modal-details');
     modal.style.opacity = '0';
-    setTimeout(() => modal.style.display = 'none', 300);
+    modal.setAttribute('aria-hidden', 'true');
+    setTimeout(() => {
+        if (detailRequestToken === closeToken) modal.style.display = 'none';
+    }, 300);
 };
 
 window.showDetails = async (id) => {
     const modal = document.getElementById('modal-details');
     const body = document.getElementById('modal-body');
+    const requestToken = ++detailRequestToken;
+    activeDetailCourseId = id;
+    document.querySelectorAll('.scanner-course-chip').forEach(chip => {
+        chip.classList.toggle('is-active', String(chip.dataset.courseId) === String(id));
+    });
     modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
     modal.style.opacity = '0';
-    setTimeout(() => modal.style.opacity = '1', 10);
+    setTimeout(() => {
+        if (requestToken === detailRequestToken) modal.style.opacity = '1';
+    }, 10);
+    const modalCard = modal.querySelector('.stat-card');
+    if (modalCard) modalCard.scrollTop = 0;
     
-    body.innerHTML = `
+    body.innerHTML = `${renderScannerDetailNavigation(id)}
         <div style="padding: 40px; text-align: center;">
             <div class="skeleton skeleton-title" style="margin: 0 auto 20px;"></div>
             <div class="skeleton skeleton-text" style="margin: 0 auto 10px;"></div>
@@ -808,11 +1046,14 @@ window.showDetails = async (id) => {
 
     try {
         const res = await fetch(`/api/courses/${id}/details`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (requestToken !== detailRequestToken) return;
+        if (!data?.course || !Array.isArray(data.participants)) throw new Error('Réponse course invalide');
         
         const meteoIcon = getMeteoIcon(data.course.meteo);
 
-        body.innerHTML = `
+        body.innerHTML = `${renderScannerDetailNavigation(id)}
             <div style="margin-bottom: 32px; animation: fadeIn 0.5s ease-out;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
                     <div>
@@ -916,7 +1157,12 @@ window.showDetails = async (id) => {
             </div>
         `;
     } catch (e) {
-        body.innerHTML = `<div style="color: var(--accent-crimson); padding: 40px; text-align: center;">Erreur de chargement des vecteurs.</div>`;
+        if (requestToken !== detailRequestToken) return;
+        body.innerHTML = `${renderScannerDetailNavigation(id)}
+            <div style="color: var(--accent-crimson); padding: 40px; text-align: center;">
+                <div style="margin-bottom: 16px;">Impossible de charger l’analyse de cette course.</div>
+                <button class="scanner-retry-button" onclick="showDetails(${Number(id)})">Réessayer</button>
+            </div>`;
     }
 };
 

@@ -2,6 +2,8 @@ import { getDB } from '../db.mjs';
 import { settleShadowBets } from './pariRepo.mjs';
 import logger from '../../utils/logger.mjs';
 import { formatDate, formatHeure } from '../../utils/dateUtils.mjs';
+import { NON_RUNNER_STATUS_SQL, isNonRunnerStatus } from '../../core/runner_status.mjs';
+import { ML_FEATURE_SCHEMA_VERSION } from '../../ml/model_compatibility.mjs';
 
 const COURSE_LIST_SELECT = `
     c.*,
@@ -94,14 +96,12 @@ export async function insertCourses(courses) {
                         AND EXISTS (
                             SELECT 1 FROM participants p
                             WHERE p.course_id = c.id
-                              AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN
-                                  ('NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE')
+                              AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN (${NON_RUNNER_STATUS_SQL})
                         )
                         AND NOT EXISTS (
                             SELECT 1 FROM participants p
                             WHERE p.course_id = c.id
-                              AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN
-                                  ('NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE')
+                              AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN (${NON_RUNNER_STATUS_SQL})
                               AND (p.prediction_features IS NULL OR p.prediction_score IS NULL)
                         )
                   )
@@ -119,26 +119,25 @@ export async function insertCourses(courses) {
                            SUM(CASE WHEN p.cote_ref > 1 THEN 1.0 / p.cote_ref ELSE 0 END)
                                OVER (PARTITION BY p.course_id) AS market_total
                     FROM participants p
-                    WHERE COALESCE(UPPER(p.statut), 'PARTANT') NOT IN
-                        ('NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE')
+                    WHERE COALESCE(UPPER(p.statut), 'PARTANT') NOT IN (${NON_RUNNER_STATUS_SQL})
                 )
                 INSERT OR IGNORE INTO prediction_snapshots (
                     course_id, participant_id, horse_number, horse_name, course_date,
                     scheduled_time, discipline, hippodrome, distance, captured_at,
-                    source, model_version, prediction_score, prediction_rank,
+                    source, model_version, prediction_score, prediction_rank, heuristic_score,
                     odds_at_prediction, market_probability, market_rank, has_form, has_driver,
-                    feature_vector_json
+                    feature_vector_json, feature_schema_version
                 )
                 SELECT c.id, field.id, field.numero, field.nom, c.date,
                        c.heure, c.discipline, c.hippodrome, c.distance, ?,
-                       'pmu-api', ?, field.prediction_score, field.prediction_rank,
+                       'pmu-api', ?, field.prediction_score, field.prediction_rank, field.prediction_heuristic_score,
                        field.cote_ref,
                        CASE WHEN field.cote_ref > 1 AND field.market_total > 0
                            THEN (1.0 / field.cote_ref) / field.market_total ELSE NULL END,
                        CASE WHEN field.cote_ref > 1 THEN field.market_rank ELSE NULL END,
                        CASE WHEN COALESCE(field.musique, '') NOT IN ('', '?') THEN 1 ELSE 0 END,
                        CASE WHEN COALESCE(field.driver, '') NOT IN ('', '?') THEN 1 ELSE 0 END,
-                       field.prediction_features
+                       field.prediction_features, ?
                 FROM courses c
                 JOIN field ON field.course_id = c.id
                 WHERE c.id = ?
@@ -153,11 +152,10 @@ export async function insertCourses(courses) {
                   AND NOT EXISTS (
                       SELECT 1 FROM participants p
                       WHERE p.course_id = c.id
-                        AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN
-                            ('NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE')
+                        AND COALESCE(UPPER(p.statut), 'PARTANT') NOT IN (${NON_RUNNER_STATUS_SQL})
                         AND (p.prediction_features IS NULL OR p.prediction_score IS NULL)
                   )
-            `, [capturedAt, modelVersion || 'hybrid-unknown', courseId, today, today, nowTime]);
+            `, [capturedAt, modelVersion || 'hybrid-unknown', ML_FEATURE_SCHEMA_VERSION, courseId, today, today, nowTime]);
         };
 
         const settlePredictionSnapshots = async course => {
@@ -169,7 +167,7 @@ export async function insertCourses(courses) {
                 try { reports = JSON.parse(reports); } catch { reports = null; }
             }
             const rows = await new Promise((resolve, reject) => db.all(`
-                SELECT ps.id, ps.horse_number, p.classement, ps.outcome_rank,
+                SELECT ps.id, ps.horse_number, p.classement, p.statut, ps.outcome_rank,
                        ps.official_payout, ps.settled_at
                 FROM prediction_snapshots ps
                 JOIN participants p ON p.id = ps.participant_id
@@ -177,6 +175,8 @@ export async function insertCourses(courses) {
             `, [course.id], (err, result) => err ? reject(err) : resolve(result || [])));
             for (const snapshot of rows) {
                 const reportsJson = JSON.stringify(reports ?? null);
+                const runnerStatus = String(snapshot.statut || '').toUpperCase().trim();
+                const isNonRunner = isNonRunnerStatus(runnerStatus);
                 if (snapshot.settled_at) {
                     const reportedPayout = findSimpleWinPayout(reports, snapshot.horse_number);
                     const confirmedWinner = Number.isFinite(reportedPayout) && reportedPayout > 0;
@@ -184,11 +184,13 @@ export async function insertCourses(courses) {
                         await run(`
                             UPDATE prediction_snapshots
                             SET outcome_rank = CASE WHEN ? = 1 THEN 1 ELSE COALESCE(outcome_rank, 0) END,
+                                is_non_runner = CASE WHEN ? = 1 THEN 1 ELSE is_non_runner END,
                                 official_payout = COALESCE(?, official_payout),
                                 reports_json = COALESCE(?, reports_json)
                             WHERE id = ?
-                        `, [confirmedWinner ? 1 : 0, confirmedWinner ? reportedPayout : null, reports ? reportsJson : null, snapshot.id]);
+                        `, [confirmedWinner ? 1 : 0, isNonRunner ? 1 : 0, reportedPayout || null, reports ? reportsJson : null, snapshot.id]);
                     }
+                    if (isNonRunner) await run('UPDATE prediction_snapshots SET is_non_runner = 1 WHERE id = ?', [snapshot.id]);
                     continue;
                 }
                 const classifiedRank = Number.parseInt(snapshot.classement, 10);
@@ -203,10 +205,10 @@ export async function insertCourses(courses) {
                 const officialPayout = outcomeRank === 1 ? payout : null;
                 await run(`
                     UPDATE prediction_snapshots
-                    SET outcome_rank = ?, official_arrival = ?, official_payout = ?,
+                    SET outcome_rank = ?, is_non_runner = ?, official_arrival = ?, official_payout = ?,
                         reports_json = ?, settled_at = ?
                     WHERE id = ? AND settled_at IS NULL
-                `, [outcomeRank, course.ordre_arrivee, officialPayout, reportsJson, new Date().toISOString(), snapshot.id]);
+                `, [outcomeRank, isNonRunner ? 1 : 0, course.ordre_arrivee, officialPayout, reportsJson, new Date().toISOString(), snapshot.id]);
             }
         };
 
@@ -240,9 +242,9 @@ export async function insertCourses(courses) {
             INSERT INTO participants (
                 course_id, nom, numero, sexe, age, musique, gains, 
                 driver, entraineur, proprietaire, ferrage, oeilleres, nb_courses, nb_victoires, nb_places, 
-                cat_statut, cote_ref, statut, prediction_score, classement, avis,
+                cat_statut, cote_ref, statut, prediction_score, prediction_heuristic_score, classement, avis,
                 distance_course, distances_history, terrain_prefere, corde, poids, recul, prediction_features
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(course_id, numero) DO UPDATE SET
                 cote_ref = excluded.cote_ref,
                 statut = excluded.statut,
@@ -258,6 +260,7 @@ export async function insertCourses(courses) {
                 poids = excluded.poids,
                 recul = excluded.recul,
                 prediction_score = excluded.prediction_score,
+                prediction_heuristic_score = excluded.prediction_heuristic_score,
                 prediction_features = excluded.prediction_features
         `;
 
@@ -276,7 +279,9 @@ export async function insertCourses(courses) {
                     await run(sqlParticipant, [
                         row.id, p.nom, p.numero, p.sexe, p.age, p.musique, p.gains,
                         p.driver, p.entraineur, p.proprietaire, p.ferrage, p.oeilleres, p.nb_courses, p.nb_victoires, p.nb_places,
-                        p.cat_statut || 'STABLE', p.cote_ref, p.statut, p.prediction_score || 0, p.classement || null, p.avis || null,
+                        p.cat_statut || 'STABLE', p.cote_ref, p.statut, p.prediction_score || 0,
+                        Number.isFinite(p.prediction_heuristic_score) ? p.prediction_heuristic_score : null,
+                        p.classement || null, p.avis || null,
                         p.distance_course || null, p.distances_history || null, p.terrain_prefere || null, p.corde || 0, p.poids || 0, p.recul || 0,
                         Array.isArray(p.prediction_features) ? JSON.stringify(p.prediction_features) : null
                     ]);
@@ -598,8 +603,7 @@ export async function getChevauxEnRetardDeGain(days = 2) {
                     let count = 0;
 
                     const validParticipants = participants.filter(p =>
-                        !['NON_PARTANT', 'NON-PARTANT', 'NON PARTANT', 'FORFAIT', 'NP', 'ABANDONNE', 'DISQUALIFIE', 'RETIRE']
-                            .includes(String(p.statut || '').trim().toUpperCase())
+                        !isNonRunnerStatus(p.statut)
                         && Number.isFinite(Number(p.nb_courses)) && Number(p.nb_courses) > 0
                         && Number.isFinite(Number(p.gains)) && Number(p.gains) > 0
                     );

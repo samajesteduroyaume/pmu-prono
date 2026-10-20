@@ -75,7 +75,10 @@ export async function fetchApi(url, config = {}, retries = 3) {
             return await response.json();
         } catch (error) {
             if (i === retries - 1) {
-                console.error(`[API FETCH ERROR] Final try failed for ${url}:`, error.message);
+                const causeCode = error?.cause?.code;
+                const causeMessage = error?.cause?.message;
+                const details = [causeCode, causeMessage].filter(Boolean).join(': ');
+                console.error(`[API FETCH ERROR] Final try failed for ${url}: ${error.message}${details ? ` (${details})` : ''}`);
                 return null;
             }
             await sleep(1000 * (i + 1));

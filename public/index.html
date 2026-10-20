@@ -10,7 +10,7 @@
     
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=43.3.1">
+    <link rel="stylesheet" href="css/style.css?v=scanner.2">
     <link rel="stylesheet" href="css/extra.css">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -92,10 +92,13 @@
                     </div>
                 </div>
                 <div class="actions" style="display: flex; gap: 12px; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 8px; background: hsla(0,0%,100%,0.05); border: 1px solid var(--glass-border); padding: 4px 12px; border-radius: 8px;">
+                    <div class="date-navigation-control" style="display: flex; align-items: center; gap: 8px; background: hsla(0,0%,100%,0.05); border: 1px solid var(--glass-border); padding: 4px 12px; border-radius: 8px;">
                         <i class="fas fa-calendar-alt" style="color: var(--accent-gold); font-size: 14px;"></i>
+                        <button class="date-step-button" onclick="shiftScannerDate(-1)" aria-label="Jour précédent" title="Jour précédent"><i class="fas fa-chevron-left"></i></button>
                         <input type="date" id="calendar-filter" onchange="refreshData()" style="background: transparent; border: none; color: var(--text-pure); font-family: 'JetBrains Mono'; font-size: 13px; outline: none; cursor: pointer;">
-                        <button onclick="document.getElementById('calendar-filter').value=''; refreshData();" title="Voir toutes les dates" style="background: transparent; border: none; color: var(--accent-gold); cursor: pointer; font-size: 11px; font-weight: 700; padding: 2px 6px;">TOUT</button>
+                        <button class="date-step-button" onclick="shiftScannerDate(1)" aria-label="Jour suivant" title="Jour suivant"><i class="fas fa-chevron-right"></i></button>
+                        <button class="date-today-button" onclick="shiftScannerDate(0)" title="Revenir à aujourd’hui">AUJOURD’HUI</button>
+                        <button class="date-all-button" onclick="document.getElementById('calendar-filter').value=''; refreshData();" title="Voir toutes les dates" style="background: transparent; border: none; color: var(--accent-gold); cursor: pointer; font-size: 11px; font-weight: 700; padding: 2px 6px;">TOUT</button>
                     </div>
                     <button onclick="syncHistoryPrompt(event)" class="nav-item" style="border: 1px solid var(--glass-border); padding: 10px 20px; font-size: 13px;">
                         <i class="fas fa-history"></i>
@@ -120,13 +123,23 @@
 
                 <!-- VIEW: SCANNER -->
                 <div id="view-courses" class="view">
+                    <section class="scanner-course-browser" aria-label="Navigation rapide entre les courses">
+                        <div class="scanner-course-browser-heading">
+                            <div>
+                                <h2>Programme des courses</h2>
+                                <p id="scanner-course-count">Chargement du programme…</p>
+                            </div>
+                            <div class="scanner-course-browser-hint"><i class="fas fa-hand-pointer"></i> Sélectionnez une course pour ouvrir son analyse</div>
+                        </div>
+                        <div id="scanner-course-strip" class="scanner-course-strip"></div>
+                    </section>
                     <!-- PMU Control Toolbar -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; background: hsla(142, 60%, 15%, 0.2); border: 1px solid var(--glass-border); padding: 16px 20px; border-radius: var(--radius-md); backdrop-filter: blur(10px);">
+                    <div class="scanner-controls" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; background: hsla(142, 60%, 15%, 0.2); border: 1px solid var(--glass-border); padding: 16px 20px; border-radius: var(--radius-md); backdrop-filter: blur(10px);">
                         <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; flex: 1;">
                              <!-- Search -->
                              <div style="position: relative; min-width: 260px; display: flex; align-items: center;">
                                  <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--accent-pmu-green-bright); font-size: 13px;"></i>
-                                 <input type="text" id="scanner-search" oninput="filterScanner()" placeholder="Rechercher cheval, hippodrome..." style="width: 100%; background: hsla(0,0%,0%,0.4); border: 1px solid var(--glass-border); color: var(--text-pure); padding: 9px 36px 9px 36px; border-radius: 8px; font-size: 13px; outline: none; font-family: 'Outfit';">
+                                 <input type="text" id="scanner-search" oninput="filterScanner()" placeholder="Cheval, hippodrome, R1 C3…" style="width: 100%; background: hsla(0,0%,0%,0.4); border: 1px solid var(--glass-border); color: var(--text-pure); padding: 9px 36px 9px 36px; border-radius: 8px; font-size: 13px; outline: none; font-family: 'Outfit';">
                                  <button id="voice-search-btn" onclick="startVoiceSearch('scanner-search')" title="Assistant Vocal - Dictée Vocale" style="position: absolute; right: 8px; background: transparent; border: none; color: var(--accent-gold); cursor: pointer; padding: 4px 8px;">
                                      <i class="fas fa-microphone"></i>
                                  </button>
@@ -200,6 +213,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="scanner-pagination" class="scanner-pagination" hidden></div>
                 </div>
 
                 <!-- VIEW: TODO / ROADMAP -->
@@ -291,10 +305,10 @@
     </div>
 
     <!-- Modal Details -->
-    <div id="modal-details" onclick="if (event.target === this) closeModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer;">
+    <div id="modal-details" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" onclick="if (event.target === this) closeModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer;">
         <div class="stat-card" style="width: 1400px; max-width: 95vw; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-indigo); cursor: default;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-                <h2 style="font-size: 24px; font-weight: 800; letter-spacing: -1px;">Analyse de Vecteurs IA</h2>
+                <h2 id="modal-title" style="font-size: 24px; font-weight: 800; letter-spacing: -1px;">Détail de la course</h2>
                 <button onclick="closeModal()" style="background: hsla(0, 0%, 100%, 0.05); border: 1px solid var(--glass-border); color: var(--text-high); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
                     <i class="fas fa-times"></i>
                 </button>
@@ -303,7 +317,7 @@
         </div>
     </div>
 
-    <script src="js/app.js?v=elite.1.1"></script>
+    <script src="js/app.js?v=scanner.2"></script>
 </body>
 
 </html>

@@ -236,7 +236,8 @@ export async function getSynergyScore(driverName, trainerName) {
                 SUM(CASE WHEN CAST(classement AS INTEGER) BETWEEN 1 AND 3 THEN 1 ELSE 0 END) as places
             FROM participants p
             JOIN courses c ON c.id = p.course_id
-            WHERE p.driver = ? AND p.entraineur = ?
+            WHERE UPPER(TRIM(COALESCE(p.driver, ''))) = UPPER(TRIM(?))
+              AND UPPER(TRIM(COALESCE(p.entraineur, ''))) = UPPER(TRIM(?))
             AND CAST(p.classement AS INTEGER) > 0
             AND COALESCE(c.ordre_arrivee, '') <> ''
         `;

@@ -75,6 +75,16 @@ Routes principales (JSON sauf indication contraire) :
 
 Routes de compatibilité supplémentaires (dont palmarès, tendances, patterns, valeur et performances) : voir `src/server/app.mjs`. Socket.IO émet notamment les mises à jour de synchronisation et de rechargement du modèle. Les corps et réponses détaillés restent définis par les validateurs et contrôleurs dans `src/server/`.
 
+L’évaluation prospective rapporte le Top 1, la présence du gagnant dans les Top 3 et Top 5, ainsi que les intervalles de Wilson à 95 % calculés par course réglée. La comparaison Top K entre l’IA et le favori marché utilise uniquement les courses où les deux classements sont capturés, tous les snapshots actifs sont réglés et une seule version de modèle est présente. Un intervalle bootstrap apparié à 95 % estime aussi l’incertitude de l’écart IA–marché, en rééchantillonnant les courses. Les résultats sont ventilés par mois et par version du modèle pour suivre leur évolution. Le rapport distingue la couverture des courses terminées avec capture de la couverture de règlement des captures et présente le ROI Top 1 simulé seulement lorsque les rapports officiels sont complets. Ces intervalles décrivent l’incertitude observée, sans prouver une supériorité durable.
+
+Un snapshot est considéré comme réglé s’il possède à la fois un rang d’arrivée et un horodatage de règlement.
+
+Les métriques de rang Top K exigent en plus des rangs IA et marché pour chacun des partants actifs; une course avec une cote manquante ne compare donc pas une liste complète à une liste partielle.
+
+Le tableau ajoute le rang réciproque moyen du gagnant (MRR) sur toute la liste : 100 points si le gagnant est classé premier, 50 s’il est deuxième, etc. Les intervalles bootstrap à 95 % accompagnent le MRR de chaque classement et leur écart apparié.
+
+Les taux affichés par tranche de score IA sont descriptifs : le score sert à classer les chevaux et n’est pas une probabilité de victoire. Ils ne constituent donc pas une calibration probabiliste. Ces tranches, comme les segments par discipline et cote, excluent les courses à versions mélangées ou sans version attribuable. Une calibration au sens strict nécessiterait des probabilités pré-course explicites et un historique prospectif nettement plus fourni.
+
 ## Données, modèle et interprétation
 
 - SQLite est initialisé/migré par l’application. Gardez une sauvegarde avant toute opération de maintenance.

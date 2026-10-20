@@ -25,6 +25,7 @@ const testFiles = [
     'src/tests/test_ml_model_compatibility.mjs',
     'src/tests/test_ml_snapshot_capture.mjs',
     'src/tests/test_ml_tf_runtime.mjs',
+    'src/tests/test_forecast_evaluation.mjs',
     'src/tests/check_v30_logic.mjs'
 ];
 

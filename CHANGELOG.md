@@ -6,7 +6,17 @@ Ce journal décrit les changements visibles dans le dépôt. Les anciennes notes
 
 ### Ajouté
 
+- Évaluation prospective Top 1, Top 3 et Top 5 sur des courses entièrement réglées, avec intervalles de Wilson à 95 % et comparaison IA/marché sur un échantillon commun.
+- Intervalle bootstrap apparié à 95 % pour l’écart de taux IA–marché, rééchantillonné par course.
+- Ventilation des résultats Top 1/3/5 par version, en excluant les courses dont les snapshots mélangent des générations de modèle.
+- Évolution mensuelle de la couverture des captures et des taux Top 1/3/5 sur les courses réglées comparables.
+- Rang réciproque moyen du gagnant (MRR) sur le classement complet, avec comparaison appariée IA–marché et intervalle bootstrap.
+- ROI mensuel simulé à mise fixe pour le premier choix IA et le favori marché, uniquement avec rapports officiels complets.
+- Indicateur de couverture des courses terminées avec snapshot, séparé du taux de règlement des choix IA.
+- Critère de règlement rendu explicite et uniforme : un rang d’arrivée et un horodatage de règlement sont requis pour toutes les métriques prospectives.
+- Comparaison des classements limitée aux courses où chaque partant actif a un rang IA et un rang marché; les listes partielles ne sont plus comparées comme des classements complets.
 - Suite locale unifiée via `npm test` et commandes explicites pour les vérifications d’intégration PMU du jour et de dates historiques.
+- Garde du test d’évaluation prospective : exige une base SQLite temporaire afin qu’un lancement isolé ne touche pas la base de travail.
 - Documentation d’installation, d’évaluation prospective, de configuration et de déploiement réécrite à partir du code et des commandes présents.
 - Route `GET /api/ml/status` et avertissement sur le tableau de bord pour distinguer le modèle ML actif du repli heuristique.
 - Garde de promotion des modèles évaluant le score hybride déployé (sortie ML recalibrée et mélangée à l’heuristique), face au pronostic archivé et au favori du marché sur au moins 100 courses complètes communes.
@@ -28,6 +38,7 @@ Ce journal décrit les changements visibles dans le dépôt. Les anciennes notes
 
 ### Vérification effectuée
 
+- Évaluation prospective : suite locale à 20/20 et lecture SQLite en mode `OPEN_READONLY`. Échantillon observé : 49 courses comparables réglées; MRR IA 47,2 [36,7; 58,7] contre 52,1 [41,8; 62,4] pour le marché (écart −4,9; IC bootstrap apparié 95 % [−14,4; 3,5]); 50 courses terminées capturées sur 10 657 (0,5 %); rapports gagnants manquants pour 16 choix IA. Ces données sont trop peu nombreuses pour valider la calibration par score ou conclure sur la performance future.
 - `npm test` : 7 suites réussies lors de la vérification locale documentée dans la session de travail.
 - `npm run test:pmu` et `npm run test:pmu:history` : accès aux données PMU vérifié sur une série courante et des dates historiques.
 - L’API et les pages ont aussi fait l’objet de contrôles HTTP/statique. Ces contrôles ne constituent pas une validation visuelle complète dans un navigateur.

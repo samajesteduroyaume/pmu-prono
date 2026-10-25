@@ -88,6 +88,8 @@ body::before {
     flex-direction: column;
     padding: 32px 20px;
     position: relative;
+    min-height: 0;
+    overflow: hidden;
     box-shadow: var(--glass-shadow);
 }
 
@@ -128,26 +130,45 @@ body::before {
 .nav-links {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+}
+
+.nav-section-label {
+    margin: 12px 12px 3px;
+    color: var(--text-low);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.3px;
+}
+
+.nav-section-label:first-child {
+    margin-top: 0;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 18px;
+    padding: 11px 14px;
     border-radius: var(--radius-md);
     text-decoration: none;
     color: var(--text-med);
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     transition: all 0.2s ease;
     border: 1px solid transparent;
     cursor: pointer;
 }
 
 .nav-item i {
-    font-size: 18px;
+    width: 20px;
+    text-align: center;
+    font-size: 16px;
     transition: transform 0.2s ease;
 }
 
@@ -162,6 +183,12 @@ body::before {
     color: var(--accent-emerald-bright);
     border: 1px solid var(--glass-border-pmu);
     box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.nav-item:focus-visible,
+.mobile-nav-toggle:focus-visible {
+    outline: 2px solid var(--accent-emerald-bright);
+    outline-offset: 2px;
 }
 
 .nav-footer {
@@ -566,10 +593,13 @@ body::before {
 
     .nav-rail {
         position: fixed;
-        top: 0; left: -300px;
-        height: 100vh;
+        top: 0; left: -320px;
+        width: min(300px, calc(100vw - 48px));
+        height: 100dvh;
+        padding: 24px 16px;
         z-index: 1000;
-        transition: left 0.3s ease;
+        transition: left 0.24s ease;
+        overflow: hidden;
     }
 
     .nav-rail.open { left: 0; }
@@ -588,6 +618,10 @@ body::before {
         width: 100%;
         flex-wrap: wrap;
     }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-rail, .nav-item, .nav-overlay { transition: none !important; }
 }
 
 @media (max-width: 768px) {

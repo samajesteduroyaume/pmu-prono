@@ -3,6 +3,7 @@ import { fetchDay } from './fetcher.mjs';
 import { processDayRaces } from './processor.mjs';
 import { insertCourses } from './db.mjs';
 import { formatDate } from '../utils/dateUtils.mjs';
+import { forecastQuantumProgram } from './quantum_predictions.mjs';
 
 /**
  * SYNC MANAGER v27.2
@@ -45,6 +46,15 @@ async function runSyncHistory(startDate, days = 1, onProgress = null) {
                 dayCount = await insertCourses(processed);
                 results.totalCourses += dayCount;
                 results.successfulDays++;
+                if (dateStr === formatDate(new Date())) {
+                    try {
+                        results.quantumPredictions = await forecastQuantumProgram(dateStr);
+                        logger.info(`[SYNC MANAGER] Prévisions ordonnées: ${results.quantumPredictions.forecasted_courses} courses.`);
+                    } catch (error) {
+                        results.quantumPredictionError = error.message;
+                        logger.warn(`[SYNC MANAGER] Prévision Quantic indisponible: ${error.message}`);
+                    }
+                }
                 logger.info(`[SYNC MANAGER] OK: ${dateStr} - ${dayCount} courses synchronisées.`);
             } else {
                 logger.warn(`[SYNC MANAGER] No data for ${dateStr}`);

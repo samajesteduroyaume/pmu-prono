@@ -293,7 +293,7 @@ function getBestCoteRange(ranges) {
     };
 }
 
-function matchPattern(pattern, contexte) {
+export function matchPattern(pattern, contexte) {
     if (!contexte) return false;
 
     const parts = pattern.split(' + ');

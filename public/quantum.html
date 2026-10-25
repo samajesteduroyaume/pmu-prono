@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Pronostics ordonnés et visualisation des circuits pour les courses PMU.">
+    <meta name="theme-color" content="#0a0f14">
+    <title>ARCHITECT | Analyse quantique</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/extra.css">
+    <link rel="stylesheet" href="css/quantum.css">
+    <script defer src="js/quantum.js"></script>
+</head>
+<body>
+    <main class="quantum-page">
+        <nav class="quantum-site-nav" aria-label="Navigation principale">
+            <a href="index.html">Accueil</a>
+            <a href="index.html?view=courses">Scanner</a>
+            <a href="pepites.html">Pépites</a>
+            <a href="palmares.html">Palmarès</a>
+            <a href="patterns.html">Modèles</a>
+            <a href="quantum.html" aria-current="page">Quantique</a>
+            <a href="backtest.html">Laboratoire</a>
+            <a href="api.html">API</a>
+        </nav>
+        <header class="quantum-header">
+            <div><a href="index.html" class="quantum-back">← ARCHITECT</a><h1>Analyse de course</h1>
+                <p>Estimations d'arrivée calculées à partir des scores d'entrée; elles ne sont pas calibrées. Les mesures du circuit sont diagnostiques.</p></div>
+            <label class="api-field">API Quantic
+                <input id="quantum-api-url" type="url" value="http://127.0.0.1:8000" spellcheck="false">
+            </label>
+        </header>
+        <section class="quantum-controls" aria-label="Paramètres de course">
+            <label>Course du jour<select id="quantum-course"><option value="">Chargement…</option></select></label>
+            <label>Tirs<input id="quantum-shots" type="number" min="128" max="50000" step="128" value="20000"></label>
+            <button id="quantum-run" type="button">Calculer le classement</button>
+        </section>
+        <p id="quantum-status" role="status" aria-live="polite">Chargement des courses du jour…</p>
+        <section id="quantum-results" hidden>
+            <div class="quantum-summary" id="quantum-summary"></div>
+            <div class="quantum-grid">
+                <article class="quantum-card">
+                    <h2>Arrivées les plus probables</h2>
+                    <div class="table-scroll"><table><thead><tr><th>Rang</th><th>Arrivée</th><th id="quantum-order-probability-heading">Probabilité de l’ordre</th><th>Mêmes chevaux aux premières places, tout ordre (exact)</th></tr></thead><tbody id="quantum-orders"></tbody></table></div>
+                </article>
+                <article class="quantum-card">
+                    <h2>Couplés les plus probables</h2>
+                    <div class="table-scroll"><table><thead><tr><th>Couplé</th><th>Probabilité des deux premiers</th></tr></thead><tbody id="quantum-couples"></tbody></table></div>
+                </article>
+                <article class="quantum-card">
+                    <h2>Circuit préparé</h2>
+                    <pre id="quantum-circuit" class="quantum-circuit"></pre>
+                    <p class="quantum-note">En mode registre, un qubit correspond à un partant. L'intrication n'est pas une corrélation prédictive apprise.</p>
+                </article>
+            </div>
+            <article class="quantum-card">
+                <div class="bloch-heading"><div><h2>Sphères de Bloch</h2><p id="bloch-description"></p></div>
+                    <label>Rotation <input id="bloch-rotation" type="range" min="-180" max="180" value="0"></label></div>
+                <div id="bloch-grid" class="bloch-grid"></div>
+            </article>
+        </section>
+    </main>
+</body>
+</html>

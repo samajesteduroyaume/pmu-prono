@@ -8,6 +8,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pmu-tests-'));
 const testFiles = [
     'src/tests/test_dates.mjs',
+    'src/tests/test_weather.mjs',
     'src/tests/test_pattern_integration.mjs',
     'src/tests/test_inconsistencies.mjs',
     'src/tests/test_v32_engines.mjs',

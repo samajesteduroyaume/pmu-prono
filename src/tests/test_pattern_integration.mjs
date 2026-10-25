@@ -5,6 +5,7 @@ import path from 'node:path';
 import { analyserEtGenererAlertes } from '../core/alerts.mjs';
 import { calculateKellyAdaptatif, refreshProspectiveCalibration } from '../core/kelly.mjs';
 import { closeDB, getDB, initDB } from '../db/db.mjs';
+import { matchPattern } from '../core/pattern_optimizer.mjs';
 import logger from '../utils/logger.mjs';
 
 async function seedCalibration(db) {
@@ -35,6 +36,8 @@ async function testIntegration() {
         await refreshProspectiveCalibration('test-model');
 
         logger.header('TEST INTÉGRATION PATTERNS');
+        assert.equal(matchPattern('Trot + Vincennes', { discipline: 'Trot', hippodrome: 'Vincennes' }), true);
+        assert.equal(matchPattern('Galop + Chantilly', { discipline: 'Trot', hippodrome: 'Vincennes' }), false);
         const tendances = {
             drawdown: { currentPercent: 0.05 },
             sequence: { type: 'WIN', count: 2 },

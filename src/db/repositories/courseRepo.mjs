@@ -4,6 +4,7 @@ import logger from '../../utils/logger.mjs';
 import { formatDate, formatHeure } from '../../utils/dateUtils.mjs';
 import { NON_RUNNER_STATUS_SQL, isNonRunnerStatus } from '../../core/runner_status.mjs';
 import { ML_FEATURE_SCHEMA_VERSION } from '../../ml/model_compatibility.mjs';
+import { mergeWeather } from '../../core/weather.mjs';
 
 const COURSE_LIST_SELECT = `
     c.*,
@@ -231,7 +232,7 @@ export async function insertCourses(courses) {
                 corde = excluded.corde,
                 categorie = excluded.categorie,
                 conditions = excluded.conditions,
-                meteo = excluded.meteo,
+                meteo = COALESCE(NULLIF(excluded.meteo, 'null'), courses.meteo),
                 type_pari = excluded.type_pari,
                 ordre_arrivee = COALESCE(NULLIF(excluded.ordre_arrivee, ''), courses.ordre_arrivee),
                 rapports = COALESCE(NULLIF(excluded.rapports, 'null'), courses.rapports),
@@ -265,9 +266,18 @@ export async function insertCourses(courses) {
         `;
 
         for (const c of courses) {
+            const existingWeatherRow = await get(
+                'SELECT meteo FROM courses WHERE date = ? AND reunionNum = ? AND courseNum = ?',
+                [c.date, c.reunionNum, c.courseNum]
+            );
+            let previousWeather = existingWeatherRow?.meteo;
+            if (typeof previousWeather === 'string') {
+                try { previousWeather = JSON.parse(previousWeather); } catch { previousWeather = null; }
+            }
+            const meteo = mergeWeather(previousWeather, c.meteo);
             await run(sqlCourse, [
                 c.date, c.heure, c.hippodrome, c.discipline, c.distance, c.statut, c.partants, c.prix,
-                c.reunionNum, c.courseNum, c.corde, c.categorie, c.conditions, JSON.stringify(c.meteo), c.type_pari,
+                c.reunionNum, c.courseNum, c.corde, c.categorie, c.conditions, JSON.stringify(meteo), c.type_pari,
                 c.ordre_arrivee, JSON.stringify(c.rapports), c.terrain || null
             ]);
 

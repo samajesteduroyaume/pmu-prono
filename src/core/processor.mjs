@@ -3,6 +3,7 @@ import { determinerChangementCategorie } from '../utils/engine_utils.mjs';
 import { getHorseHistory } from './db.mjs';
 import { formatDate, formatHeure } from '../utils/dateUtils.mjs';
 import { isNonRunnerStatus } from './runner_status.mjs';
+import { normalizeWeather } from './weather.mjs';
 
 // ============================================================
 // v43: HELPERS EXTRACTION DONNÉES PMU API — TERRAIN & DISTANCE
@@ -138,7 +139,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
         const requestedDate = race.heureDepart ? new Date(race.heureDepart) : null;
         const hasScheduledTime = Boolean(requestedDate && Number.isFinite(requestedDate.getTime()));
         const raceDate = hasScheduledTime ? requestedDate : fallbackDate;
-        const meteo = reunionData.meteo || {};
+        const meteo = normalizeWeather(race.meteo ?? reunionData.meteo);
 
         // v43: Extraction du terrain depuis les données météo de l'API PMU
         // L'API retourne : meteo.nebulositeCode, meteo.temperature, et au niveau piste :
@@ -146,7 +147,7 @@ export async function processRaces(rawRaces, dayDate, reunionData = {}) {
         const terrainBrut = race.terrain
             || race.typePiste
             || reunionData.terrain
-            || meteo.etatPiste
+            || meteo?.etatPiste
             || null;
         const terrain = normaliserTerrain(terrainBrut);
 

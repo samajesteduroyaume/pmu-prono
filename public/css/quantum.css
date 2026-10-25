@@ -1,0 +1,25 @@
+
+.quantum-page{max-width:1440px;margin:0 auto;padding:32px;color:var(--text-pure,#f4f6fb)}
+.quantum-site-nav{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:8px 0 16px;margin-bottom:12px;border-bottom:1px solid var(--glass-border,rgba(255,255,255,.12));scrollbar-width:thin}
+.quantum-site-nav a{flex:0 0 auto;padding:9px 12px;border-radius:8px;color:var(--text-med,#9ba7b5);font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+.quantum-site-nav a:hover,.quantum-site-nav a:focus-visible{background:rgba(255,255,255,.06);color:var(--text-pure,#f4f6fb);outline:none}
+.quantum-site-nav a[aria-current=page]{background:rgba(99,102,241,.18);color:#c7d2fe}
+.quantum-site-nav a:focus-visible{box-shadow:0 0 0 2px #818cf8}
+.quantum-header{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:24px}
+.quantum-header h1{margin:8px 0;font-size:clamp(26px,4vw,40px)}
+.quantum-header p,.quantum-note,.bloch-heading p{color:var(--text-med,#9ba7b5);font-size:13px}
+.quantum-back{color:var(--accent-indigo,#818cf8);text-decoration:none;font-weight:800;font-size:12px;letter-spacing:.08em}
+.api-field{min-width:280px}.api-field input,.quantum-controls select,.quantum-controls input{display:block;margin-top:7px;width:100%;padding:11px 12px;border:1px solid var(--glass-border,rgba(255,255,255,.12));border-radius:8px;background:#101720;color:inherit}
+.quantum-controls{display:grid;grid-template-columns:minmax(240px,1fr) 150px auto;gap:16px;align-items:end;padding:18px;border:1px solid var(--glass-border,rgba(255,255,255,.12));border-radius:12px;background:var(--bg-card,#111821)}
+.quantum-controls label,.api-field,.bloch-heading label{font-size:12px;color:var(--text-med,#9ba7b5);font-weight:700}
+.quantum-controls button{padding:12px 18px;border:0;border-radius:8px;background:#6366f1;color:white;font-weight:800;cursor:pointer}
+.quantum-controls button:disabled{opacity:.55;cursor:wait}#quantum-status{min-height:22px;color:var(--text-med,#9ba7b5);font-size:13px;margin:14px 2px}
+.quantum-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.quantum-metric,.quantum-card{background:var(--bg-card,#111821);border:1px solid var(--glass-border,rgba(255,255,255,.12));border-radius:12px;padding:18px}
+.quantum-metric small{display:block;color:var(--text-med,#9ba7b5);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.quantum-metric strong{display:block;margin-top:8px;font-size:23px}
+.quantum-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}.quantum-card h2{font-size:16px;margin:0 0 14px}
+.table-scroll{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.07)}th{color:var(--text-med,#9ba7b5);font-size:11px;text-transform:uppercase}
+.quantum-circuit{padding:12px;background:#080d13;border-radius:8px;overflow:auto;color:#c7d2fe;font:12px/1.4 ui-monospace,monospace}.quantum-note{line-height:1.5}
+.bloch-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.bloch-heading label{display:flex;align-items:center;gap:10px}.bloch-heading input{accent-color:#818cf8}
+.bloch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}.bloch-item{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:10px;text-align:center}.bloch-item strong{display:block;font-size:12px}.bloch-item small{color:var(--text-med,#9ba7b5);font-size:10px}.bloch-sphere{width:120px;height:120px;max-width:100%;margin:4px auto;display:block}.bloch-sphere circle,.bloch-sphere ellipse{fill:none;stroke:rgba(148,163,184,.5);stroke-width:1}.bloch-sphere line{stroke:rgba(148,163,184,.4);stroke-width:1}.bloch-sphere .bloch-dot{fill:#a78bfa;stroke:#fff;stroke-width:1}
+@media(max-width:760px){.quantum-page{padding:18px}.quantum-header{align-items:stretch;flex-direction:column}.api-field{min-width:0}.quantum-controls{grid-template-columns:1fr}.quantum-controls button{min-height:44px}.quantum-grid{grid-template-columns:1fr}.quantum-summary{grid-template-columns:1fr}.bloch-heading{align-items:flex-start;flex-direction:column}}

@@ -27,9 +27,28 @@ let coursesLoadError = null;
 window.toggleNavRail = () => {
     const nav = document.getElementById('nav-rail-sidebar');
     const overlay = document.querySelector('.nav-overlay');
-    if (nav) nav.classList.toggle('open');
-    if (overlay) overlay.classList.toggle('open');
+    if (!nav) return;
+    const shouldOpen = !nav.classList.contains('open');
+    nav.classList.toggle('open', shouldOpen);
+    if (overlay) overlay.classList.toggle('open', shouldOpen);
+    document.querySelectorAll('.mobile-nav-toggle').forEach(button => {
+        button.setAttribute('aria-expanded', String(shouldOpen));
+    });
 };
+
+window.closeNavRail = () => {
+    const nav = document.getElementById('nav-rail-sidebar');
+    const overlay = document.querySelector('.nav-overlay');
+    if (nav) nav.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    document.querySelectorAll('.mobile-nav-toggle').forEach(button => {
+        button.setAttribute('aria-expanded', 'false');
+    });
+};
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') window.closeNavRail();
+});
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
@@ -396,6 +415,7 @@ function updateUI() {
 
 // Navigation Logic
 window.showPage = (pageId) => {
+    window.closeNavRail();
     closeModal();
     if (currentView === pageId) {
         refreshData();
@@ -407,7 +427,11 @@ window.showPage = (pageId) => {
     // Update Nav
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const targetNav = document.getElementById(`nav-${pageId}`);
-    if (targetNav) targetNav.classList.add('active');
+    document.querySelectorAll('.nav-item[aria-current="page"]').forEach(el => el.removeAttribute('aria-current'));
+    if (targetNav) {
+        targetNav.classList.add('active');
+        targetNav.setAttribute('aria-current', 'page');
+    }
 
     // Transition Animation
     const stage = document.querySelector('.main-stage');
@@ -483,12 +507,39 @@ async function renderDashboard() {
 }
 
 function getMeteoIcon(meteo) {
-    if (!meteo || !meteo.nebulositeCode) return '<i class="fas fa-sun" style="color: var(--accent-gold)"></i>';
-    const code = meteo.nebulositeCode.toUpperCase();
+    const rawCode = meteo && typeof meteo === 'object'
+        ? [meteo.nebulositeCode, meteo.nebulositeLibelleCourt, meteo.nebulositeLibelleLong].filter(value => typeof value === 'string').join(' ')
+        : null;
+    if (typeof rawCode !== 'string' || !rawCode.trim()) return '<i class="fas fa-question-circle" style="color: var(--text-med)" aria-label="Météo indisponible"></i>';
+    const code = rawCode.toUpperCase();
     if (code.includes('SOLEIL') || code.includes('BEAU')) return '<i class="fas fa-sun" style="color: var(--accent-gold)"></i>';
     if (code.includes('NUAGE') || code.includes('COUVERT')) return '<i class="fas fa-cloud" style="color: var(--text-med)"></i>';
     if (code.includes('PLUIE')) return '<i class="fas fa-cloud-showers-heavy" style="color: var(--accent-blue)"></i>';
     return '<i class="fas fa-cloud-sun" style="color: var(--text-med)"></i>';
+}
+
+function getMeteoText(meteo) {
+    if (!meteo || typeof meteo !== 'object') return 'Météo indisponible';
+    const temperature = meteo.temperature;
+    const temperatureText = temperature !== null && temperature !== undefined && temperature !== '' && Number.isFinite(Number(temperature))
+        ? `${escapeHtml(temperature)}°C` : '';
+    const cloudText = [meteo.nebulositeLibelleCourt, meteo.nebulositeCode]
+        .find(value => typeof value === 'string' && value.trim());
+    const cloud = cloudText ? escapeHtml(cloudText.replaceAll('_', ' ')) : '';
+    const track = typeof meteo.etatPiste === 'string' ? `Piste : ${escapeHtml(meteo.etatPiste)}` : '';
+    const windValue = meteo.forceVent !== null && meteo.forceVent !== undefined && Number.isFinite(Number(meteo.forceVent))
+        ? `Vent ${escapeHtml(meteo.forceVent)}${meteo.directionVent ? ` ${escapeHtml(meteo.directionVent)}` : ''}` : '';
+    const forecastDate = typeof meteo.datePrevision === 'string' && Number.isFinite(Date.parse(meteo.datePrevision))
+        ? `Prévision ${new Date(meteo.datePrevision).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : '';
+    const age = typeof meteo.capturedAt === 'string' && Number.isFinite(Date.parse(meteo.capturedAt))
+        ? `relevé ${new Date(meteo.capturedAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}` : 'fraîcheur inconnue';
+    return [[cloud, temperatureText, windValue, track, forecastDate].filter(Boolean).join(' · '), age].filter(Boolean).join(' — ') || 'Météo indisponible';
+}
+
+function getMeteoTooltip(meteo) {
+    const details = typeof meteo?.nebulositeLibelleLong === 'string' ? escapeHtml(meteo.nebulositeLibelleLong) : '';
+    const summary = getMeteoText(meteo);
+    return details && details !== summary ? `${summary} — ${details}` : summary;
 }
 
 function getScannerStatus(course) {
@@ -547,7 +598,7 @@ async function renderQuinte() {
                             <span style="width: 1px; height: 12px; background: var(--glass-border);"></span>
                             <span>${escapeHtml(course.partants)} PARTANTS</span>
                             <span style="width: 1px; height: 12px; background: var(--glass-border);"></span>
-                            <span>${meteoIcon} ${course.meteo?.temperature ? `${escapeHtml(course.meteo.temperature)}°C` : ''}</span>
+                            <span title="${getMeteoTooltip(course.meteo)}">${meteoIcon} ${getMeteoText(course.meteo)}</span>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -773,7 +824,7 @@ function renderScanner() {
                     <i class="fas fa-ruler-horizontal" style="font-size: 10px; color: var(--text-med);"></i> ${escapeHtml(c.distance)}m
                 </div>
                 <div style="font-size: 11px; color: var(--text-med); margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                    ${meteoIcon} <span style="text-transform: capitalize;">${escapeHtml(terrainText.toLowerCase())}</span>
+                    ${meteoIcon} <span style="text-transform: capitalize;" title="${getMeteoTooltip(c.meteo)}">${escapeHtml(terrainText.toLowerCase())} · ${getMeteoText(c.meteo)}</span>
                 </div>
             </td>
             <td>
@@ -1068,7 +1119,7 @@ window.showDetails = async (id) => {
                             <span style="width: 1px; height: 10px; background: var(--glass-border);"></span>
                             <span>${escapeHtml(data.course.partants)} PARTANTS</span>
                             <span style="width: 1px; height: 10px; background: var(--glass-border);"></span>
-                            <span>${meteoIcon} ${data.course.meteo?.temperature ? `${escapeHtml(data.course.meteo.temperature)}°C` : ''}</span>
+                            <span title="${getMeteoTooltip(data.course.meteo)}">${meteoIcon} ${getMeteoText(data.course.meteo)}</span>
                             ${data.course.corde ? `<span style="width: 1px; height: 10px; background: var(--glass-border);"></span><span>CORDE ${escapeHtml(data.course.corde)}</span>` : ''}
                         </div>
                     </div>
